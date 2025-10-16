@@ -1,0 +1,243 @@
+{
+  "version": "1.0",
+  "model_categories": {
+    "multi_vector": {
+      "description": "Multi-vector models outputting one vector per token (ColBERT, ColPali)",
+      "models": [
+        {
+          "id": "colbert-v2",
+          "type": "colbert",
+          "name": "ColBERT v2",
+          "huggingface_id": "colbert-ir/colbertv2.0",
+          "organization": "Stanford NLP",
+          "release_date": "2022",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-base",
+            "has_projection": true,
+            "projection_dims": 128
+          },
+          "specs": {
+            "parameters": "110M",
+            "embedding_dim": 128,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8", "binary"]
+          },
+          "performance": {
+            "beir_avg": 0.52,
+            "ms_marco_mrr10": 0.39
+          },
+          "license": "MIT",
+          "description": "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions."
+        },
+        {
+          "id": "colbert-small",
+          "type": "colbert",
+          "name": "ColBERT Small",
+          "huggingface_id": "answerdotai/answerai-colbert-small-v1",
+          "organization": "Answer.AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "distilbert",
+            "variant": "distilbert-base",
+            "has_projection": true,
+            "projection_dims": 96
+          },
+          "specs": {
+            "parameters": "33M",
+            "embedding_dim": 96,
+            "hidden_dim": 384,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.45,
+            "ms_marco_mrr10": 0.32
+          },
+          "license": "Apache-2.0",
+          "description": "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference."
+        },
+        {
+          "id": "jina-colbert-v2",
+          "type": "colbert",
+          "name": "Jina ColBERT v2",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "560M",
+            "embedding_dim": {
+              "default": 768,
+              "matryoshka": {
+                "min": 64,
+                "max": 768,
+                "supported": [64, 96, 128, 256, 384, 512, 768]
+              }
+            },
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.54,
+            "ms_marco_mrr10": 0.42
+          },
+          "license": "Apache-2.0",
+          "description": "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions."
+        },
+        {
+          "id": "jina-colbert-v2-96",
+          "type": "colbert",
+          "name": "Jina ColBERT v2 (96-dim)",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "560M",
+            "embedding_dim": 96,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.53,
+            "ms_marco_mrr10": 0.41
+          },
+          "license": "Apache-2.0",
+          "description": "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss."
+        },
+        {
+          "id": "jina-colbert-v2-64",
+          "type": "colbert",
+          "name": "Jina ColBERT v2 (64-dim)",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "560M",
+            "embedding_dim": 64,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.51,
+            "ms_marco_mrr10": 0.39
+          },
+          "license": "Apache-2.0",
+          "description": "Jina ColBERT v2 at 64 dimensions for maximum compactness."
+        }
+      ]
+    },
+    "dense": {
+      "description": "Dense models outputting single vector per input (BERT, GTE, E5, etc.)",
+      "models": []
+    },
+    "sparse": {
+      "description": "Sparse models with vocabulary-sized vectors (SPLADE, uniCOIL)",
+      "models": []
+    },
+    "timeseries": {
+      "description": "Time series foundation models (TimesFM, TTM, Chronos)",
+      "models": []
+    },
+    "geometric": {
+      "description": "Non-Euclidean embeddings (hyperbolic, spherical, quaternion)",
+      "models": []
+    }
+  }
+}
