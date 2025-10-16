@@ -16,14 +16,14 @@
 //! ```
 
 use std::time::Instant;
-use tessera::Tessera;
+use tessera::TesseraMultiVector;
 
 fn main() -> tessera::Result<()> {
     println!("=== Tessera Batch Processing Performance Demo ===\n");
 
     // Initialize embedder with ColBERT v2
     println!("Loading model: colbert-v2...");
-    let embedder = Tessera::new("colbert-v2")?;
+    let embedder = TesseraMultiVector::new("colbert-v2")?;
     println!("Model loaded successfully!\n");
 
     // Test different batch sizes

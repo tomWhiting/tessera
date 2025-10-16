@@ -22,5 +22,8 @@ pub mod vision;
 
 // Re-exports for convenience
 pub use colbert::ColBERTEncoding;
-pub use dense::DenseEncoding;
+pub use dense::CandleDenseEncoder;
+pub use sparse::CandleSparseEncoder;
+
+#[allow(deprecated)]
 pub use sparse::SparseEncoding;

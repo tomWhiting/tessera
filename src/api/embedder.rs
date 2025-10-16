@@ -1,30 +1,32 @@
 //! Main Tessera embedder interface.
 //!
 //! Provides the primary user-facing API for encoding text into
-//! embeddings. Supports both single and batch encoding with
-//! automatic batching and device management.
+//! embeddings. Supports both dense single-vector and multi-vector
+//! encoders with automatic model type detection.
 //!
 //! # Example
 //!
 //! ```ignore
 //! use tessera::Tessera;
 //!
-//! let embedder = Tessera::new("colbert-v2")?;
+//! // Auto-detect model type and create appropriate encoder
+//! let embedder = Tessera::new("colbert-v2")?;  // Creates MultiVector variant
+//! let embedder = Tessera::new("bge-base-en-v1.5")?;  // Creates Dense variant
 //!
-//! // Single text
-//! let embedding = embedder.encode("What is ML?")?;
+//! // Or use specific types directly
+//! use tessera::{TesseraMultiVector, TesseraDense};
 //!
-//! // Batch encoding
-//! let embeddings = embedder.encode_batch(&[
-//!     "First text",
-//!     "Second text",
-//! ])?;
+//! let mv_embedder = TesseraMultiVector::new("colbert-v2")?;
+//! let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;
 //! ```
 
-use crate::api::TesseraBuilder;
+use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder};
 use crate::backends::CandleBertEncoder;
-use crate::core::{TokenEmbedder, TokenEmbeddings};
+use crate::core::{DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings};
+use crate::encoding::dense::CandleDenseEncoder;
+use crate::encoding::sparse::CandleSparseEncoder;
 use crate::error::{Result, TesseraError};
+use crate::models::registry::{get_model, ModelType};
 use crate::quantization::{binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization};
 use crate::utils::similarity::max_sim;
 
@@ -71,11 +73,13 @@ impl QuantizedEmbeddings {
     }
 }
 
-/// Main Tessera embedder.
+/// Multi-vector embedder for ColBERT-style token-level embeddings.
 ///
-/// Manages model loading, device allocation, and encoding operations.
+/// Produces token-level embeddings suitable for late interaction scoring
+/// via MaxSim. Each input text generates multiple vectors (one per token).
+///
 /// Thread-safe and can be shared across threads.
-pub struct Tessera {
+pub struct TesseraMultiVector {
     /// Backend encoder (currently Candle only)
     encoder: CandleBertEncoder,
     /// Model identifier from registry
@@ -84,7 +88,7 @@ pub struct Tessera {
     quantizer: Option<BinaryQuantization>,
 }
 
-impl Tessera {
+impl TesseraMultiVector {
     /// Create a new embedder with default configuration.
     ///
     /// This is the simplest way to create an embedder - it automatically:
@@ -111,14 +115,14 @@ impl Tessera {
     /// # Example
     ///
     /// ```ignore
-    /// use tessera::Tessera;
+    /// use tessera::TesseraMultiVector;
     ///
-    /// let embedder = Tessera::new("colbert-v2")?;
+    /// let embedder = TesseraMultiVector::new("colbert-v2")?;
     /// let embeddings = embedder.encode("What is machine learning?")?;
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
         // Use builder with just model ID
-        TesseraBuilder::new().model(model_id).build()
+        TesseraMultiVectorBuilder::new().model(model_id).build()
     }
 
     /// Create a builder for advanced configuration.
@@ -126,21 +130,21 @@ impl Tessera {
     /// Use this for advanced use cases like:
     /// - Specifying a custom device
     /// - Setting Matryoshka dimensions
-    /// - Future: quantization, normalization, etc.
+    /// - Enabling binary quantization
     ///
     /// # Example
     ///
     /// ```ignore
-    /// use tessera::Tessera;
+    /// use tessera::TesseraMultiVector;
     /// use candle_core::Device;
     ///
-    /// let embedder = Tessera::builder()
+    /// let embedder = TesseraMultiVector::builder()
     ///     .model("jina-colbert-v2")
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    pub fn builder() -> TesseraBuilder {
-        TesseraBuilder::new()
+    pub fn builder() -> TesseraMultiVectorBuilder {
+        TesseraMultiVectorBuilder::new()
     }
 
     /// Internal constructor used by builder.
@@ -176,8 +180,7 @@ impl Tessera {
     ///     embeddings.embedding_dim);
     /// ```
     pub fn encode(&self, text: &str) -> Result<TokenEmbeddings> {
-        self.encoder
-            .encode(text)
+        TokenEmbedder::encode(&self.encoder, text)
             .map_err(|e| TesseraError::EncodingError {
                 context: format!("Failed to encode text: '{}'", text),
                 source: e,
@@ -210,10 +213,7 @@ impl Tessera {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<TokenEmbeddings>> {
-        use crate::core::Encoder;
-
-        self.encoder
-            .encode_batch(texts)
+        Encoder::encode_batch(&self.encoder, texts)
             .map_err(|e| TesseraError::EncodingError {
                 context: format!("Failed to encode batch of {} texts", texts.len()),
                 source: e,
@@ -306,9 +306,9 @@ impl Tessera {
     /// # Example
     ///
     /// ```ignore
-    /// use tessera::{Tessera, QuantizationConfig};
+    /// use tessera::{TesseraMultiVector, QuantizationConfig};
     ///
-    /// let embedder = Tessera::builder()
+    /// let embedder = TesseraMultiVector::builder()
     ///     .model("colbert-v2")
     ///     .quantization(QuantizationConfig::Binary)
     ///     .build()?;
@@ -415,6 +415,547 @@ impl Tessera {
                 "No quantizer configured. Use .quantization(QuantizationConfig::Binary) in builder"
                     .to_string(),
             )),
+        }
+    }
+}
+
+// ============================================================================
+// Dense Single-Vector Embedder
+// ============================================================================
+
+/// Dense single-vector embedder for traditional sentence embeddings.
+///
+/// Produces a single pooled vector per input text via strategies like
+/// CLS token, mean pooling, or max pooling. Suitable for semantic search
+/// and classification tasks.
+///
+/// Thread-safe and can be shared across threads.
+pub struct TesseraDense {
+    /// Backend encoder (Candle dense encoder)
+    encoder: CandleDenseEncoder,
+    /// Model identifier from registry
+    model_id: String,
+}
+
+impl TesseraDense {
+    /// Create a new dense embedder with default configuration.
+    ///
+    /// This is the simplest way to create a dense embedder - it automatically:
+    /// - Looks up the model in the registry
+    /// - Selects the best available device (Metal > CUDA > CPU)
+    /// - Downloads the model from HuggingFace if needed
+    /// - Initializes the encoder with appropriate pooling strategy
+    ///
+    /// # Arguments
+    ///
+    /// * `model_id` - Model identifier from the registry (e.g., "bge-base-en-v1.5", "nomic-embed-text-v1")
+    ///
+    /// # Returns
+    ///
+    /// Initialized embedder ready for use.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Model is not found in the registry
+    /// - Model is not a dense model type
+    /// - Model cannot be downloaded or loaded
+    /// - Device initialization fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraDense;
+    ///
+    /// let embedder = TesseraDense::new("bge-base-en-v1.5")?;
+    /// let embedding = embedder.encode("What is machine learning?")?;
+    /// assert_eq!(embedding.dim(), 768);
+    /// ```
+    pub fn new(model_id: &str) -> Result<Self> {
+        // Use builder with just model ID
+        TesseraDenseBuilder::new().model(model_id).build()
+    }
+
+    /// Create a builder for advanced configuration.
+    ///
+    /// Use this for advanced use cases like:
+    /// - Specifying a custom device
+    /// - Setting Matryoshka dimensions
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraDense;
+    /// use candle_core::Device;
+    ///
+    /// let embedder = TesseraDense::builder()
+    ///     .model("bge-base-en-v1.5")
+    ///     .device(Device::Cpu)
+    ///     .build()?;
+    /// ```
+    pub fn builder() -> TesseraDenseBuilder {
+        TesseraDenseBuilder::new()
+    }
+
+    /// Internal constructor used by builder.
+    pub(crate) fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
+        Self { encoder, model_id }
+    }
+
+    /// Encode a single text into a dense embedding.
+    ///
+    /// Returns a single pooled vector representing the entire input text.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to encode
+    ///
+    /// # Returns
+    ///
+    /// DenseEmbedding containing the pooled embedding vector.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Tokenization fails
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let embedding = embedder.encode("What is machine learning?")?;
+    /// println!("Encoded to {} dimensions", embedding.dim());
+    /// ```
+    pub fn encode(&self, text: &str) -> Result<DenseEmbedding> {
+        <CandleDenseEncoder as Encoder>::encode(&self.encoder, text)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode text: '{}'", text),
+                source: e,
+            })
+    }
+
+    /// Encode multiple texts in a batch.
+    ///
+    /// More efficient than calling `encode()` repeatedly due to
+    /// batched inference on GPU. Achieves 5-10x speedup for batch sizes of 100+.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - Slice of texts to encode
+    ///
+    /// # Returns
+    ///
+    /// Vector of DenseEmbedding, one per input text.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if encoding any text fails.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let embeddings = embedder.encode_batch(&[
+    ///     "First document",
+    ///     "Second document",
+    /// ])?;
+    /// ```
+    pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<DenseEmbedding>> {
+        <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode batch of {} texts", texts.len()),
+                source: e,
+            })
+    }
+
+    /// Compute cosine similarity between two texts.
+    ///
+    /// Convenience method that encodes both texts and computes cosine similarity.
+    /// For normalized embeddings, this is equivalent to dot product.
+    ///
+    /// # Arguments
+    ///
+    /// * `text_a` - First text
+    /// * `text_b` - Second text
+    ///
+    /// # Returns
+    ///
+    /// Similarity score (higher = more similar). Typically in range [-1, 1],
+    /// or [0, 1] for normalized embeddings.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if encoding or similarity computation fails.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let score = embedder.similarity(
+    ///     "What is machine learning?",
+    ///     "Machine learning is a subset of AI"
+    /// )?;
+    /// println!("Similarity: {:.4}", score);
+    /// ```
+    pub fn similarity(&self, text_a: &str, text_b: &str) -> Result<f32> {
+        let emb_a = self.encode(text_a)?;
+        let emb_b = self.encode(text_b)?;
+
+        // Compute cosine similarity (dot product for normalized embeddings)
+        let dot_product: f32 = emb_a.embedding.iter()
+            .zip(emb_b.embedding.iter())
+            .map(|(a, b)| a * b)
+            .sum();
+
+        Ok(dot_product)
+    }
+
+    /// Get the embedding dimension.
+    ///
+    /// Returns the dimensionality of the output embedding vector.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Embedding dimension: {}", embedder.dimension());
+    /// ```
+    pub fn dimension(&self) -> usize {
+        self.encoder.embedding_dim()
+    }
+
+    /// Get the model identifier.
+    ///
+    /// Returns the model ID from the registry (e.g., "bge-base-en-v1.5").
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Using model: {}", embedder.model());
+    /// ```
+    pub fn model(&self) -> &str {
+        &self.model_id
+    }
+}
+
+// ============================================================================
+// Sparse Embedding Encoder (SPLADE)
+// ============================================================================
+
+/// Sparse embedder for SPLADE-style vocabulary-sized embeddings.
+///
+/// Produces sparse vectors where most dimensions are zero (99%+ sparsity).
+/// Suitable for interpretable search and inverted index integration.
+///
+/// Thread-safe and can be shared across threads.
+pub struct TesseraSparse {
+    /// Backend encoder (Candle sparse encoder)
+    encoder: CandleSparseEncoder,
+    /// Model identifier from registry
+    model_id: String,
+}
+
+impl TesseraSparse {
+    /// Create a new sparse embedder with default configuration.
+    ///
+    /// This is the simplest way to create a sparse embedder - it automatically:
+    /// - Looks up the model in the registry
+    /// - Selects the best available device (Metal > CUDA > CPU)
+    /// - Downloads the model from HuggingFace if needed
+    /// - Initializes the encoder with MLM head
+    ///
+    /// # Arguments
+    ///
+    /// * `model_id` - Model identifier from the registry (e.g., "splade-pp-en-v1", "splade-pp-en-v2")
+    ///
+    /// # Returns
+    ///
+    /// Initialized embedder ready for use.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Model is not found in the registry
+    /// - Model is not a sparse model type
+    /// - Model cannot be downloaded or loaded
+    /// - Device initialization fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraSparse;
+    ///
+    /// let embedder = TesseraSparse::new("splade-cocondenser")?;
+    /// let embedding = embedder.encode("What is machine learning?")?;
+    /// println!("Sparsity: {:.2}%", embedding.sparsity() * 100.0);
+    /// ```
+    pub fn new(model_id: &str) -> Result<Self> {
+        TesseraSparseBuilder::new().model(model_id).build()
+    }
+
+    /// Create a builder for advanced configuration.
+    ///
+    /// Use this for advanced use cases like:
+    /// - Specifying a custom device
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraSparse;
+    /// use candle_core::Device;
+    ///
+    /// let embedder = TesseraSparse::builder()
+    ///     .model("splade-cocondenser")
+    ///     .device(Device::Cpu)
+    ///     .build()?;
+    /// ```
+    pub fn builder() -> TesseraSparseBuilder {
+        TesseraSparseBuilder::new()
+    }
+
+    /// Internal constructor used by builder.
+    pub(crate) fn from_encoder(encoder: CandleSparseEncoder, model_id: String) -> Self {
+        Self { encoder, model_id }
+    }
+
+    /// Encode a single text into a sparse embedding.
+    ///
+    /// Returns a sparse vector with vocabulary-sized dimensions (30522 for BERT).
+    /// Typical sparsity: 99%+ (only ~100-200 non-zero dimensions).
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Text to encode
+    ///
+    /// # Returns
+    ///
+    /// SparseEmbedding containing sparse vector representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Tokenization fails
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let embedding = embedder.encode("What is machine learning?")?;
+    /// println!("Non-zero dimensions: {}", embedding.nnz());
+    /// println!("Sparsity: {:.2}%", embedding.sparsity() * 100.0);
+    /// ```
+    pub fn encode(&self, text: &str) -> Result<SparseEmbedding> {
+        <CandleSparseEncoder as Encoder>::encode(&self.encoder, text)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode text: '{}'", text),
+                source: e,
+            })
+    }
+
+    /// Encode multiple texts in a batch.
+    ///
+    /// More efficient than calling `encode()` repeatedly.
+    ///
+    /// # Arguments
+    ///
+    /// * `texts` - Slice of texts to encode
+    ///
+    /// # Returns
+    ///
+    /// Vector of SparseEmbedding, one per input text.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if encoding any text fails.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let embeddings = embedder.encode_batch(&[
+    ///     "First document",
+    ///     "Second document",
+    /// ])?;
+    /// ```
+    pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<SparseEmbedding>> {
+        <CandleSparseEncoder as Encoder>::encode_batch(&self.encoder, texts)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode batch of {} texts", texts.len()),
+                source: e,
+            })
+    }
+
+    /// Compute dot product similarity between two texts.
+    ///
+    /// Convenience method that encodes both texts and computes sparse dot product.
+    /// For sparse vectors, this is the standard similarity metric.
+    ///
+    /// # Arguments
+    ///
+    /// * `text_a` - First text
+    /// * `text_b` - Second text
+    ///
+    /// # Returns
+    ///
+    /// Similarity score (higher = more similar).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if encoding or similarity computation fails.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let score = embedder.similarity(
+    ///     "What is machine learning?",
+    ///     "Machine learning is a subset of AI"
+    /// )?;
+    /// println!("Similarity: {:.4}", score);
+    /// ```
+    pub fn similarity(&self, text_a: &str, text_b: &str) -> Result<f32> {
+        let emb_a = self.encode(text_a)?;
+        let emb_b = self.encode(text_b)?;
+
+        // Sparse dot product
+        let mut score = 0.0;
+        for (idx_a, weight_a) in &emb_a.weights {
+            if let Some(&(_, weight_b)) = emb_b.weights.iter().find(|(idx_b, _)| idx_b == idx_a) {
+                score += weight_a * weight_b;
+            }
+        }
+
+        Ok(score)
+    }
+
+    /// Get the vocabulary size (embedding dimension).
+    ///
+    /// Returns the full vocabulary dimension (typically 30522 for BERT).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Vocab size: {}", embedder.vocab_size());
+    /// ```
+    pub fn vocab_size(&self) -> usize {
+        use crate::core::SparseEncoder;
+        self.encoder.vocab_size()
+    }
+
+    /// Get the model identifier.
+    ///
+    /// Returns the model ID from the registry (e.g., "splade-cocondenser").
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Using model: {}", embedder.model());
+    /// ```
+    pub fn model(&self) -> &str {
+        &self.model_id
+    }
+}
+
+// ============================================================================
+// Unified Factory Enum
+// ============================================================================
+
+/// Unified embedder that auto-detects model type.
+///
+/// This enum provides a smart factory pattern that automatically creates
+/// the appropriate embedder variant (Dense, MultiVector, or Sparse) based on
+/// the model type in the registry.
+///
+/// # Example
+///
+/// ```ignore
+/// use tessera::Tessera;
+///
+/// // Auto-detects ColBERT model -> creates MultiVector variant
+/// let colbert = Tessera::new("colbert-v2")?;
+///
+/// // Auto-detects dense model -> creates Dense variant
+/// let bge = Tessera::new("bge-base-en-v1.5")?;
+///
+/// // Auto-detects sparse model -> creates Sparse variant
+/// let splade = Tessera::new("splade-cocondenser")?;
+///
+/// // Pattern match to use specific API
+/// match colbert {
+///     Tessera::MultiVector(mv) => {
+///         let embeddings = mv.encode("query")?;
+///         println!("Got {} tokens", embeddings.num_tokens);
+///     }
+///     Tessera::Dense(d) => {
+///         let embedding = d.encode("query")?;
+///         println!("Got {} dimensions", embedding.dim());
+///     }
+///     Tessera::Sparse(s) => {
+///         let embedding = s.encode("query")?;
+///         println!("Got {} non-zero dimensions", embedding.nnz());
+///     }
+/// }
+/// ```
+pub enum Tessera {
+    /// Dense single-vector embedder
+    Dense(TesseraDense),
+    /// Multi-vector ColBERT-style embedder
+    MultiVector(TesseraMultiVector),
+    /// Sparse SPLADE-style embedder
+    Sparse(TesseraSparse),
+}
+
+impl Tessera {
+    /// Create a new embedder with automatic model type detection.
+    ///
+    /// Looks up the model in the registry and creates the appropriate
+    /// embedder variant based on the model type:
+    /// - Dense models -> `Tessera::Dense(TesseraDense)`
+    /// - MultiVector/Colbert models -> `Tessera::MultiVector(TesseraMultiVector)`
+    /// - Sparse models -> `Tessera::Sparse(TesseraSparse)`
+    ///
+    /// # Arguments
+    ///
+    /// * `model_id` - Model identifier from the registry
+    ///
+    /// # Returns
+    ///
+    /// Tessera enum variant containing the appropriate embedder.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Model is not found in the registry
+    /// - Model type is not supported (e.g., Timeseries, Unified, VisionLanguage)
+    /// - Model cannot be loaded
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::Tessera;
+    ///
+    /// let embedder = Tessera::new("colbert-v2")?;
+    /// let embedder = Tessera::new("bge-base-en-v1.5")?;
+    /// let embedder = Tessera::new("splade-cocondenser")?;
+    /// ```
+    pub fn new(model_id: &str) -> Result<Self> {
+        let model_info = get_model(model_id)
+            .ok_or_else(|| TesseraError::ModelNotFound {
+                model_id: model_id.to_string(),
+            })?;
+
+        match model_info.model_type {
+            ModelType::Dense => {
+                let dense = TesseraDense::new(model_id)?;
+                Ok(Tessera::Dense(dense))
+            }
+            ModelType::Colbert => {
+                let mv = TesseraMultiVector::new(model_id)?;
+                Ok(Tessera::MultiVector(mv))
+            }
+            ModelType::Sparse => {
+                let sparse = TesseraSparse::new(model_id)?;
+                Ok(Tessera::Sparse(sparse))
+            }
+            _ => Err(TesseraError::ConfigError(format!(
+                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse",
+                model_info.model_type
+            ))),
         }
     }
 }

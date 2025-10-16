@@ -1,0 +1,167 @@
+Dense Embeddings Test Suite Structure
+======================================
+
+tests/
+├── dense_embeddings_test.rs (681 lines, 28 tests)
+│   │
+│   ├── 1. Basic Dense Encoding (2 tests)
+│   │   ├── test_dense_encode_single [ignore]
+│   │   └── test_dense_metadata_preservation [ignore]
+│   │
+│   ├── 2. Batch Processing (3 tests)
+│   │   ├── test_dense_batch_encoding [ignore]
+│   │   ├── test_dense_batch_vs_sequential_consistency [ignore]
+│   │   └── test_dense_batch_order_preservation [ignore]
+│   │
+│   ├── 3. Similarity Computation (2 tests)
+│   │   ├── test_dense_similarity_semantic [ignore]
+│   │   └── test_dense_similarity_identical [ignore]
+│   │
+│   ├── 4. Normalization Validation (2 tests)
+│   │   ├── test_dense_normalization [ignore]
+│   │   └── test_dense_normalized_dot_equals_cosine [ignore]
+│   │
+│   ├── 5. Pooling Strategy (1 test)
+│   │   └── test_dense_pooling_strategy [ignore]
+│   │
+│   ├── 6. Matryoshka Support (2 tests)
+│   │   ├── test_matryoshka_dimension_truncation [ignore]
+│   │   └── test_matryoshka_prefix_consistency [ignore]
+│   │
+│   ├── 7. Factory Pattern (3 tests)
+│   │   ├── test_factory_dense_model [ignore]
+│   │   ├── test_factory_multivector_model [ignore]
+│   │   └── test_factory_both_variants [ignore]
+│   │
+│   ├── 8. Builder Validation (5 tests)
+│   │   ├── test_builder_requires_model
+│   │   ├── test_builder_invalid_model
+│   │   ├── test_builder_wrong_model_type
+│   │   ├── test_builder_unsupported_dimension
+│   │   └── test_builder_dimension_on_fixed_model [ignore]
+│   │
+│   ├── 9. Device Selection (3 tests)
+│   │   ├── test_device_auto_selection [ignore]
+│   │   ├── test_device_explicit_cpu [ignore]
+│   │   └── test_device_metal_on_macos [ignore]
+│   │
+│   ├── 10. Error Handling (3 tests)
+│   │   ├── test_error_invalid_model_id
+│   │   ├── test_error_messages_are_clear
+│   │   └── test_encode_empty_string [ignore]
+│   │
+│   └── 11. Additional Quality (2 tests)
+│       ├── test_dense_model_info_methods [ignore]
+│       └── test_dense_embedding_not_sparse [ignore]
+│
+├── DENSE_EMBEDDINGS_TEST_SUMMARY.md
+│   ├── Overview & Statistics
+│   ├── Test Coverage by Category
+│   ├── Models Used
+│   ├── Running Instructions
+│   └── Quality Checklist
+│
+├── DENSE_TEST_EXAMPLES.md
+│   ├── Example Test Output
+│   ├── Test Categories by Complexity
+│   ├── Code Snippets
+│   ├── Execution Time Estimates
+│   ├── CI/CD Integration
+│   └── Debugging Guide
+│
+└── TEST_STRUCTURE.txt (this file)
+
+
+Test Distribution
+-----------------
+Total Tests:           28
+Integration (ignore):  22 (78.6%)
+Unit Tests:            6  (21.4%)
+
+Compilation Status:    ✓ Clean (no warnings)
+Unit Test Status:      ✓ All passing (6/6)
+
+
+Test Execution Flow
+-------------------
+1. Builder Validation Tests (immediate, no model)
+   └── Verify configuration errors
+
+2. Basic Encoding Tests (with model)
+   └── Single text → embedding
+
+3. Batch Processing Tests (with model)
+   └── Multiple texts → embeddings
+
+4. Similarity Tests (with model)
+   └── Compare embeddings
+
+5. Matryoshka Tests (with model)
+   └── Different dimensions
+
+6. Factory Pattern Tests (with models)
+   └── Auto-detection
+
+7. Quality Tests (with model)
+   └── Metadata and properties
+
+
+Coverage Matrix
+---------------
+API Surface:
+  ✓ TesseraDense::new()
+  ✓ TesseraDense::builder()
+  ✓ TesseraDense::encode()
+  ✓ TesseraDense::encode_batch()
+  ✓ TesseraDense::similarity()
+  ✓ TesseraDense::model()
+  ✓ TesseraDense::dimension()
+  ✓ TesseraDenseBuilder::model()
+  ✓ TesseraDenseBuilder::device()
+  ✓ TesseraDenseBuilder::dimension()
+  ✓ TesseraDenseBuilder::build()
+  ✓ Tessera::new() (factory)
+  ✓ DenseEmbedding::dim()
+  ✓ DenseEmbedding::text
+  ✓ DenseEmbedding::embedding
+
+Error Paths:
+  ✓ Missing model ID
+  ✓ Invalid model ID
+  ✓ Wrong model type
+  ✓ Unsupported dimension
+  ✓ Device initialization
+  ✓ Empty string handling
+
+Features:
+  ✓ L2 Normalization
+  ✓ Mean Pooling
+  ✓ Matryoshka Truncation
+  ✓ Batch Processing
+  ✓ Cosine Similarity
+  ✓ Device Selection
+
+
+Models Required
+---------------
+Primary: bge-base-en-v1.5 (768-dim, mean pooling)
+Matryoshka: nomic-embed-v1.5 (64-768 dims)
+Comparison: colbert-v2 (multi-vector)
+
+
+Quick Commands
+--------------
+# Run unit tests only (fast)
+cargo test --test dense_embeddings_test
+
+# Run integration tests (requires models)
+cargo test --test dense_embeddings_test -- --ignored
+
+# List all tests
+cargo test --test dense_embeddings_test -- --list
+
+# Run specific test
+cargo test --test dense_embeddings_test test_dense_encode_single -- --ignored
+
+# Run tests matching pattern
+cargo test --test dense_embeddings_test matryoshka -- --ignored

@@ -60,7 +60,10 @@ pub mod quantization;
 pub mod utils;
 
 // Re-export commonly used types
-pub use api::{Tessera, TesseraBuilder, QuantizationConfig, QuantizedEmbeddings};
+pub use api::{
+    QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
+    TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
+};
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;

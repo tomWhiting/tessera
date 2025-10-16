@@ -7,14 +7,14 @@
 //! - Compute similarity with quantized embeddings
 //! - Compare accuracy vs full precision
 
-use tessera::{Tessera, QuantizationConfig, Result};
+use tessera::{TesseraMultiVector, QuantizationConfig, Result};
 
 fn main() -> Result<()> {
     println!("=== Binary Quantization Demo ===\n");
 
     // Create embedder with binary quantization
     println!("Loading model with binary quantization...");
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVector::builder()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;

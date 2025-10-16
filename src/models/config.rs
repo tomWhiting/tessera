@@ -18,6 +18,8 @@
 
 use anyhow::{anyhow, Result};
 
+use super::registry::PoolingStrategy;
+
 /// Configuration for a BERT-based model.
 #[derive(Debug, Clone)]
 pub struct ModelConfig {
@@ -29,6 +31,10 @@ pub struct ModelConfig {
     pub max_seq_length: usize,
     /// Optional target dimension for Matryoshka truncation
     pub target_dimension: Option<usize>,
+    /// Pooling strategy for dense models (None for multi-vector models)
+    pub pooling_strategy: Option<PoolingStrategy>,
+    /// Whether to normalize embeddings after pooling
+    pub normalize_embeddings: bool,
 }
 
 // Model name constants
@@ -53,6 +59,8 @@ impl ModelConfig {
             embedding_dim,
             max_seq_length,
             target_dimension: None,
+            pooling_strategy: None,
+            normalize_embeddings: false,
         }
     }
 
@@ -75,6 +83,30 @@ impl ModelConfig {
         self
     }
 
+    /// Sets the pooling configuration for dense models.
+    ///
+    /// This method configures how token-level embeddings should be pooled
+    /// into a single vector and whether the result should be normalized.
+    ///
+    /// # Arguments
+    /// * `strategy` - The pooling strategy (Cls, Mean, or Max)
+    /// * `normalize` - Whether to L2-normalize the pooled embedding
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use tessera::models::{ModelConfig, registry::PoolingStrategy};
+    ///
+    /// let config = ModelConfig::from_registry("bge-base-en-v1.5")
+    ///     .unwrap()
+    ///     .with_pooling(PoolingStrategy::Mean, true);
+    /// ```
+    pub fn with_pooling(mut self, strategy: PoolingStrategy, normalize: bool) -> Self {
+        self.pooling_strategy = Some(strategy);
+        self.normalize_embeddings = normalize;
+        self
+    }
+
     /// Creates a configuration from the model registry by ID.
     ///
     /// # Example
@@ -89,11 +121,17 @@ impl ModelConfig {
         let model = super::registry::get_model(id)
             .ok_or_else(|| anyhow!("Model '{}' not found in registry", id))?;
 
+        let (pooling_strategy, normalize_embeddings) = model.pooling
+            .map(|p| (Some(p.strategy), p.normalize))
+            .unwrap_or((None, false));
+
         Ok(Self {
             model_name: model.huggingface_id.to_string(),
             embedding_dim: model.embedding_dim.default_dim(),
             max_seq_length: model.context_length,
             target_dimension: None,
+            pooling_strategy,
+            normalize_embeddings,
         })
     }
 
@@ -124,19 +162,35 @@ impl ModelConfig {
             ));
         }
 
+        let (pooling_strategy, normalize_embeddings) = model.pooling
+            .map(|p| (Some(p.strategy), p.normalize))
+            .unwrap_or((None, false));
+
         Ok(Self {
             model_name: model.huggingface_id.to_string(),
             embedding_dim: target_dim,
             max_seq_length: model.context_length,
             target_dimension: Some(target_dim),
+            pooling_strategy,
+            normalize_embeddings,
         })
     }
 
     /// Creates a configuration for distilbert-base-uncased.
     ///
     /// This is recommended for prototyping with standard BERT models as it's faster than full BERT.
+    ///
+    /// Note: This is a multi-vector model without pooling. For dense embeddings with pooling,
+    /// use models from the registry like "bge-base-en-v1.5" or "nomic-embed-v1.5".
     pub fn distilbert_base_uncased() -> Self {
-        Self::new(DISTILBERT_BASE_UNCASED.to_string(), 768, 512)
+        Self {
+            model_name: DISTILBERT_BASE_UNCASED.to_string(),
+            embedding_dim: 768,
+            max_seq_length: 512,
+            target_dimension: None,
+            pooling_strategy: None,
+            normalize_embeddings: false,
+        }
     }
 
     /// Creates a configuration for ColBERT v2.
@@ -149,7 +203,14 @@ impl ModelConfig {
     /// Embedding dim: 128 (after projection from 768-dim BERT)
     /// Max sequence length: 512 tokens
     pub fn colbert_v2() -> Self {
-        Self::new(COLBERT_V2.to_string(), 128, 512)
+        Self {
+            model_name: COLBERT_V2.to_string(),
+            embedding_dim: 128,
+            max_seq_length: 512,
+            target_dimension: None,
+            pooling_strategy: None,
+            normalize_embeddings: false,
+        }
     }
 
     /// Creates a configuration for Jina ColBERT v2.
@@ -163,7 +224,14 @@ impl ModelConfig {
     /// Embedding dim: 768
     /// Max sequence length: 8192 tokens
     pub fn jina_colbert_v2() -> Self {
-        Self::new(JINA_COLBERT_V2.to_string(), 768, 8192)
+        Self {
+            model_name: JINA_COLBERT_V2.to_string(),
+            embedding_dim: 768,
+            max_seq_length: 8192,
+            target_dimension: None,
+            pooling_strategy: None,
+            normalize_embeddings: false,
+        }
     }
 
     /// Creates a configuration for ColBERT Small.
@@ -176,10 +244,20 @@ impl ModelConfig {
     /// Embedding dim: 96 (after projection from 384-dim DistilBERT)
     /// Max sequence length: 512 tokens
     pub fn colbert_small() -> Self {
-        Self::new(COLBERT_SMALL.to_string(), 96, 512)
+        Self {
+            model_name: COLBERT_SMALL.to_string(),
+            embedding_dim: 96,
+            max_seq_length: 512,
+            target_dimension: None,
+            pooling_strategy: None,
+            normalize_embeddings: false,
+        }
     }
 
     /// Creates a configuration for a custom model.
+    ///
+    /// The custom configuration defaults to no pooling (multi-vector mode).
+    /// Use `with_pooling()` to configure dense embeddings if needed.
     pub fn custom(
         model_name: impl Into<String>,
         embedding_dim: usize,

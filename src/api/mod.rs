@@ -47,5 +47,5 @@
 pub mod builder;
 pub mod embedder;
 
-pub use builder::{TesseraBuilder, QuantizationConfig};
-pub use embedder::{Tessera, QuantizedEmbeddings};
+pub use builder::{QuantizationConfig, TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder};
+pub use embedder::{QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector, TesseraSparse};

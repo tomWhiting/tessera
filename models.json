@@ -366,6 +366,10 @@
             "has_projection": false,
             "projection_dims": null
           },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
           "specs": {
             "parameters": "7B",
             "embedding_dim": {
@@ -415,6 +419,10 @@
             "variant": "nomic-bert",
             "has_projection": false,
             "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
           },
           "specs": {
             "parameters": "137M",
@@ -466,6 +474,10 @@
             "has_projection": false,
             "projection_dims": null
           },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
           "specs": {
             "parameters": "109M",
             "embedding_dim": 768,
@@ -507,6 +519,10 @@
             "variant": "bert-large",
             "has_projection": false,
             "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
           },
           "specs": {
             "parameters": "335M",
@@ -639,13 +655,13 @@
           "type": "sparse",
           "name": "SPLADE++ EN v1",
           "huggingface_id": "prithivida/Splade_PP_en_v1",
-          "organization": "Prithivida",
-          "release_date": "2023",
+          "organization": "prithivida",
+          "release_date": "2024",
           "architecture": {
             "type": "bert",
-            "variant": "bert-base",
+            "variant": "bert-base-uncased",
             "has_projection": false,
-            "projection_dims": null
+            "has_mlm_head": true
           },
           "specs": {
             "parameters": "109M",
@@ -660,21 +676,65 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "pytorch": "pytorch_model.bin",
+              "onnx": "onnx/model.onnx"
             }
           },
           "capabilities": {
             "languages": ["en"],
             "modalities": ["text"],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16"]
+            "quantization": []
           },
           "performance": {
-            "beir_avg": 0.50,
-            "ms_marco_mrr10": 0.40
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.3722
           },
-          "license": "Apache-2.0",
-          "description": "Enhanced SPLADE variant with improved efficiency. Vocabulary-sized sparse embeddings with learned term importance weights."
+          "license": "apache-2.0",
+          "description": "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens)."
+        },
+        {
+          "id": "splade-pp-en-v2",
+          "type": "sparse",
+          "name": "SPLADE++ EN v2",
+          "huggingface_id": "prithivida/Splade_PP_en_v2",
+          "organization": "prithivida",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-base-uncased",
+            "has_projection": false,
+            "has_mlm_head": true
+          },
+          "specs": {
+            "parameters": "109M",
+            "embedding_dim": 30522,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin",
+              "onnx": "onnx/model.onnx"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": []
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.378
+          },
+          "license": "apache-2.0",
+          "description": "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency."
         }
       ]
     },

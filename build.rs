@@ -33,6 +33,8 @@ struct ModelMetadata {
     organization: String,
     release_date: String,
     architecture: Architecture,
+    #[serde(default)]
+    pooling: Option<PoolingConfig>,
     specs: Specs,
     #[allow(dead_code)]
     files: Files,
@@ -107,6 +109,12 @@ struct Capabilities {
     #[allow(dead_code)]
     #[serde(default)]
     matryoshka: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct PoolingConfig {
+    strategy: String,
+    normalize: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -238,6 +246,17 @@ fn validate_registry(registry: &ModelRegistry) {
                     );
                 }
             }
+
+            // Validate pooling configuration if present
+            if let Some(ref pooling) = model.pooling {
+                let valid_strategies = ["mean", "cls", "max"];
+                let strategy_lower = pooling.strategy.to_lowercase();
+                assert!(
+                    valid_strategies.contains(&strategy_lower.as_str()),
+                    "Model {} has invalid pooling strategy '{}'. Valid: {:?}",
+                    model.id, pooling.strategy, valid_strategies
+                );
+            }
         }
     }
 }
@@ -253,6 +272,10 @@ fn generate_code(registry: &ModelRegistry) -> String {
 
     // Generate EmbeddingDimension enum
     code.push_str(&generate_embedding_dimension_enum());
+    code.push_str("\n\n");
+
+    // Generate PoolingStrategy enum and PoolingConfig struct
+    code.push_str(&generate_pooling_types());
     code.push_str("\n\n");
 
     // Generate ModelType enum
@@ -279,6 +302,44 @@ fn generate_code(registry: &ModelRegistry) -> String {
     code.push_str(&generate_accessor_functions());
 
     code
+}
+
+fn generate_pooling_types() -> String {
+    r#"/// Pooling strategy for dense encodings.
+///
+/// Determines how token-level embeddings are aggregated into a single vector.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PoolingStrategy {
+    /// Use the [CLS] token embedding (first token).
+    ///
+    /// Common in BERT-style models where [CLS] is trained to represent
+    /// the entire sequence.
+    Cls,
+
+    /// Average all token embeddings (weighted by attention mask).
+    ///
+    /// Produces a centroid representation of all tokens, ignoring padding.
+    /// Most common strategy in sentence transformers.
+    Mean,
+
+    /// Element-wise maximum across all token embeddings.
+    ///
+    /// Captures the most salient features from any token position.
+    Max,
+}
+
+/// Pooling configuration for dense embedding models.
+///
+/// Specifies how token-level embeddings should be pooled into a single
+/// vector representation, and whether the result should be normalized.
+#[derive(Debug, Clone, Copy)]
+pub struct PoolingConfig {
+    /// The pooling strategy to use
+    pub strategy: PoolingStrategy,
+    /// Whether to L2-normalize the pooled embedding
+    pub normalize: bool,
+}"#
+    .to_string()
 }
 
 fn generate_embedding_dimension_enum() -> String {
@@ -410,6 +471,8 @@ pub struct ModelInfo {
     pub has_projection: bool,
     /// Projection output dimensions (if applicable)
     pub projection_dims: Option<usize>,
+    /// Pooling configuration (for dense models)
+    pub pooling: Option<PoolingConfig>,
     /// Number of parameters (as string, e.g., "110M")
     pub parameters: &'static str,
     /// Embedding dimension specification (fixed or Matryoshka)
@@ -451,6 +514,22 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
         || "None".to_string(),
         |dim| format!("Some({dim})"),
     );
+
+    // Generate pooling constant and reference
+    let (pooling_const_def, pooling_ref) = if let Some(ref pooling_cfg) = model.pooling {
+        let pooling_const_name = format!("{}_POOLING", const_name);
+        let strategy_enum = pooling_strategy_to_enum(&pooling_cfg.strategy);
+        let normalize = pooling_cfg.normalize;
+
+        let pooling_def = format!(
+            "/// Pooling configuration for {}.\npub const {}: PoolingConfig = PoolingConfig {{\n    strategy: {},\n    normalize: {},\n}};\n\n",
+            model.name, pooling_const_name, strategy_enum, normalize
+        );
+
+        (pooling_def, format!("Some({})", pooling_const_name))
+    } else {
+        (String::new(), "None".to_string())
+    };
 
     let languages = model
         .capabilities
@@ -510,7 +589,7 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
     };
 
     format!(
-        r#"/// {}
+        r#"{}/// {}
 ///
 /// {}
 ///
@@ -531,6 +610,7 @@ pub const {}: ModelInfo = ModelInfo {{
     architecture_variant: "{}",
     has_projection: {},
     projection_dims: {},
+    pooling: {},
     parameters: "{}",
     embedding_dim: {},
     hidden_dim: {},
@@ -546,6 +626,7 @@ pub const {}: ModelInfo = ModelInfo {{
     license: "{}",
     description: "{}",
 }};"#,
+        pooling_const_def,
         model.name,
         model.description,
         model.organization,
@@ -565,6 +646,7 @@ pub const {}: ModelInfo = ModelInfo {{
         model.architecture.variant,
         model.architecture.has_projection,
         projection_dims,
+        pooling_ref,
         model.specs.parameters,
         embedding_dim_code,
         model.specs.hidden_dim,
@@ -708,5 +790,14 @@ fn format_f64(value: f64) -> String {
         format!("{value:.1}")
     } else {
         format!("{value}")
+    }
+}
+
+fn pooling_strategy_to_enum(strategy: &str) -> &'static str {
+    match strategy.to_lowercase().as_str() {
+        "mean" => "PoolingStrategy::Mean",
+        "cls" => "PoolingStrategy::Cls",
+        "max" => "PoolingStrategy::Max",
+        _ => panic!("Invalid pooling strategy: {}", strategy),
     }
 }

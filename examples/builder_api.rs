@@ -3,14 +3,14 @@
 //! Shows advanced configuration using the builder pattern.
 
 use candle_core::Device;
-use tessera::{Result, Tessera};
+use tessera::{Result, TesseraMultiVector};
 
 fn main() -> Result<()> {
     println!("=== Tessera Builder API Demo ===\n");
 
     // Example 1: Simple builder usage
     println!("1. Basic builder - model only (auto-select device)");
-    let embedder1 = Tessera::builder()
+    let embedder1 = TesseraMultiVector::builder()
         .model("colbert-v2")
         .build()?;
     println!("   Model: {}", embedder1.model());
@@ -18,7 +18,7 @@ fn main() -> Result<()> {
 
     // Example 2: Specify device explicitly
     println!("2. Builder with explicit CPU device");
-    let embedder2 = Tessera::builder()
+    let embedder2 = TesseraMultiVector::builder()
         .model("colbert-v2")
         .device(Device::Cpu)
         .build()?;
@@ -29,8 +29,8 @@ fn main() -> Result<()> {
     println!("3. Builder with Matryoshka dimension");
     println!("   Note: jina-colbert-v2 supports Matryoshka dimensions");
     println!("   Supported dimensions: [64, 96, 128, 192, 256, 384, 512, 768]");
-    
-    let embedder3 = Tessera::builder()
+
+    let embedder3 = TesseraMultiVector::builder()
         .model("jina-colbert-v2")
         .dimension(128)  // Use 128 instead of default 768
         .build()?;
@@ -45,14 +45,14 @@ fn main() -> Result<()> {
 
     // Example 4: Error handling - invalid model
     println!("4. Error handling - model not found");
-    match Tessera::builder().model("nonexistent-model").build() {
+    match TesseraMultiVector::builder().model("nonexistent-model").build() {
         Ok(_) => println!("   Unexpected success!"),
         Err(e) => println!("   Expected error: {}\n", e),
     }
 
     // Example 5: Error handling - unsupported dimension
     println!("5. Error handling - unsupported dimension");
-    match Tessera::builder()
+    match TesseraMultiVector::builder()
         .model("colbert-v2")  // Fixed dimension: 128
         .dimension(256)       // Not supported!
         .build()
@@ -63,17 +63,17 @@ fn main() -> Result<()> {
 
     // Example 6: Comparison - simple vs builder API
     println!("6. API comparison");
-    
+
     // Simple API
-    let simple = Tessera::new("colbert-v2")?;
-    println!("   Simple: Tessera::new(\"colbert-v2\")");
+    let simple = TesseraMultiVector::new("colbert-v2")?;
+    println!("   Simple: TesseraMultiVector::new(\"colbert-v2\")");
     println!("   -> Model: {}, Dim: {}", simple.model(), simple.dimension());
-    
+
     // Builder API (equivalent)
-    let builder = Tessera::builder()
+    let builder = TesseraMultiVector::builder()
         .model("colbert-v2")
         .build()?;
-    println!("   Builder: Tessera::builder().model(\"colbert-v2\").build()");
+    println!("   Builder: TesseraMultiVector::builder().model(\"colbert-v2\").build()");
     println!("   -> Model: {}, Dim: {}\n", builder.model(), builder.dimension());
 
     println!("=== Demo Complete ===");

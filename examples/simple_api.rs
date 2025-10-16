@@ -2,14 +2,14 @@
 //!
 //! Shows the ergonomic one-line API for encoding text with Tessera.
 
-use tessera::{Result, Tessera};
+use tessera::{Result, TesseraMultiVector};
 
 fn main() -> Result<()> {
     println!("=== Tessera Simple API Demo ===\n");
 
     // Simple API - one line initialization
-    println!("1. Simple API: Tessera::new()");
-    let embedder = Tessera::new("colbert-v2")?;
+    println!("1. Simple API: TesseraMultiVector::new()");
+    let embedder = TesseraMultiVector::new("colbert-v2")?;
     println!("   Created embedder for model: {}", embedder.model());
     println!("   Embedding dimension: {}\n", embedder.dimension());
 
@@ -56,7 +56,7 @@ fn main() -> Result<()> {
 
     // Builder API
     println!("5. Builder API for advanced configuration");
-    let embedder2 = Tessera::builder()
+    let embedder2 = TesseraMultiVector::builder()
         .model("colbert-v2")
         .build()?;
     println!("   Created with builder pattern");
