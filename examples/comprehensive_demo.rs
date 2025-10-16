@@ -8,9 +8,10 @@
 
 use anyhow::{Context, Result};
 use tessera::{
-    backends::candle::{CandleEncoder, get_device},
-    core::{max_sim, TokenEmbedder},
+    backends::candle::{get_device, CandleBertEncoder},
+    core::TokenEmbedder,
     models::ModelConfig,
+    utils::similarity::max_sim,
 };
 
 fn main() -> Result<()> {
@@ -58,8 +59,7 @@ fn main() -> Result<()> {
 
     // Create encoder
     println!("Loading model: {}", config.model_name);
-    let encoder = CandleEncoder::new(config.clone(), device)
-        .context("Creating ColBERT encoder")?;
+    let encoder = CandleBertEncoder::new(config.clone(), device).context("Creating ColBERT encoder")?;
     println!("Model loaded successfully");
     println!();
 
@@ -69,8 +69,7 @@ fn main() -> Result<()> {
     println!("ENCODING QUERY");
     println!("{}", sep);
 
-    let query_embeddings = encoder.encode(query)
-        .context("Encoding query")?;
+    let query_embeddings = encoder.encode(query).context("Encoding query")?;
 
     println!("Tokens: {}", query_embeddings.num_tokens);
     println!("Embedding dimensions: {}", query_embeddings.embedding_dim);
@@ -111,8 +110,7 @@ fn main() -> Result<()> {
     println!("ENCODING DOCUMENT");
     println!("{}", sep);
 
-    let doc_embeddings = encoder.encode(document)
-        .context("Encoding document")?;
+    let doc_embeddings = encoder.encode(document).context("Encoding document")?;
 
     println!("Tokens: {}", doc_embeddings.num_tokens);
     println!("Embedding dimensions: {}", doc_embeddings.embedding_dim);
@@ -139,8 +137,8 @@ fn main() -> Result<()> {
     println!("COMPUTING MAXSIM SIMILARITY");
     println!("{}", sep);
 
-    let similarity = max_sim(&query_embeddings, &doc_embeddings)
-        .context("Computing MaxSim similarity")?;
+    let similarity =
+        max_sim(&query_embeddings, &doc_embeddings).context("Computing MaxSim similarity")?;
 
     println!("MaxSim Score: {:.4}", similarity);
     println!();
@@ -153,12 +151,14 @@ fn main() -> Result<()> {
     println!("{}", sep);
     println!("SUMMARY");
     println!("{}", sep);
-    println!("Query: {} tokens × {} dimensions = {} embeddings",
+    println!(
+        "Query: {} tokens × {} dimensions = {} embeddings",
         query_embeddings.num_tokens,
         query_embeddings.embedding_dim,
         query_embeddings.num_tokens * query_embeddings.embedding_dim
     );
-    println!("Document: {} tokens × {} dimensions = {} embeddings",
+    println!(
+        "Document: {} tokens × {} dimensions = {} embeddings",
         doc_embeddings.num_tokens,
         doc_embeddings.embedding_dim,
         doc_embeddings.num_tokens * doc_embeddings.embedding_dim

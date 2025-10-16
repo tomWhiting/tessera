@@ -27,16 +27,22 @@ pub struct ModelConfig {
     pub embedding_dim: usize,
     /// Maximum sequence length the model can handle
     pub max_seq_length: usize,
+    /// Optional target dimension for Matryoshka truncation
+    pub target_dimension: Option<usize>,
 }
 
 // Model name constants
 
 // ColBERT models (recommended)
+/// ColBERT v2 model identifier
 pub const COLBERT_V2: &str = "colbert-ir/colbertv2.0";
+/// Jina ColBERT v2 model identifier
 pub const JINA_COLBERT_V2: &str = "jinaai/jina-colbert-v2";
+/// AnswerAI ColBERT Small model identifier
 pub const COLBERT_SMALL: &str = "answerdotai/answerai-colbert-small-v1";
 
 // Standard BERT models for comparison
+/// DistilBERT Base Uncased model identifier
 pub const DISTILBERT_BASE_UNCASED: &str = "distilbert-base-uncased";
 
 impl ModelConfig {
@@ -46,7 +52,27 @@ impl ModelConfig {
             model_name,
             embedding_dim,
             max_seq_length,
+            target_dimension: None,
         }
+    }
+
+    /// Sets the target dimension for Matryoshka truncation.
+    ///
+    /// If set, the encoder will truncate embeddings to this dimension.
+    /// The dimension must be supported by the model's Matryoshka configuration.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use tessera::models::ModelConfig;
+    ///
+    /// let config = ModelConfig::from_registry("jina-colbert-v2")
+    ///     .unwrap()
+    ///     .with_target_dimension(128);
+    /// ```
+    pub fn with_target_dimension(mut self, dim: usize) -> Self {
+        self.target_dimension = Some(dim);
+        self
     }
 
     /// Creates a configuration from the model registry by ID.
@@ -67,6 +93,42 @@ impl ModelConfig {
             model_name: model.huggingface_id.to_string(),
             embedding_dim: model.embedding_dim.default_dim(),
             max_seq_length: model.context_length,
+            target_dimension: None,
+        })
+    }
+
+    /// Creates a configuration from the model registry with a specific dimension.
+    ///
+    /// For models with Matryoshka support, this sets the target dimension.
+    /// The dimension must be supported by the model.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use tessera::models::ModelConfig;
+    ///
+    /// let config = ModelConfig::from_registry_with_dimension("jina-colbert-v2", 128)
+    ///     .expect("Invalid dimension");
+    /// ```
+    pub fn from_registry_with_dimension(id: &str, target_dim: usize) -> Result<Self> {
+        let model = super::registry::get_model(id)
+            .ok_or_else(|| anyhow!("Model '{}' not found in registry", id))?;
+
+        // Validate dimension is supported
+        if !model.embedding_dim.supports_dimension(target_dim) {
+            return Err(anyhow!(
+                "Dimension {} not supported by model '{}'. Supported: {:?}",
+                target_dim,
+                id,
+                model.embedding_dim.supported_dimensions()
+            ));
+        }
+
+        Ok(Self {
+            model_name: model.huggingface_id.to_string(),
+            embedding_dim: target_dim,
+            max_seq_length: model.context_length,
+            target_dimension: Some(target_dim),
         })
     }
 
@@ -118,7 +180,11 @@ impl ModelConfig {
     }
 
     /// Creates a configuration for a custom model.
-    pub fn custom(model_name: impl Into<String>, embedding_dim: usize, max_seq_length: usize) -> Self {
+    pub fn custom(
+        model_name: impl Into<String>,
+        embedding_dim: usize,
+        max_seq_length: usize,
+    ) -> Self {
         Self::new(model_name.into(), embedding_dim, max_seq_length)
     }
 }

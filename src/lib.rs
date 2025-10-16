@@ -16,22 +16,27 @@
 //! - **Core**: Abstract types and traits for embeddings and similarity
 //! - **Backends**: Pluggable backend implementations (Candle, Burn)
 //! - **Models**: Model configuration and loading utilities
+//! - **Encoding**: Paradigm-specific encoding strategies (ColBERT, dense, sparse, etc.)
+//! - **Quantization**: Compression methods (binary, int8, int4)
+//! - **API**: High-level user-facing interface with builder pattern
+//! - **Bindings**: Language bindings (Python, WebAssembly)
 //! - **Model Registry**: Compile-time generated model metadata
 //!
 //! # Example
 //!
 //! ```no_run
 //! use tessera::{
-//!     backends::CandleEncoder,
-//!     core::{TokenEmbedder, max_sim},
+//!     backends::CandleBertEncoder,
+//!     core::TokenEmbedder,
 //!     models::ModelConfig,
+//!     utils::similarity::max_sim,
 //! };
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! // Create encoder with Candle backend
 //! let config = ModelConfig::distilbert_base_uncased();
 //! let device = tessera::backends::candle::get_device()?;
-//! let encoder = CandleEncoder::new(config, device)?;
+//! let encoder = CandleBertEncoder::new(config, device)?;
 //!
 //! // Encode query and document
 //! let query = encoder.encode("What is machine learning?")?;
@@ -44,13 +49,23 @@
 //! # }
 //! ```
 
+pub mod api;
 pub mod backends;
+pub mod bindings;
 pub mod core;
+pub mod encoding;
+pub mod error;
 pub mod models;
+pub mod quantization;
+pub mod utils;
 
 // Re-export commonly used types
-pub use core::{max_sim, TokenEmbedder, TokenEmbeddings, Tokenizer};
+pub use api::{Tessera, TesseraBuilder, QuantizationConfig, QuantizedEmbeddings};
+pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
+pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
+pub use quantization::{multi_vector_distance, quantize_multi, BinaryQuantization, Quantization};
+pub use utils::similarity::max_sim;
 
 /// Model registry with compile-time generated metadata
 pub mod model_registry {

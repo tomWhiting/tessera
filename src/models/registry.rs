@@ -26,8 +26,8 @@
 //! }
 //! ```
 
-// Include the generated model registry code
-include!(concat!(env!("OUT_DIR"), "/model_registry.rs"));
+// Include the generated model registry code from visible location
+include!("generated.rs");
 
 #[cfg(test)]
 mod tests {
@@ -35,7 +35,10 @@ mod tests {
 
     #[test]
     fn test_registry_not_empty() {
-        assert!(!MODEL_REGISTRY.is_empty(), "Model registry should contain models");
+        assert!(
+            !MODEL_REGISTRY.is_empty(),
+            "Model registry should contain models"
+        );
     }
 
     #[test]
@@ -69,7 +72,7 @@ mod tests {
     fn test_models_by_organization() {
         let stanford_models = models_by_organization("Stanford NLP");
         assert!(!stanford_models.is_empty(), "Should have Stanford models");
-        
+
         for model in stanford_models {
             assert_eq!(model.organization, "Stanford NLP");
         }
@@ -79,7 +82,7 @@ mod tests {
     fn test_models_by_language() {
         let english_models = models_by_language("en");
         assert!(!english_models.is_empty(), "Should have English models");
-        
+
         for model in english_models {
             assert!(model.languages.contains(&"en"));
         }
@@ -100,8 +103,10 @@ mod tests {
         let matryoshka_models = models_with_matryoshka();
 
         for model in matryoshka_models {
-            assert!(matches!(model.embedding_dim, EmbeddingDimension::Matryoshka { .. }),
-                    "Model should have matryoshka support");
+            assert!(
+                matches!(model.embedding_dim, EmbeddingDimension::Matryoshka { .. }),
+                "Model should have matryoshka support"
+            );
             let dims = model.embedding_dim.supported_dimensions();
             assert!(!dims.is_empty(), "Should have matryoshka dimensions");
         }
@@ -120,7 +125,10 @@ mod tests {
     #[test]
     fn test_colbert_small_constant() {
         assert_eq!(COLBERT_SMALL.id, "colbert-small");
-        assert_eq!(COLBERT_SMALL.huggingface_id, "answerdotai/answerai-colbert-small-v1");
+        assert_eq!(
+            COLBERT_SMALL.huggingface_id,
+            "answerdotai/answerai-colbert-small-v1"
+        );
         assert_eq!(COLBERT_SMALL.embedding_dim.default_dim(), 96);
         assert_eq!(COLBERT_SMALL.context_length, 512);
     }
@@ -142,10 +150,26 @@ mod tests {
         for model in MODEL_REGISTRY {
             assert!(!model.id.is_empty(), "Model ID should not be empty");
             assert!(!model.name.is_empty(), "Model name should not be empty");
-            assert!(!model.huggingface_id.is_empty(), "HuggingFace ID should not be empty");
-            assert!(model.embedding_dim.default_dim() > 0, "Embedding dim should be positive");
-            assert!(model.context_length > 0, "Context length should be positive");
-            assert!(!model.languages.is_empty(), "Should have at least one language");
+            assert!(
+                !model.huggingface_id.is_empty(),
+                "HuggingFace ID should not be empty"
+            );
+            assert!(
+                model.embedding_dim.default_dim() > 0,
+                "Embedding dim should be positive"
+            );
+            assert!(
+                model.context_length > 0,
+                "Context length should be positive"
+            );
+            // Only text/vision models need languages; timeseries models don't
+            if model.modalities.contains(&"text") || model.modalities.contains(&"vision") {
+                assert!(
+                    !model.languages.is_empty(),
+                    "Text/vision model {} should have at least one language",
+                    model.id
+                );
+            }
         }
     }
 }

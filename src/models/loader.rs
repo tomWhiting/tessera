@@ -13,11 +13,10 @@ use std::path::PathBuf;
 /// # Returns
 /// Path to the downloaded model file in the local cache
 pub fn download_model_file(model_name: &str, filename: &str) -> Result<PathBuf> {
-    let api = Api::new()
-        .context("Failed to initialize HuggingFace Hub API")?;
+    let api = Api::new().context("Failed to initialize HuggingFace Hub API")?;
 
     let repo = api.model(model_name.to_string());
-    
+
     let path = repo
         .get(filename)
         .with_context(|| format!("Failed to download {} from {}", filename, model_name))?;

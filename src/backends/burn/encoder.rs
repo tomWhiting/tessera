@@ -5,6 +5,12 @@
 //! - Loading pre-trained BERT weights from HuggingFace
 //! - Implementing or using a complete BERT architecture in Burn
 //! - Weight conversion from PyTorch/Safetensors format to Burn format
+//!
+//! TODO(Phase 2): Implement batch processing for Burn backend
+//! The Burn backend currently uses sequential processing via the default
+//! Encoder trait implementation. Batch processing is deferred to Phase 2
+//! as part of the full Burn backend implementation. Priority is on the
+//! Candle backend which has production-ready batch inference.
 
 use anyhow::{Context, Result};
 use ndarray::Array2;
@@ -69,12 +75,14 @@ impl BurnEncoder {
         // This placeholder creates random-like embeddings based on token IDs
         // Real implementation must use pre-trained weights
         let mut embeddings = Vec::with_capacity(seq_len * hidden_size);
-        
+
         for (pos, &token_id) in token_ids.iter().enumerate() {
             for dim in 0..hidden_size {
                 // Simple deterministic "embedding" based on token_id and position
                 // This is ONLY for demonstration - real implementation must use BERT weights
-                let value = ((token_id as f32 * 0.1 + dim as f32 * 0.01 + pos as f32 * 0.001) % 1.0) * 2.0 - 1.0;
+                let value =
+                    ((token_id as f32 * 0.1 + dim as f32 * 0.01 + pos as f32 * 0.001) % 1.0) * 2.0
+                        - 1.0;
                 embeddings.push(value);
             }
         }
@@ -87,16 +95,18 @@ impl BurnEncoder {
 impl TokenEmbedder for BurnEncoder {
     fn encode(&self, text: &str) -> Result<TokenEmbeddings> {
         // Tokenize input
-        let (token_ids, _attention_mask) = self.tokenizer.encode(text, true)
+        let (token_ids, _attention_mask) = self
+            .tokenizer
+            .encode(text, true)
             .with_context(|| format!("Tokenizing text: {}", text))?;
 
         // TODO: Run BERT model inference using Burn
         // Current implementation uses placeholder embeddings
-        let embeddings = self.generate_embeddings(&token_ids)
+        let embeddings = self
+            .generate_embeddings(&token_ids)
             .context("Generating embeddings")?;
 
         // Create TokenEmbeddings
-        TokenEmbeddings::new(embeddings, text.to_string())
-            .context("Creating TokenEmbeddings")
+        TokenEmbeddings::new(embeddings, text.to_string()).context("Creating TokenEmbeddings")
     }
 }

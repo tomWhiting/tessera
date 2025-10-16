@@ -7,9 +7,10 @@ use anyhow::{Context, Result};
 use clap::Parser;
 
 use tessera::{
-    backends::{candle::CandleEncoder, burn::BurnEncoder, candle::get_device},
-    core::{max_sim, TokenEmbedder},
+    backends::{burn::BurnEncoder, candle::get_device, candle::CandleBertEncoder},
+    core::TokenEmbedder,
     models::ModelConfig,
+    utils::similarity::max_sim,
 };
 
 #[derive(Parser, Debug)]
@@ -67,7 +68,10 @@ fn main() -> Result<()> {
             println!();
             run_burn(&args.query, &args.document, config)?;
         }
-        _ => anyhow::bail!("Unknown backend: {}. Use 'candle', 'burn', or 'both'", args.backend),
+        _ => anyhow::bail!(
+            "Unknown backend: {}. Use 'candle', 'burn', or 'both'",
+            args.backend
+        ),
     }
 
     Ok(())
@@ -79,22 +83,30 @@ fn run_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
 
     // Get device
     let device = get_device().context("Getting compute device")?;
-    println!("Device: {}", tessera::backends::candle::device_description(&device));
+    println!(
+        "Device: {}",
+        tessera::backends::candle::device_description(&device)
+    );
 
     // Create encoder
     println!("Loading model: {}...", config.model_name);
-    let encoder = CandleEncoder::new(config, device)
-        .context("Creating Candle encoder")?;
+    let encoder = CandleBertEncoder::new(config, device).context("Creating Candle encoder")?;
 
     // Encode query
     println!("Encoding query...");
     let query_emb = encoder.encode(query).context("Encoding query")?;
-    println!("Query tokens: {}, dims: {}", query_emb.num_tokens, query_emb.embedding_dim);
+    println!(
+        "Query tokens: {}, dims: {}",
+        query_emb.num_tokens, query_emb.embedding_dim
+    );
 
     // Encode document
     println!("Encoding document...");
     let doc_emb = encoder.encode(document).context("Encoding document")?;
-    println!("Document tokens: {}, dims: {}", doc_emb.num_tokens, doc_emb.embedding_dim);
+    println!(
+        "Document tokens: {}, dims: {}",
+        doc_emb.num_tokens, doc_emb.embedding_dim
+    );
 
     // Compute similarity
     println!("Computing MaxSim similarity...");
@@ -112,20 +124,25 @@ fn run_burn(query: &str, document: &str, config: ModelConfig) -> Result<()> {
 
     // Create encoder
     println!("Loading model: {}...", config.model_name);
-    let encoder = BurnEncoder::new(config)
-        .context("Creating Burn encoder")?;
+    let encoder = BurnEncoder::new(config).context("Creating Burn encoder")?;
 
     println!("Note: Burn backend uses simplified implementation for prototype");
 
     // Encode query
     println!("Encoding query...");
     let query_emb = encoder.encode(query).context("Encoding query")?;
-    println!("Query tokens: {}, dims: {}", query_emb.num_tokens, query_emb.embedding_dim);
+    println!(
+        "Query tokens: {}, dims: {}",
+        query_emb.num_tokens, query_emb.embedding_dim
+    );
 
     // Encode document
     println!("Encoding document...");
     let doc_emb = encoder.encode(document).context("Encoding document")?;
-    println!("Document tokens: {}, dims: {}", doc_emb.num_tokens, doc_emb.embedding_dim);
+    println!(
+        "Document tokens: {}, dims: {}",
+        doc_emb.num_tokens, doc_emb.embedding_dim
+    );
 
     // Compute similarity
     println!("Computing MaxSim similarity...");

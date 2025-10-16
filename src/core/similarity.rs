@@ -1,11 +1,17 @@
 //! MaxSim similarity scoring for ColBERT-style late interaction.
 //!
-//! This module implements the MaxSim scoring algorithm, which computes
-//! similarity between query and document token embeddings by finding
-//! the maximum similarity for each query token.
+//! This module is maintained for backward compatibility. New code should use
+//! `crate::utils::similarity` instead, which provides a comprehensive set of
+//! similarity functions including MaxSim.
+//!
+//! # Deprecation Notice
+//!
+//! This module will be removed in a future version. Please migrate to:
+//! ```
+//! use tessera::utils::similarity::max_sim;
+//! ```
 
 use anyhow::Result;
-use ndarray::{Array1, Axis};
 
 use super::embeddings::TokenEmbeddings;
 
@@ -28,32 +34,13 @@ use super::embeddings::TokenEmbeddings;
 ///
 /// # Errors
 /// Returns an error if the embedding dimensions don't match
+///
+/// # Deprecated
+/// Use `crate::utils::similarity::max_sim` instead
+#[deprecated(since = "0.2.0", note = "Use crate::utils::similarity::max_sim instead")]
 pub fn max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f32> {
-    anyhow::ensure!(
-        query.embedding_dim == document.embedding_dim,
-        "Query and document embedding dimensions must match (query: {}, document: {})",
-        query.embedding_dim,
-        document.embedding_dim
-    );
-
-    // Get references to the embedding matrices
-    let query_matrix = &query.embeddings;
-    let doc_matrix = &document.embeddings;
-
-    // Compute the similarity matrix: query_matrix × doc_matrix^T
-    // Result shape: (num_query_tokens, num_doc_tokens)
-    let similarity_matrix = query_matrix.dot(&doc_matrix.t());
-
-    // For each query token (row), find the maximum similarity across all doc tokens
-    let max_sims: Array1<f32> = similarity_matrix
-        .map_axis(Axis(1), |row| {
-            row.fold(f32::NEG_INFINITY, |acc, &val| acc.max(val))
-        });
-
-    // Sum all maximum similarities
-    let total_score: f32 = max_sims.sum();
-
-    Ok(total_score)
+    // Delegate to the new implementation
+    crate::utils::similarity::max_sim(query, document)
 }
 
 #[cfg(test)]
@@ -65,27 +52,21 @@ mod tests {
     fn test_max_sim_simple() {
         // Create simple query embeddings (2 tokens, 3 dimensions each)
         let query_emb = array![
-            [1.0, 0.0, 0.0],  // Token 1
-            [0.0, 1.0, 0.0],  // Token 2
+            [1.0, 0.0, 0.0], // Token 1
+            [0.0, 1.0, 0.0], // Token 2
         ];
-        let query = TokenEmbeddings::new(
-            query_emb,
-            "query text".to_string(),
-        ).unwrap();
+        let query = TokenEmbeddings::new(query_emb, "query text".to_string()).unwrap();
 
         // Create simple document embeddings (3 tokens, 3 dimensions each)
         let doc_emb = array![
-            [1.0, 0.0, 0.0],  // Token 1 (matches query token 1)
-            [0.0, 0.5, 0.0],  // Token 2 (partial match to query token 2)
-            [0.0, 1.0, 0.0],  // Token 3 (matches query token 2)
+            [1.0, 0.0, 0.0], // Token 1 (matches query token 1)
+            [0.0, 0.5, 0.0], // Token 2 (partial match to query token 2)
+            [0.0, 1.0, 0.0], // Token 3 (matches query token 2)
         ];
-        let document = TokenEmbeddings::new(
-            doc_emb,
-            "document text".to_string(),
-        ).unwrap();
+        let document = TokenEmbeddings::new(doc_emb, "document text".to_string()).unwrap();
 
-        let score = max_sim(&query, &document).unwrap();
-        
+        let score = crate::utils::similarity::max_sim(&query, &document).unwrap();
+
         // Query token 1 max similarity: max(1.0, 0.0, 0.0) = 1.0
         // Query token 2 max similarity: max(0.0, 0.5, 1.0) = 1.0
         // Total: 1.0 + 1.0 = 2.0
@@ -95,17 +76,11 @@ mod tests {
     #[test]
     fn test_max_sim_dimension_mismatch() {
         let query_emb = array![[1.0, 0.0]];
-        let query = TokenEmbeddings::new(
-            query_emb,
-            "query".to_string(),
-        ).unwrap();
+        let query = TokenEmbeddings::new(query_emb, "query".to_string()).unwrap();
 
         let doc_emb = array![[1.0, 0.0, 0.0]];
-        let document = TokenEmbeddings::new(
-            doc_emb,
-            "document".to_string(),
-        ).unwrap();
+        let document = TokenEmbeddings::new(doc_emb, "document".to_string()).unwrap();
 
-        assert!(max_sim(&query, &document).is_err());
+        assert!(crate::utils::similarity::max_sim(&query, &document).is_err());
     }
 }

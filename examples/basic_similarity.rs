@@ -12,9 +12,10 @@
 use anyhow::{Context, Result};
 
 use tessera::{
-    backends::candle::{CandleEncoder, get_device},
-    core::{max_sim, TokenEmbedder},
+    backends::candle::{get_device, CandleBertEncoder},
+    core::TokenEmbedder,
     models::ModelConfig,
+    utils::similarity::max_sim,
 };
 
 fn main() -> Result<()> {
@@ -41,18 +42,19 @@ fn main() -> Result<()> {
 fn demonstrate_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
     // Get the best available device (Metal on macOS, CPU otherwise)
     let device = get_device().context("Getting compute device")?;
-    println!("Using device: {}", tessera::backends::candle::device_description(&device));
+    println!(
+        "Using device: {}",
+        tessera::backends::candle::device_description(&device)
+    );
 
     // Create encoder
     println!("Loading {}...", config.model_name);
-    let encoder = CandleEncoder::new(config, device)
-        .context("Creating Candle encoder")?;
+    let encoder = CandleBertEncoder::new(config, device).context("Creating Candle encoder")?;
     println!("Model loaded successfully\n");
 
     // Encode query
     println!("Encoding query...");
-    let query_embeddings = encoder.encode(query)
-        .context("Encoding query text")?;
+    let query_embeddings = encoder.encode(query).context("Encoding query text")?;
     println!(
         "Query: {} tokens, {} dimensions",
         query_embeddings.num_tokens, query_embeddings.embedding_dim
@@ -60,8 +62,7 @@ fn demonstrate_candle(query: &str, document: &str, config: ModelConfig) -> Resul
 
     // Encode document
     println!("Encoding document...");
-    let doc_embeddings = encoder.encode(document)
-        .context("Encoding document text")?;
+    let doc_embeddings = encoder.encode(document).context("Encoding document text")?;
     println!(
         "Document: {} tokens, {} dimensions",
         doc_embeddings.num_tokens, doc_embeddings.embedding_dim
@@ -69,8 +70,8 @@ fn demonstrate_candle(query: &str, document: &str, config: ModelConfig) -> Resul
 
     // Compute MaxSim similarity
     println!("\nComputing MaxSim similarity...");
-    let similarity = max_sim(&query_embeddings, &doc_embeddings)
-        .context("Computing MaxSim score")?;
+    let similarity =
+        max_sim(&query_embeddings, &doc_embeddings).context("Computing MaxSim score")?;
 
     println!("MaxSim Score: {:.4}", similarity);
     println!("(Higher scores indicate greater similarity)");

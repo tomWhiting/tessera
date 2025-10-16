@@ -17,3 +17,6 @@ Thumbs.db
 *.db
 *.log
 .claude/settings.local.json
+
+# Auto-generated files
+src/models/generated.rs

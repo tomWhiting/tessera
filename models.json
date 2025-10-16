@@ -108,7 +108,8 @@
               "matryoshka": {
                 "min": 64,
                 "max": 768,
-                "supported": [64, 96, 128, 256, 384, 512, 768]
+                "supported": [64, 96, 128, 256, 384, 512, 768],
+                "strategy": "truncate_output"
               }
             },
             "hidden_dim": 768,
@@ -220,20 +221,593 @@
           },
           "license": "Apache-2.0",
           "description": "Jina ColBERT v2 at 64 dimensions for maximum compactness."
+        },
+        {
+          "id": "colpali-v1.2",
+          "type": "vision-language",
+          "name": "ColPali v1.2",
+          "huggingface_id": "vidore/colpali-v1.2",
+          "organization": "Vidore",
+          "release_date": "2024",
+          "architecture": {
+            "type": "paligemma",
+            "variant": "paligemma-3b",
+            "has_projection": true,
+            "projection_dims": 128
+          },
+          "specs": {
+            "parameters": "3B",
+            "embedding_dim": 128,
+            "hidden_dim": 2048,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 257152
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "multilingual"],
+            "modalities": ["vision", "text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.58,
+            "ms_marco_mrr10": 0.46
+          },
+          "license": "Apache-2.0",
+          "description": "Vision-language multi-vector model based on PaliGemma-3B. Outputs one vector per image patch for document retrieval with visual understanding."
+        },
+        {
+          "id": "gte-modern-colbert",
+          "type": "colbert",
+          "name": "GTE-ModernColBERT v1",
+          "huggingface_id": "lightonai/GTE-ModernColBERT-v1",
+          "organization": "LightOn AI",
+          "release_date": "2025",
+          "architecture": {
+            "type": "modernbert",
+            "variant": "gte-modernbert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "130M",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 50370
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.68,
+            "ms_marco_mrr10": 0.75
+          },
+          "license": "Apache-2.0",
+          "description": "Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length."
+        },
+        {
+          "id": "bge-m3-multi",
+          "type": "unified",
+          "name": "BGE-M3 (Multi-Vector Mode)",
+          "huggingface_id": "BAAI/bge-m3",
+          "organization": "BAAI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "568M",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 250002
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo", "pl", "it", "pt", "nl"],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.55,
+            "ms_marco_mrr10": 0.44
+          },
+          "license": "MIT",
+          "description": "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode."
         }
       ]
     },
     "dense": {
       "description": "Dense models outputting single vector per input (BERT, GTE, E5, etc.)",
-      "models": []
+      "models": [
+        {
+          "id": "gte-qwen2-7b",
+          "type": "dense",
+          "name": "GTE-Qwen2-7B",
+          "huggingface_id": "Alibaba-NLP/gte-Qwen2-7B-instruct",
+          "organization": "Alibaba",
+          "release_date": "2024",
+          "architecture": {
+            "type": "qwen2",
+            "variant": "qwen2-7b-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "7B",
+            "embedding_dim": {
+              "default": 3584,
+              "matryoshka": {
+                "min": 512,
+                "max": 3584,
+                "supported": [512, 1024, 2048, 3584],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 3584,
+            "context_length": 32768,
+            "max_position_embeddings": 32768,
+            "vocab_size": 151936
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8", "int4"]
+          },
+          "performance": {
+            "beir_avg": 0.62,
+            "ms_marco_mrr10": 0.51
+          },
+          "license": "Apache-2.0",
+          "description": "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584."
+        },
+        {
+          "id": "nomic-embed-v1.5",
+          "type": "dense",
+          "name": "Nomic Embed v1.5",
+          "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
+          "organization": "Nomic AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "nomic-bert",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "137M",
+            "embedding_dim": {
+              "default": 768,
+              "matryoshka": {
+                "min": 64,
+                "max": 768,
+                "supported": [64, 128, 256, 512, 768],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.54,
+            "ms_marco_mrr10": 0.43
+          },
+          "license": "Apache-2.0",
+          "description": "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens."
+        },
+        {
+          "id": "bge-base-en-v1.5",
+          "type": "dense",
+          "name": "BGE-Base-EN-v1.5",
+          "huggingface_id": "BAAI/bge-base-en-v1.5",
+          "organization": "BAAI",
+          "release_date": "2023",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "109M",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.53,
+            "ms_marco_mrr10": 0.42
+          },
+          "license": "MIT",
+          "description": "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance."
+        },
+        {
+          "id": "snowflake-arctic-l",
+          "type": "dense",
+          "name": "Snowflake Arctic Embed L",
+          "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
+          "organization": "Snowflake",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "335M",
+            "embedding_dim": {
+              "default": 1024,
+              "matryoshka": {
+                "min": 256,
+                "max": 1024,
+                "supported": [256, 512, 768, 1024],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 1024,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.56,
+            "ms_marco_mrr10": 0.45
+          },
+          "license": "Apache-2.0",
+          "description": "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance."
+        }
+      ]
     },
     "sparse": {
       "description": "Sparse models with vocabulary-sized vectors (SPLADE, uniCOIL)",
-      "models": []
+      "models": [
+        {
+          "id": "splade-v3",
+          "type": "sparse",
+          "name": "SPLADE v3",
+          "huggingface_id": "naver/splade-v3",
+          "organization": "Naver Labs",
+          "release_date": "2023",
+          "architecture": {
+            "type": "bert",
+            "variant": "distilbert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "66M",
+            "embedding_dim": 30522,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16"]
+          },
+          "performance": {
+            "beir_avg": 0.49,
+            "ms_marco_mrr10": 0.38
+          },
+          "license": "CC-BY-NC-SA-4.0",
+          "description": "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage."
+        },
+        {
+          "id": "minicoil-v1",
+          "type": "sparse",
+          "name": "miniCOIL v1",
+          "huggingface_id": "Qdrant/minicoil-v1",
+          "organization": "Qdrant",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "distilbert-base",
+            "has_projection": true,
+            "projection_dims": 4
+          },
+          "specs": {
+            "parameters": "66M",
+            "embedding_dim": 4,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.46,
+            "ms_marco_mrr10": 0.35
+          },
+          "license": "Apache-2.0",
+          "description": "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance."
+        },
+        {
+          "id": "splade-pp-en-v1",
+          "type": "sparse",
+          "name": "SPLADE++ EN v1",
+          "huggingface_id": "prithivida/Splade_PP_en_v1",
+          "organization": "Prithivida",
+          "release_date": "2023",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "109M",
+            "embedding_dim": 30522,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16"]
+          },
+          "performance": {
+            "beir_avg": 0.50,
+            "ms_marco_mrr10": 0.40
+          },
+          "license": "Apache-2.0",
+          "description": "Enhanced SPLADE variant with improved efficiency. Vocabulary-sized sparse embeddings with learned term importance weights."
+        }
+      ]
     },
     "timeseries": {
       "description": "Time series foundation models (TimesFM, TTM, Chronos)",
-      "models": []
+      "models": [
+        {
+          "id": "tinytimemixer",
+          "type": "timeseries",
+          "name": "TinyTimeMixer",
+          "huggingface_id": "ibm-granite/granite-timeseries-ttm-r2",
+          "organization": "IBM",
+          "release_date": "2024",
+          "architecture": {
+            "type": "mlp-mixer",
+            "variant": "tsm-mixer",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "1M",
+            "embedding_dim": 64,
+            "hidden_dim": 64,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 0
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [],
+            "modalities": ["timeseries"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Lightweight time series foundation model using MLP-based mixing. Less than 1M parameters, no transformers, fast inference for forecasting tasks."
+        },
+        {
+          "id": "timesfm-1.0-200m",
+          "type": "timeseries",
+          "name": "TimesFM 1.0 200M",
+          "huggingface_id": "google/timesfm-1.0-200m",
+          "organization": "Google Research",
+          "release_date": "2024",
+          "architecture": {
+            "type": "decoder-transformer",
+            "variant": "patched-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "200M",
+            "embedding_dim": 1280,
+            "hidden_dim": 1280,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 0
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [],
+            "modalities": ["timeseries"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting."
+        },
+        {
+          "id": "chronos-bolt-small",
+          "type": "timeseries",
+          "name": "Chronos Bolt Small",
+          "huggingface_id": "amazon/chronos-bolt-small",
+          "organization": "Amazon",
+          "release_date": "2024",
+          "architecture": {
+            "type": "t5",
+            "variant": "t5-efficient",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "48M",
+            "embedding_dim": 512,
+            "hidden_dim": 512,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 4096
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [],
+            "modalities": ["timeseries"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Efficient T5-based time series model with fast inference. Treats time series as discrete tokens for probabilistic forecasting."
+        }
+      ]
     },
     "geometric": {
       "description": "Non-Euclidean embeddings (hyperbolic, spherical, quaternion)",

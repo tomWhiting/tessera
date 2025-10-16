@@ -69,6 +69,8 @@ struct MatryoshkaSpec {
     min: usize,
     max: usize,
     supported: Vec<usize>,
+    #[serde(default)]
+    strategy: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -122,7 +124,9 @@ fn main() {
     let registry: ModelRegistry = serde_json::from_str(&models_json)
         .expect("Failed to parse models.json - check JSON syntax");
 
-    let total_models = registry.model_categories.values()
+    let total_models = registry
+        .model_categories
+        .values()
         .map(|cat| cat.models.len())
         .sum::<usize>();
 
@@ -130,64 +134,74 @@ fn main() {
 
     let generated_code = generate_code(&registry);
 
+    // Write to OUT_DIR (required for compilation)
     let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
     let dest_path = Path::new(&out_dir).join("model_registry.rs");
+    fs::write(&dest_path, &generated_code).expect("Failed to write generated model registry code");
 
-    fs::write(&dest_path, generated_code)
-        .expect("Failed to write generated model registry code");
+    // ALSO write to src/models/generated.rs (visible in source tree)
+    let visible_path = Path::new("src/models/generated.rs");
+    fs::write(visible_path, &generated_code).expect("Failed to write visible generated model registry code");
 
-    println!("cargo:warning=Generated model registry with {} models across {} categories",
-             total_models, registry.model_categories.len());
+    println!(
+        "cargo:warning=Generated model registry with {} models across {} categories",
+        total_models,
+        registry.model_categories.len()
+    );
 }
 
 fn validate_registry(registry: &ModelRegistry) {
     let mut ids = std::collections::HashSet::new();
 
-    for (_category, cat_data) in &registry.model_categories {
+    for cat_data in registry.model_categories.values() {
         for model in &cat_data.models {
             // Check for duplicate IDs
-            if !ids.insert(&model.id) {
-                panic!("Duplicate model ID found: {}", model.id);
-            }
+            assert!(ids.insert(&model.id), "Duplicate model ID found: {}", model.id);
 
             // Validate embedding dimensions
             let embedding_dim = match &model.specs.embedding_dim {
                 EmbeddingDimSpec::Fixed(dim) => {
-                    if *dim == 0 {
-                        panic!("Model {} has invalid embedding_dim: 0", model.id);
-                    }
+                    assert!(*dim != 0, "Model {} has invalid embedding_dim: 0", model.id);
                     *dim
                 }
-                EmbeddingDimSpec::Matryoshka { default, matryoshka } => {
+                EmbeddingDimSpec::Matryoshka {
+                    default,
+                    matryoshka,
+                } => {
                     // Validate Matryoshka configuration
-                    if matryoshka.min >= matryoshka.max {
-                        panic!(
-                            "Model {} has invalid Matryoshka range: min ({}) >= max ({})",
-                            model.id, matryoshka.min, matryoshka.max
-                        );
-                    }
-                    if *default < matryoshka.min || *default > matryoshka.max {
-                        panic!(
-                            "Model {} has default dimension ({}) outside Matryoshka range ({}-{})",
-                            model.id, default, matryoshka.min, matryoshka.max
-                        );
-                    }
+                    assert!(
+                        matryoshka.min < matryoshka.max,
+                        "Model {} has invalid Matryoshka range: min ({}) >= max ({})",
+                        model.id, matryoshka.min, matryoshka.max
+                    );
+                    assert!(
+                        *default >= matryoshka.min && *default <= matryoshka.max,
+                        "Model {} has default dimension ({}) outside Matryoshka range ({}-{})",
+                        model.id, default, matryoshka.min, matryoshka.max
+                    );
                     // Validate all supported dimensions are within range
                     for &dim in &matryoshka.supported {
-                        if dim < matryoshka.min || dim > matryoshka.max {
-                            panic!(
-                                "Model {} has supported dimension {} outside Matryoshka range ({}-{})",
-                                model.id, dim, matryoshka.min, matryoshka.max
-                            );
-                        }
+                        assert!(
+                            dim >= matryoshka.min && dim <= matryoshka.max,
+                            "Model {} has supported dimension {} outside Matryoshka range ({}-{})",
+                            model.id, dim, matryoshka.min, matryoshka.max
+                        );
                     }
                     // Validate supported dimensions are in ascending order
                     let mut sorted = matryoshka.supported.clone();
-                    sorted.sort();
-                    if sorted != matryoshka.supported {
-                        panic!(
-                            "Model {} Matryoshka supported dimensions must be in ascending order",
-                            model.id
+                    sorted.sort_unstable();
+                    assert!(
+                        sorted == matryoshka.supported,
+                        "Model {} Matryoshka supported dimensions must be in ascending order",
+                        model.id
+                    );
+                    // Validate strategy if present
+                    if let Some(ref strategy) = matryoshka.strategy {
+                        let valid_strategies = ["truncate_hidden", "truncate_output", "truncate_pooled"];
+                        assert!(
+                            valid_strategies.contains(&strategy.as_str()),
+                            "Model {} has invalid Matryoshka strategy '{}'. Valid: {:?}",
+                            model.id, strategy, valid_strategies
                         );
                     }
                     *default
@@ -195,34 +209,33 @@ fn validate_registry(registry: &ModelRegistry) {
             };
 
             // Validate context length
-            if model.specs.context_length == 0 {
-                panic!("Model {} has invalid context_length: 0", model.id);
-            }
+            assert!(
+                model.specs.context_length != 0,
+                "Model {} has invalid context_length: 0",
+                model.id
+            );
 
             // Validate HuggingFace ID format
-            if !model.huggingface_id.contains('/') {
-                panic!(
-                    "Model {} has invalid huggingface_id format: {}",
-                    model.id, model.huggingface_id
-                );
-            }
+            assert!(
+                model.huggingface_id.contains('/'),
+                "Model {} has invalid huggingface_id format: {}",
+                model.id, model.huggingface_id
+            );
 
             // Validate projection consistency
-            if model.architecture.has_projection && model.architecture.projection_dims.is_none() {
-                panic!(
-                    "Model {} has has_projection=true but no projection_dims",
-                    model.id
-                );
-            }
+            assert!(
+                !model.architecture.has_projection || model.architecture.projection_dims.is_some(),
+                "Model {} has has_projection=true but no projection_dims",
+                model.id
+            );
 
             if model.architecture.has_projection {
                 if let Some(proj_dim) = model.architecture.projection_dims {
-                    if proj_dim != embedding_dim {
-                        panic!(
-                            "Model {} projection_dims ({}) doesn't match embedding_dim ({})",
-                            model.id, proj_dim, embedding_dim
-                        );
-                    }
+                    assert!(
+                        proj_dim == embedding_dim,
+                        "Model {} projection_dims ({}) doesn't match embedding_dim ({})",
+                        model.id, proj_dim, embedding_dim
+                    );
                 }
             }
         }
@@ -231,10 +244,11 @@ fn validate_registry(registry: &ModelRegistry) {
 
 fn generate_code(registry: &ModelRegistry) -> String {
     let mut code = String::from(
-        r#"// Generated by build.rs from models.json
-// DO NOT EDIT THIS FILE MANUALLY
+        r"// This file is AUTO-GENERATED by build.rs from models.json
+// DO NOT EDIT MANUALLY - changes will be overwritten
+// To modify models, edit models.json and rebuild
 
-"#,
+",
     );
 
     // Generate EmbeddingDimension enum
@@ -250,7 +264,7 @@ fn generate_code(registry: &ModelRegistry) -> String {
     code.push_str("\n\n");
 
     // Generate individual model constants
-    for (_category, cat_data) in &registry.model_categories {
+    for cat_data in registry.model_categories.values() {
         for model in &cat_data.models {
             code.push_str(&generate_model_constant(model));
             code.push_str("\n\n");
@@ -283,6 +297,8 @@ pub enum EmbeddingDimension {
         max: usize,
         /// Explicitly supported dimension values
         supported: &'static [usize],
+        /// Truncation strategy (when to apply Matryoshka truncation)
+        strategy: Option<&'static str>,
     },
 }
 
@@ -314,14 +330,23 @@ impl EmbeddingDimension {
             }
         }
     }
+
+    /// Get the Matryoshka truncation strategy, if applicable
+    pub fn matryoshka_strategy(&self) -> Option<&'static str> {
+        match self {
+            EmbeddingDimension::Fixed(_) => None,
+            EmbeddingDimension::Matryoshka { strategy, .. } => *strategy,
+        }
+    }
 }
 
 impl std::fmt::Display for EmbeddingDimension {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             EmbeddingDimension::Fixed(d) => write!(f, "{}", d),
-            EmbeddingDimension::Matryoshka { default, min, max, .. } => {
-                write!(f, "{} (Matryoshka: {}-{})", default, min, max)
+            EmbeddingDimension::Matryoshka { default, min, max, strategy, .. } => {
+                let strategy_str = strategy.map(|s| format!(" [{}]", s)).unwrap_or_default();
+                write!(f, "{} (Matryoshka: {}-{}{})", default, min, max, strategy_str)
             }
         }
     }
@@ -331,7 +356,7 @@ impl std::fmt::Display for EmbeddingDimension {
 
 fn generate_model_type_enum(registry: &ModelRegistry) -> String {
     let mut types = std::collections::HashSet::new();
-    for (_category, cat_data) in &registry.model_categories {
+    for cat_data in registry.model_categories.values() {
         for model in &cat_data.models {
             types.insert(&model.model_type);
         }
@@ -341,16 +366,20 @@ fn generate_model_type_enum(registry: &ModelRegistry) -> String {
     variants.sort();
 
     let mut code = String::from(
-        r#"/// Type of embedding model.
+        r"/// Type of embedding model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ModelType {
-"#,
+",
     );
 
     for variant in &variants {
         let variant_name = to_pascal_case(variant);
-        code.push_str(&format!("    /// {} model\n", variant_name));
-        code.push_str(&format!("    {},\n", variant_name));
+        code.push_str("    /// ");
+        code.push_str(&variant_name);
+        code.push_str(" model\n");
+        code.push_str("    ");
+        code.push_str(&variant_name);
+        code.push_str(",\n");
     }
 
     code.push_str("}\n");
@@ -413,20 +442,21 @@ pub struct ModelInfo {
     .to_string()
 }
 
+#[allow(clippy::too_many_lines)]
 fn generate_model_constant(model: &ModelMetadata) -> String {
     let const_name = to_screaming_snake_case(&model.id);
     let model_type = to_pascal_case(&model.model_type);
 
-    let projection_dims = match model.architecture.projection_dims {
-        Some(dim) => format!("Some({})", dim),
-        None => "None".to_string(),
-    };
+    let projection_dims = model.architecture.projection_dims.map_or_else(
+        || "None".to_string(),
+        |dim| format!("Some({dim})"),
+    );
 
     let languages = model
         .capabilities
         .languages
         .iter()
-        .map(|l| format!("\"{}\"", l))
+        .map(|l| format!("\"{l}\""))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -434,7 +464,7 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
         .capabilities
         .modalities
         .iter()
-        .map(|m| format!("\"{}\"", m))
+        .map(|m| format!("\"{m}\""))
         .collect::<Vec<_>>()
         .join(", ");
 
@@ -442,28 +472,39 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
         .capabilities
         .quantization
         .iter()
-        .map(|q| format!("\"{}\"", q))
+        .map(|q| format!("\"{q}\""))
         .collect::<Vec<_>>()
         .join(", ");
 
     let (embedding_dim_code, embedding_dim_display) = match &model.specs.embedding_dim {
         EmbeddingDimSpec::Fixed(dim) => (
-            format!("EmbeddingDimension::Fixed({})", dim),
+            format!("EmbeddingDimension::Fixed({dim})"),
             dim.to_string(),
         ),
-        EmbeddingDimSpec::Matryoshka { default, matryoshka } => {
+        EmbeddingDimSpec::Matryoshka {
+            default,
+            matryoshka,
+        } => {
             let supported = matryoshka
                 .supported
                 .iter()
-                .map(|d| d.to_string())
+                .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ");
+            let strategy_code = matryoshka.strategy.as_ref().map_or_else(
+                || "None".to_string(),
+                |s| format!("Some(\"{s}\")"),
+            );
+            let strategy_display = matryoshka.strategy.as_ref().map_or_else(
+                String::new,
+                |s| format!(" [{s}]"),
+            );
             (
                 format!(
-                    "EmbeddingDimension::Matryoshka {{ default: {}, min: {}, max: {}, supported: &[{}] }}",
-                    default, matryoshka.min, matryoshka.max, supported
+                    "EmbeddingDimension::Matryoshka {{ default: {default}, min: {}, max: {}, supported: &[{supported}], strategy: {strategy_code} }}",
+                    matryoshka.min, matryoshka.max
                 ),
-                format!("{} (Matryoshka: {}-{})", default, matryoshka.min, matryoshka.max),
+                format!("{default} (Matryoshka: {}-{}{strategy_display})", matryoshka.min, matryoshka.max),
             )
         }
     };
@@ -534,8 +575,8 @@ pub const {}: ModelInfo = ModelInfo {{
         modalities,
         model.capabilities.multi_vector,
         quantization,
-        model.performance.beir_avg,
-        model.performance.ms_marco_mrr10,
+        format_f64(model.performance.beir_avg),
+        format_f64(model.performance.ms_marco_mrr10),
         model.license,
         model.description,
     )
@@ -543,17 +584,19 @@ pub const {}: ModelInfo = ModelInfo {{
 
 fn generate_registry_array(registry: &ModelRegistry) -> String {
     let mut code = String::from(
-        r#"/// Complete model registry containing all available models.
+        r"/// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
-"#,
+",
     );
 
-    for (_category, cat_data) in &registry.model_categories {
+    for cat_data in registry.model_categories.values() {
         for model in &cat_data.models {
             let const_name = to_screaming_snake_case(&model.id);
-            code.push_str(&format!("    {},\n", const_name));
+            code.push_str("    ");
+            code.push_str(&const_name);
+            code.push_str(",\n");
         }
     }
 
@@ -625,6 +668,20 @@ pub fn models_with_matryoshka() -> Vec<&'static ModelInfo> {
         .iter()
         .filter(|m| matches!(m.embedding_dim, EmbeddingDimension::Matryoshka { .. }))
         .collect()
+}
+
+/// Get a model by its HuggingFace Hub ID.
+///
+/// # Example
+///
+/// ```
+/// use tessera::model_registry::get_model_by_hf_id;
+///
+/// let model = get_model_by_hf_id("jinaai/jina-colbert-v2");
+/// assert!(model.is_some());
+/// ```
+pub fn get_model_by_hf_id(hf_id: &str) -> Option<&'static ModelInfo> {
+    MODEL_REGISTRY.iter().find(|m| m.huggingface_id == hf_id)
 }"#
     .to_string()
 }
@@ -633,16 +690,23 @@ fn to_pascal_case(s: &str) -> String {
     s.split('-')
         .map(|word| {
             let mut chars = word.chars();
-            match chars.next() {
-                None => String::new(),
-                Some(first) => {
-                    first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str()
-                }
-            }
+            chars.next().map_or_else(
+                String::new,
+                |first| first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str()
+            )
         })
         .collect()
 }
 
 fn to_screaming_snake_case(s: &str) -> String {
-    s.replace('-', "_").to_uppercase()
+    s.replace(['-', '.'], "_").to_uppercase()
+}
+
+fn format_f64(value: f64) -> String {
+    // Ensure f64 values are formatted with decimal point
+    if value.fract() == 0.0 && value.abs() < 1e10 {
+        format!("{value:.1}")
+    } else {
+        format!("{value}")
+    }
 }

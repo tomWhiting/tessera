@@ -1,0 +1,13 @@
+# Tessera - Rust formatting configuration
+# Only using stable rustfmt features
+
+edition = "2021"
+max_width = 100
+hard_tabs = false
+tab_spaces = 4
+
+# Formatting
+use_small_heuristics = "Default"
+
+# Consistency
+newline_style = "Unix"

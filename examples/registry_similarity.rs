@@ -7,8 +7,9 @@
 
 use anyhow::Result;
 use tessera::{
-    backends::candle::{get_device, CandleEncoder},
-    core::{max_sim, TokenEmbedder},
+    backends::candle::{get_device, CandleBertEncoder},
+    core::TokenEmbedder,
+    utils::similarity::max_sim,
     ModelConfig,
 };
 
@@ -25,7 +26,7 @@ fn main() -> Result<()> {
 
     // Create encoder
     let device = get_device()?;
-    let encoder = CandleEncoder::new(config, device)?;
+    let encoder = CandleBertEncoder::new(config, device)?;
 
     // Test queries and documents
     let queries = vec![
@@ -58,10 +59,10 @@ fn main() -> Result<()> {
     // Compute similarity matrix
     println!("Similarity Matrix:");
     println!("------------------");
-    
+
     for (qi, query) in queries.iter().enumerate() {
         println!("\nQuery: \"{}\"", query);
-        
+
         let mut scores: Vec<(usize, f32)> = doc_embeddings
             .iter()
             .enumerate()
