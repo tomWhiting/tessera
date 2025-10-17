@@ -20,7 +20,7 @@ Tessera is a high-performance embedding library supporting five embedding paradi
 
 ### Capabilities
 
-- **29 Production Models** - ColBERT, BGE, Nomic, GTE, Snowflake, SPLADE, ColPali, Chronos Bolt
+- **23 Production Models** - ColBERT, BGE, Nomic, GTE, Snowflake, Qwen3, Jina, SPLADE, ColPali, Chronos Bolt
 - **GPU Acceleration** - Metal (macOS), CUDA (Linux), CPU fallback
 - **Batch Processing** - 5-10x throughput for large-scale encoding
 - **Binary Quantization** - 32x compression for multi-vector embeddings

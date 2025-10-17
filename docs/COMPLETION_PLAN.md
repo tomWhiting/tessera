@@ -708,7 +708,7 @@ colbert_models = TesseraEncoder.list_models(model_type=ModelType.COLBERT)
 - [x] Vision-language embeddings (ColPali) - Phase 3.1 ✅
 - [x] Time series forecasting (Chronos Bolt) - Phase 3.2 ✅
 - [ ] Python bindings (PyO3) - Phase 2.3/3.4
-- [x] 29 models in registry (18 multi-vector + 4 dense + 4 sparse + 2 vision + 1 timeseries)
+- [x] 23 models in registry (9 multi-vector + 8 dense + 4 sparse + 2 timeseries)
 
 **User-Facing Benefits:**
 - Production throughput (batch processing)
@@ -723,10 +723,11 @@ colbert_models = TesseraEncoder.list_models(model_type=ModelType.COLBERT)
 **Technical Achievements:**
 - Multi-paradigm support (5 of 5 core types complete: multi-vector ✅, dense ✅, sparse ✅, vision-language ✅, time-series ✅)
 - Type-safe API with factory pattern (all five types integrated)
-- Registry-driven configuration (29 production models)
+- Registry-driven configuration (23 production models)
 - Production-ready performance (batch, GPU, sparsity)
 - Vision-language late interaction (MaxSim reuse)
 - T5-based time series with continuous embeddings
+- State-of-the-art models (Qwen3 #1 MTEB multilingual, Jina v3 #2 <1B params)
 - Clean, documented codebase (zero placeholders, zero mocks)
 
 ---
