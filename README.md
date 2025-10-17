@@ -2,11 +2,11 @@
 
 **Multi-paradigm embedding library for Rust**
 
-Tessera is a high-performance embedding library supporting multiple embedding paradigms with native GPU acceleration (Metal, CUDA) and a type-safe API.
+Tessera is a high-performance embedding library supporting five embedding paradigms with native GPU acceleration (Metal, CUDA) and a type-safe API.
 
 ## Status
 
-🚧 **In Development** - Phase 2 Complete (Core Embedding Types)
+✅ **Phase 3.2 Complete** - Vision-Language + Time Series Forecasting
 
 ## Features
 
@@ -15,14 +15,18 @@ Tessera is a high-performance embedding library supporting multiple embedding pa
 - **Multi-Vector (ColBERT)** - Token-level embeddings with MaxSim scoring
 - **Dense (BERT)** - Single-vector embeddings with pooling strategies
 - **Sparse (SPLADE)** - Vocabulary-sized sparse vectors for interpretable search
+- **Vision-Language (ColPali)** - OCR-free document search with late interaction
+- **Time Series (Chronos Bolt)** - Zero-shot probabilistic forecasting
 
 ### Capabilities
 
-- **26 Production Models** - ColBERT, BGE, Nomic, GTE, Snowflake, SPLADE variants
+- **29 Production Models** - ColBERT, BGE, Nomic, GTE, Snowflake, SPLADE, ColPali, Chronos Bolt
 - **GPU Acceleration** - Metal (macOS), CUDA (Linux), CPU fallback
 - **Batch Processing** - 5-10x throughput for large-scale encoding
 - **Binary Quantization** - 32x compression for multi-vector embeddings
 - **Matryoshka Dimensions** - Variable-precision embeddings
+- **PDF Document Search** - Native PDF rendering with Poppler
+- **Probabilistic Forecasting** - 9 quantile levels for uncertainty quantification
 - **Type-Safe API** - Factory pattern with compile-time guarantees
 
 ## Quick Start
@@ -55,10 +59,11 @@ See `docs/COMPLETION_PLAN.md` for detailed implementation notes and roadmap.
 
 ## Status
 
-Phase 2 Complete:
+Phase 3.2 Complete:
 - ✅ Multi-vector embeddings (ColBERT)
 - ✅ Dense embeddings (BERT pooling)
 - ✅ Sparse embeddings (SPLADE)
+- ✅ Vision-language embeddings (ColPali)
+- ✅ Time series forecasting (Chronos Bolt)
 - ⏳ Python bindings (Phase 2.3)
-- ⏳ Vision-language embeddings (Phase 3)
-- ⏳ Time series embeddings (Phase 3)
+- ⏳ Hyperbolic embeddings (Phase 3.3)

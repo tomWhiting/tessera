@@ -8,7 +8,7 @@ name = "tessera"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["pdf"]  # PDF support enabled by default for ColPali document processing
 metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
 pdf = ["pdf2image"]  # PDF rendering support for ColPali document processing
@@ -17,9 +17,6 @@ wasm = []    # WebAssembly bindings (TODO: add wasm-bindgen when implementing)
 
 [dependencies]
 anyhow = "1.0.100"
-burn = { version = "0.18.0", features = ["ndarray"] }
-burn-ndarray = "0.18.0"
-burn-wgpu = "0.18.0"
 candle-core = "0.9.1"
 candle-nn = "0.9.1"
 candle-transformers = "0.9.1"

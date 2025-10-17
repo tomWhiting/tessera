@@ -1,12 +1,6 @@
 //! Configuration for Chronos Bolt time series foundation model.
 
-use candle_core::Device;
 use serde::{Deserialize, Serialize};
-
-/// Default device for configuration.
-fn default_device() -> Device {
-    Device::cuda_if_available(0).unwrap_or(Device::Cpu)
-}
 
 /// Configuration for Chronos Bolt time series foundation model.
 ///
@@ -65,10 +59,6 @@ pub struct ChronosBoltConfig {
 
     /// Quantiles to predict (e.g., [0.1, 0.2, ..., 0.9])
     pub quantiles: Vec<f32>,
-
-    /// Device for tensor operations
-    #[serde(skip, default = "default_device")]
-    pub device: Device,
 }
 
 impl ChronosBoltConfig {
@@ -93,7 +83,6 @@ impl ChronosBoltConfig {
             patch_size: 32,  // Based on input_patch_embedding.hidden_layer.weight shape
             num_bins: 4096,
             quantiles: vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            device: Device::cuda_if_available(0).unwrap_or(Device::Cpu),
         }
     }
 
@@ -118,7 +107,6 @@ impl ChronosBoltConfig {
             patch_size: 32,  // Based on actual Chronos Bolt architecture
             num_bins: 4096,
             quantiles: vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
-            device: Device::cuda_if_available(0).unwrap_or(Device::Cpu),
         }
     }
 
@@ -127,19 +115,16 @@ impl ChronosBoltConfig {
     /// # Arguments
     /// * `context_length` - Input sequence length
     /// * `prediction_length` - Forecast horizon
-    /// * `device` - Device for inference
     ///
     /// # Returns
     /// Customized Chronos Bolt configuration
     pub fn custom(
         context_length: usize,
         prediction_length: usize,
-        device: Device,
     ) -> Self {
         Self {
             context_length,
             prediction_length,
-            device,
             ..Self::chronos_bolt_small()
         }
     }
@@ -223,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_chronos_bolt_custom_config() {
-        let config = ChronosBoltConfig::custom(4096, 128, Device::Cpu);
+        let config = ChronosBoltConfig::custom(4096, 128);
         assert_eq!(config.context_length, 4096);
         assert_eq!(config.prediction_length, 128);
         assert!(config.validate().is_ok());

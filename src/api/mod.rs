@@ -53,6 +53,7 @@ pub use builder::{
     TesseraMultiVectorBuilder,
     TesseraSparseBuilder,
     TesseraVisionBuilder,
+    TesseraTimeSeriesBuilder,
 };
 pub use embedder::{
     QuantizedEmbeddings,
@@ -61,4 +62,5 @@ pub use embedder::{
     TesseraMultiVector,
     TesseraSparse,
     TesseraVision,
+    TesseraTimeSeries,
 };

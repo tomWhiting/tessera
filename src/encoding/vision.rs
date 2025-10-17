@@ -168,16 +168,17 @@ impl ColPaliEncoder {
         let paligemma_config = PaliGemmaConfig::paligemma_3b_448();
 
         // 6. Initialize PaliGemma model from candle-transformers
-        // Note: ColPali models have all weights under "vlm." prefix
-        let model = PaliGemmaModel::new(&paligemma_config, vb.pp("vlm"))
+        // Note: ColPali v1.2-merged models have weights under "model." prefix
+        let model = PaliGemmaModel::new(&paligemma_config, vb.pp("model"))
             .context("Failed to initialize PaliGemma model")?;
 
         // 7. Load custom text projection layer (2048 -> 128)
         // This projects text embeddings from PaliGemma's hidden size to ColPali's embedding dimension
+        // Note: In v1.2-merged, custom_text_proj is at root level (not under vlm)
         let custom_text_projection = candle_nn::linear(
             2048,  // PaliGemma text hidden size
             128,   // ColPali embedding dimension
-            vb.pp("vlm").pp("custom_text_proj"),
+            vb.pp("custom_text_proj"),
         ).context("Failed to load custom_text_proj layer")?;
 
         // 8. Determine image resolution and patches from config
@@ -265,11 +266,25 @@ impl ColPaliEncoder {
             .squeeze(0)
             .context("Failed to squeeze batch dimension")?;
 
-        // 9. Convert to CPU and extract as Vec<Vec<f32>>
-        let embeddings = self.tensor_to_vec2(&patch_embeddings)
+        // 9. Apply custom text projection to image embeddings (2048 -> 128)
+        // Note: In ColPali v1.2-merged, the same projection layer is used for both
+        // text and vision embeddings to project from PaliGemma's hidden size (2048)
+        // to ColPali's embedding dimension (128) for efficient late interaction.
+        let projected = self.custom_text_projection.forward(&patch_embeddings)
+            .context("Failed to apply projection to image embeddings")?;
+
+        // 10. Apply L2 normalization
+        let norms = projected.sqr()?
+            .sum_keepdim(1)?  // Sum over embedding dimension
+            .sqrt()?;
+        let normalized = projected.broadcast_div(&norms)
+            .context("Failed to normalize image embeddings")?;
+
+        // 11. Convert to CPU and extract as Vec<Vec<f32>>
+        let embeddings = self.tensor_to_vec2(&normalized)
             .context("Failed to convert patch embeddings to Vec<Vec<f32>>")?;
 
-        // 10. Create VisionEmbedding
+        // 12. Create VisionEmbedding with correct embedding dimension (128)
         Ok(VisionEmbedding::new(
             embeddings,
             self.num_patches,

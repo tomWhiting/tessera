@@ -147,6 +147,9 @@ pub struct ChronosBolt {
     /// Model configuration
     pub config: ChronosBoltConfig,
 
+    /// Device for tensor operations
+    device: Device,
+
     /// Stored scale factors for denormalization (updated during forward pass)
     scale: Option<Tensor>,
 }
@@ -157,13 +160,14 @@ impl ChronosBolt {
     /// # Arguments
     /// * `config` - Model configuration
     /// * `vb` - Variable builder for loading weights
+    /// * `device` - Device for tensor operations
     ///
     /// # Returns
     /// Initialized ChronosBolt model
     ///
     /// # Errors
     /// Returns error if model construction fails
-    pub fn new(config: ChronosBoltConfig, vb: VarBuilder) -> Result<Self> {
+    pub fn new(config: ChronosBoltConfig, vb: VarBuilder, device: Device) -> Result<Self> {
         config
             .validate()
             .context("Invalid ChronosBolt configuration")?;
@@ -231,6 +235,7 @@ impl ChronosBolt {
             encoder,
             decoder,
             config,
+            device,
             scale: None,
         })
     }
@@ -268,18 +273,13 @@ impl ChronosBolt {
             ChronosBoltConfig::chronos_bolt_small()
         };
 
-        let config = ChronosBoltConfig {
-            device: device.clone(),
-            ..config
-        };
-
         // Load weights
         let vb = unsafe {
             VarBuilder::from_mmaped_safetensors(&[weights_path], DType::F32, device)
                 .context("Failed to load model weights")?
         };
 
-        Self::new(config, vb)
+        Self::new(config, vb, device.clone())
     }
 
     /// Forward pass through the model returning all quantile predictions.
@@ -345,7 +345,7 @@ impl ChronosBolt {
         let decoder_input = Tensor::zeros(
             (batch, 1, self.config.d_model),
             DType::F32,
-            &self.config.device,
+            &self.device,
         )
         .context("Failed to create decoder input")?;
 
@@ -487,13 +487,12 @@ mod tests {
             context_length: 512,
             prediction_length: 64,
             patch_size: 16,
-            device: device.clone(),
             ..ChronosBoltConfig::chronos_bolt_small()
         };
 
         // Create model with random initialization
         let vb = VarBuilder::zeros(DType::F32, &device);
-        let mut model = ChronosBolt::new(config.clone(), vb).unwrap();
+        let mut model = ChronosBolt::new(config.clone(), vb, device.clone()).unwrap();
 
         // Create input: [batch=2, context_length=512]
         let input = Tensor::randn(0f32, 1.0, (2, 512), &device).unwrap();
@@ -520,13 +519,12 @@ mod tests {
             context_length: 512,
             prediction_length: 64,
             patch_size: 16,
-            device: device.clone(),
             ..ChronosBoltConfig::chronos_bolt_small()
         };
 
         // Create model with random initialization
         let vb = VarBuilder::zeros(DType::F32, &device);
-        let mut model = ChronosBolt::new(config.clone(), vb).unwrap();
+        let mut model = ChronosBolt::new(config.clone(), vb, device.clone()).unwrap();
 
         // Create input: [batch=2, context_length=512]
         let input = Tensor::randn(0f32, 1.0, (2, 512), &device).unwrap();
@@ -553,13 +551,12 @@ mod tests {
             context_length: 512,
             prediction_length: 64,
             patch_size: 16,
-            device: device.clone(),
             ..ChronosBoltConfig::chronos_bolt_small()
         };
 
         // Create model with random initialization
         let vb = VarBuilder::zeros(DType::F32, &device);
-        let mut model = ChronosBolt::new(config.clone(), vb).unwrap();
+        let mut model = ChronosBolt::new(config.clone(), vb, device.clone()).unwrap();
 
         // Create input: [batch=2, context_length=512]
         let input = Tensor::randn(0f32, 1.0, (2, 512), &device).unwrap();

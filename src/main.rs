@@ -1,13 +1,13 @@
 //! CLI demo for Tessera ColBERT inference.
 //!
-//! This demonstrates both Candle and Burn backends for computing
-//! similarity between query and document text.
+//! This demonstrates Candle backend for computing similarity between
+//! query and document text using multi-vector embeddings.
 
 use anyhow::{Context, Result};
 use clap::Parser;
 
 use tessera::{
-    backends::{burn::BurnEncoder, candle::get_device, candle::CandleBertEncoder},
+    backends::candle::{get_device, CandleBertEncoder},
     core::TokenEmbedder,
     models::ModelConfig,
     utils::similarity::max_sim,
@@ -28,10 +28,6 @@ struct Args {
     /// Model to use: colbert-small, colbert-v2, jina-colbert-v2, or distilbert
     #[arg(short, long, default_value = "colbert-small")]
     model: String,
-
-    /// Backend to use (candle, burn, or both)
-    #[arg(short, long, default_value = "candle")]
-    backend: String,
 }
 
 fn main() -> Result<()> {
@@ -59,20 +55,8 @@ fn main() -> Result<()> {
         }
     };
 
-    // Run with selected backend(s)
-    match args.backend.as_str() {
-        "candle" => run_candle(&args.query, &args.document, config)?,
-        "burn" => run_burn(&args.query, &args.document, config)?,
-        "both" => {
-            run_candle(&args.query, &args.document, config.clone())?;
-            println!();
-            run_burn(&args.query, &args.document, config)?;
-        }
-        _ => anyhow::bail!(
-            "Unknown backend: {}. Use 'candle', 'burn', or 'both'",
-            args.backend
-        ),
-    }
+    // Run with Candle backend
+    run_candle(&args.query, &args.document, config)?;
 
     Ok(())
 }
@@ -117,39 +101,3 @@ fn run_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
     Ok(())
 }
 
-fn run_burn(query: &str, document: &str, config: ModelConfig) -> Result<()> {
-    println!("Backend: Burn");
-    println!("-------------");
-    println!("Device: {}", tessera::backends::burn::backend_description());
-
-    // Create encoder
-    println!("Loading model: {}...", config.model_name);
-    let encoder = BurnEncoder::new(config).context("Creating Burn encoder")?;
-
-    println!("Note: Burn backend uses simplified implementation for prototype");
-
-    // Encode query
-    println!("Encoding query...");
-    let query_emb = encoder.encode(query).context("Encoding query")?;
-    println!(
-        "Query tokens: {}, dims: {}",
-        query_emb.num_tokens, query_emb.embedding_dim
-    );
-
-    // Encode document
-    println!("Encoding document...");
-    let doc_emb = encoder.encode(document).context("Encoding document")?;
-    println!(
-        "Document tokens: {}, dims: {}",
-        doc_emb.num_tokens, doc_emb.embedding_dim
-    );
-
-    // Compute similarity
-    println!("Computing MaxSim similarity...");
-    let score = max_sim(&query_emb, &doc_emb).context("Computing similarity")?;
-
-    println!("\nSimilarity Score: {:.4}", score);
-    println!("(Note: Using placeholder embeddings - not pre-trained BERT weights)");
-
-    Ok(())
-}

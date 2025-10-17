@@ -20,7 +20,7 @@
 //! let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;
 //! ```
 
-use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder};
+use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder, TesseraTimeSeriesBuilder};
 use crate::backends::CandleBertEncoder;
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings, VisionEmbedding};
 use crate::encoding::dense::CandleDenseEncoder;
@@ -29,7 +29,9 @@ use crate::encoding::vision::ColPaliEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::registry::{get_model, ModelType};
 use crate::quantization::{binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization};
+use crate::timeseries::models::ChronosBolt;
 use crate::utils::similarity::max_sim;
+use candle_core::Tensor;
 use std::path::Path;
 
 /// Binary quantized multi-vector embeddings.
@@ -1067,6 +1069,210 @@ impl TesseraVision {
 }
 
 // ============================================================================
+// Time Series Forecasting (Chronos Bolt)
+// ============================================================================
+
+/// Time series embedder for Chronos Bolt forecasting.
+///
+/// Provides probabilistic time series forecasting using Amazon's Chronos Bolt
+/// T5-based foundation model. Produces quantile predictions for uncertainty
+/// quantification and point forecasts (median).
+///
+/// Thread-safe and can be shared across threads.
+pub struct TesseraTimeSeries {
+    /// Backend encoder (ChronosBolt model)
+    encoder: ChronosBolt,
+    /// Model identifier from registry
+    model_id: String,
+}
+
+impl TesseraTimeSeries {
+    /// Create a new time series forecaster with default configuration.
+    ///
+    /// This is the simplest way to create a forecaster - it automatically:
+    /// - Looks up the model in the registry
+    /// - Selects the best available device (Metal > CUDA > CPU)
+    /// - Downloads the model from HuggingFace if needed
+    /// - Initializes the T5-based forecasting model
+    ///
+    /// # Arguments
+    ///
+    /// * `model_id` - Model identifier from the registry (e.g., "chronos-bolt-small")
+    ///
+    /// # Returns
+    ///
+    /// Initialized forecaster ready for time series predictions.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Model is not found in the registry
+    /// - Model is not a time series model type
+    /// - Model cannot be downloaded or loaded
+    /// - Device initialization fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraTimeSeries;
+    /// use candle_core::Tensor;
+    ///
+    /// let forecaster = TesseraTimeSeries::new("chronos-bolt-small")?;
+    /// let data = Tensor::randn(0.0, 1.0, (1, 2048), &device)?;
+    /// let forecast = forecaster.forecast(&data)?;
+    /// ```
+    pub fn new(model_id: &str) -> Result<Self> {
+        TesseraTimeSeriesBuilder::new().model(model_id).build()
+    }
+
+    /// Create a builder for advanced configuration.
+    ///
+    /// Use this for advanced use cases like:
+    /// - Specifying a custom device
+    /// - Setting custom context/prediction lengths
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraTimeSeries;
+    /// use candle_core::Device;
+    ///
+    /// let forecaster = TesseraTimeSeries::builder()
+    ///     .model("chronos-bolt-small")
+    ///     .device(Device::Cpu)
+    ///     .build()?;
+    /// ```
+    pub fn builder() -> TesseraTimeSeriesBuilder {
+        TesseraTimeSeriesBuilder::new()
+    }
+
+    /// Internal constructor used by builder.
+    pub(crate) fn from_encoder(encoder: ChronosBolt, model_id: String) -> Self {
+        Self { encoder, model_id }
+    }
+
+    /// Generate point forecast (median prediction).
+    ///
+    /// Returns the median quantile (50th percentile) as a point forecast.
+    /// For uncertainty quantification, use `forecast_quantiles()` instead.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - Historical time series data [batch, context_length]
+    ///
+    /// # Returns
+    ///
+    /// Tensor of forecasted values [batch, prediction_length]
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Context tensor has wrong shape
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let data = Tensor::randn(0.0, 1.0, (1, 2048), &device)?;
+    /// let forecast = forecaster.forecast(&data)?;
+    /// println!("Forecast shape: {:?}", forecast.shape());  // [1, 64]
+    /// ```
+    pub fn forecast(&mut self, context: &Tensor) -> Result<Tensor> {
+        self.encoder.forecast(context)
+            .map_err(|e| TesseraError::EncodingError {
+                context: "Failed to generate forecast".to_string(),
+                source: e.into(),
+            })
+    }
+
+    /// Generate probabilistic forecast with all quantiles.
+    ///
+    /// Returns predictions for all 9 quantiles (0.1, 0.2, ..., 0.9),
+    /// enabling uncertainty quantification and prediction intervals.
+    ///
+    /// # Arguments
+    ///
+    /// * `context` - Historical time series data [batch, context_length]
+    ///
+    /// # Returns
+    ///
+    /// Tensor of quantile predictions [batch, prediction_length, num_quantiles]
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Context tensor has wrong shape
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let data = Tensor::randn(0.0, 1.0, (1, 2048), &device)?;
+    /// let quantiles = forecaster.forecast_quantiles(&data)?;
+    /// println!("Quantiles shape: {:?}", quantiles.shape());  // [1, 64, 9]
+    /// ```
+    pub fn forecast_quantiles(&mut self, context: &Tensor) -> Result<Tensor> {
+        self.encoder.predict_quantiles(context)
+            .map_err(|e| TesseraError::EncodingError {
+                context: "Failed to generate quantile predictions".to_string(),
+                source: e.into(),
+            })
+    }
+
+    /// Get the prediction horizon length.
+    ///
+    /// Returns the number of timesteps forecasted.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Prediction length: {}", forecaster.prediction_length());
+    /// ```
+    pub fn prediction_length(&self) -> usize {
+        self.encoder.config.prediction_length
+    }
+
+    /// Get the context length.
+    ///
+    /// Returns the required input sequence length.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Context length: {}", forecaster.context_length());
+    /// ```
+    pub fn context_length(&self) -> usize {
+        self.encoder.config.context_length
+    }
+
+    /// Get the quantile levels.
+    ///
+    /// Returns the quantiles predicted by the model (typically [0.1, 0.2, ..., 0.9]).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Quantiles: {:?}", forecaster.quantiles());
+    /// ```
+    pub fn quantiles(&self) -> &[f32] {
+        &self.encoder.config.quantiles
+    }
+
+    /// Get the model identifier.
+    ///
+    /// Returns the model ID from the registry (e.g., "chronos-bolt-small").
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// println!("Using model: {}", forecaster.model());
+    /// ```
+    pub fn model(&self) -> &str {
+        &self.model_id
+    }
+}
+
+// ============================================================================
 // Unified Factory Enum
 // ============================================================================
 
@@ -1093,6 +1299,9 @@ impl TesseraVision {
 /// // Auto-detects vision-language model -> creates Vision variant
 /// let colpali = Tessera::new("colpali-v1.3-hf")?;
 ///
+/// // Auto-detects time series model -> creates TimeSeries variant
+/// let chronos = Tessera::new("chronos-bolt-small")?;
+///
 /// // Pattern match to use specific API
 /// match colbert {
 ///     Tessera::MultiVector(mv) => {
@@ -1111,6 +1320,10 @@ impl TesseraVision {
 ///         let doc_emb = v.encode_document("invoice.jpg")?;
 ///         println!("Got {} patches", doc_emb.num_patches);
 ///     }
+///     Tessera::TimeSeries(ts) => {
+///         let forecast = ts.forecast(&data)?;
+///         println!("Forecast {} timesteps", forecast.dims()[1]);
+///     }
 /// }
 /// ```
 pub enum Tessera {
@@ -1122,6 +1335,8 @@ pub enum Tessera {
     Sparse(TesseraSparse),
     /// Vision-language ColPali-style embedder
     Vision(TesseraVision),
+    /// Time series forecasting embedder
+    TimeSeries(TesseraTimeSeries),
 }
 
 impl Tessera {
@@ -1133,6 +1348,7 @@ impl Tessera {
     /// - MultiVector/Colbert models -> `Tessera::MultiVector(TesseraMultiVector)`
     /// - Sparse models -> `Tessera::Sparse(TesseraSparse)`
     /// - VisionLanguage models -> `Tessera::Vision(TesseraVision)`
+    /// - Timeseries models -> `Tessera::TimeSeries(TesseraTimeSeries)`
     ///
     /// # Arguments
     ///
@@ -1146,7 +1362,7 @@ impl Tessera {
     ///
     /// Returns error if:
     /// - Model is not found in the registry
-    /// - Model type is not supported (e.g., Timeseries, Unified)
+    /// - Model type is not supported (e.g., Unified)
     /// - Model cannot be loaded
     ///
     /// # Example
@@ -1158,6 +1374,7 @@ impl Tessera {
     /// let embedder = Tessera::new("bge-base-en-v1.5")?;
     /// let embedder = Tessera::new("splade-cocondenser")?;
     /// let embedder = Tessera::new("colpali-v1.3-hf")?;
+    /// let embedder = Tessera::new("chronos-bolt-small")?;
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
         let model_info = get_model(model_id)
@@ -1182,8 +1399,12 @@ impl Tessera {
                 let vision = TesseraVision::new(model_id)?;
                 Ok(Tessera::Vision(vision))
             }
+            ModelType::Timeseries => {
+                let timeseries = TesseraTimeSeries::new(model_id)?;
+                Ok(Tessera::TimeSeries(timeseries))
+            }
             _ => Err(TesseraError::ConfigError(format!(
-                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage",
+                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage, Timeseries",
                 model_info.model_type
             ))),
         }
