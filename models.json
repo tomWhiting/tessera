@@ -606,6 +606,222 @@
           },
           "license": "Apache-2.0",
           "description": "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance."
+        },
+        {
+          "id": "qwen3-embedding-8b",
+          "type": "dense",
+          "name": "Qwen3-Embedding-8B",
+          "huggingface_id": "Qwen/Qwen3-Embedding-8B",
+          "organization": "Alibaba",
+          "release_date": "2025",
+          "architecture": {
+            "type": "qwen3",
+            "variant": "qwen3-8b-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "8B",
+            "embedding_dim": {
+              "default": 4096,
+              "matryoshka": {
+                "min": 32,
+                "max": 4096,
+                "supported": [32, 64, 128, 256, 512, 1024, 2048, 4096],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 4096,
+            "context_length": 32768,
+            "max_position_embeddings": 32768,
+            "vocab_size": 151936
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8", "int4"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages."
+        },
+        {
+          "id": "qwen3-embedding-4b",
+          "type": "dense",
+          "name": "Qwen3-Embedding-4B",
+          "huggingface_id": "Qwen/Qwen3-Embedding-4B",
+          "organization": "Alibaba",
+          "release_date": "2025",
+          "architecture": {
+            "type": "qwen3",
+            "variant": "qwen3-4b-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "4B",
+            "embedding_dim": {
+              "default": 2560,
+              "matryoshka": {
+                "min": 32,
+                "max": 2560,
+                "supported": [32, 64, 128, 256, 512, 1024, 2048, 2560],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 2560,
+            "context_length": 32768,
+            "max_position_embeddings": 32768,
+            "vocab_size": 151936
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8", "int4"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages."
+        },
+        {
+          "id": "qwen3-embedding-0.6b",
+          "type": "dense",
+          "name": "Qwen3-Embedding-0.6B",
+          "huggingface_id": "Qwen/Qwen3-Embedding-0.6B",
+          "organization": "Alibaba",
+          "release_date": "2025",
+          "architecture": {
+            "type": "qwen3",
+            "variant": "qwen3-0.6b-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "0.6B",
+            "embedding_dim": {
+              "default": 1024,
+              "matryoshka": {
+                "min": 32,
+                "max": 1024,
+                "supported": [32, 64, 128, 256, 512, 1024],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 1024,
+            "context_length": 32768,
+            "max_position_embeddings": 32768,
+            "vocab_size": 151936
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8", "int4"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages."
+        },
+        {
+          "id": "jina-embeddings-v3",
+          "type": "dense",
+          "name": "Jina Embeddings v3",
+          "huggingface_id": "jinaai/jina-embeddings-v3",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "xlm-roberta",
+            "variant": "jina-xlm-roberta",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "570M",
+            "embedding_dim": {
+              "default": 1024,
+              "matryoshka": {
+                "min": 32,
+                "max": 1024,
+                "supported": [32, 64, 128, 256, 512, 768, 1024],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 1024,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 250002
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters."
         }
       ]
     },
