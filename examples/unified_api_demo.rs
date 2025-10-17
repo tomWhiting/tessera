@@ -40,6 +40,9 @@ fn main() -> tessera::Result<()> {
         Tessera::Sparse(_) => {
             println!("   ✗ Error: Expected Dense but got Sparse\n");
         }
+        Tessera::Vision(_) => {
+            println!("   ✗ Error: Expected Dense but got Vision\n");
+        }
     }
 
     // Example 2: Auto-detecting and using a multi-vector model
@@ -66,6 +69,9 @@ fn main() -> tessera::Result<()> {
         }
         Tessera::Sparse(_) => {
             println!("   ✗ Error: Expected MultiVector but got Sparse\n");
+        }
+        Tessera::Vision(_) => {
+            println!("   ✗ Error: Expected MultiVector but got Vision\n");
         }
     }
 
@@ -121,6 +127,14 @@ fn main() -> tessera::Result<()> {
                 let doc = "Artificial intelligence enables machines to think";
                 let similarity = s.similarity(query, doc)?;
                 println!("     - Example similarity score: {:.4}\n", similarity);
+            }
+            Tessera::Vision(v) => {
+                println!("     Type: Vision-language multi-vector embedding");
+                println!("     - Suitable for: Document retrieval, image search");
+                println!("     - Output: {} dimensional vector per patch", v.embedding_dim());
+                println!("     - Similarity: MaxSim (late interaction)");
+                println!("     - Use case: OCR-free document search");
+                println!("     - Note: Requires image files, not text\n");
             }
         }
     }
@@ -199,7 +213,7 @@ fn main() -> tessera::Result<()> {
     // Create embedder and let Tessera decide what type to use
     let embedder = Tessera::new("bge-base-en-v1.5")?;
 
-    // Handle both possible variants
+    // Handle all possible variants
     match embedder {
         Tessera::Dense(d) => {
             println!("   Using Dense model for fast search");
@@ -231,6 +245,10 @@ fn main() -> tessera::Result<()> {
         Tessera::Sparse(_) => {
             // Would use sparse similarity here
             println!("   Using Sparse model for interpretable search");
+        }
+        Tessera::Vision(_) => {
+            // Would use vision-language similarity here
+            println!("   Using Vision model for document image search");
         }
     }
 

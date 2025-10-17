@@ -24,6 +24,7 @@ pub mod vision;
 pub use colbert::ColBERTEncoding;
 pub use dense::CandleDenseEncoder;
 pub use sparse::CandleSparseEncoder;
+pub use vision::ColPaliEncoder;
 
 #[allow(deprecated)]
 pub use sparse::SparseEncoding;

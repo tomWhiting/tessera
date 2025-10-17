@@ -58,11 +58,13 @@ pub mod error;
 pub mod models;
 pub mod quantization;
 pub mod utils;
+pub mod vision;
 
 // Re-export commonly used types
 pub use api::{
     QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
     TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
+    TesseraVision, TesseraVisionBuilder,
 };
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};

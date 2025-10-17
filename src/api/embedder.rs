@@ -20,15 +20,17 @@
 //! let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;
 //! ```
 
-use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder};
+use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder};
 use crate::backends::CandleBertEncoder;
-use crate::core::{DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings};
+use crate::core::{DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings, VisionEmbedding};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::encoding::sparse::CandleSparseEncoder;
+use crate::encoding::vision::ColPaliEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::registry::{get_model, ModelType};
 use crate::quantization::{binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization};
 use crate::utils::similarity::max_sim;
+use std::path::Path;
 
 /// Binary quantized multi-vector embeddings.
 ///
@@ -852,6 +854,219 @@ impl TesseraSparse {
 }
 
 // ============================================================================
+// Vision-Language Encoder (ColPali)
+// ============================================================================
+
+/// Vision-language embedder for ColPali document retrieval.
+///
+/// Encodes document page images as multi-vector patch embeddings and enables
+/// text queries to search visually through documents without OCR.
+///
+/// Thread-safe and can be shared across threads (except for encoding operations
+/// which require exclusive access due to interior mutability).
+pub struct TesseraVision {
+    /// Backend encoder (ColPali encoder)
+    encoder: ColPaliEncoder,
+    /// Model identifier from registry
+    model_id: String,
+}
+
+impl TesseraVision {
+    /// Create a new vision-language embedder with default configuration.
+    ///
+    /// This is the simplest way to create a vision embedder - it automatically:
+    /// - Looks up the model in the registry
+    /// - Selects the best available device (Metal > CUDA > CPU)
+    /// - Downloads the model from HuggingFace if needed (3B params, ~5.88 GB)
+    /// - Initializes the PaliGemma vision-language model
+    ///
+    /// # Arguments
+    ///
+    /// * `model_id` - Model identifier from the registry (e.g., "colpali-v1.3-hf", "colpali-v1.2")
+    ///
+    /// # Returns
+    ///
+    /// Initialized embedder ready for document and query encoding.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Model is not found in the registry
+    /// - Model is not a vision-language model type
+    /// - Model cannot be downloaded or loaded
+    /// - Device initialization fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use tessera::TesseraVision;
+    ///
+    /// let embedder = TesseraVision::new("colpali-v1.3-hf")?;
+    /// let doc_emb = embedder.encode_document("invoice.jpg")?;
+    /// let query_emb = embedder.encode_query("What is the total amount?")?;
+    /// let score = embedder.search(&query_emb, &doc_emb)?;
+    /// ```
+    pub fn new(model_id: &str) -> Result<Self> {
+        TesseraVisionBuilder::new().model(model_id).build()
+    }
+
+    /// Create a builder for advanced configuration.
+    pub fn builder() -> TesseraVisionBuilder {
+        TesseraVisionBuilder::new()
+    }
+
+    /// Internal constructor used by builder.
+    pub(crate) fn from_encoder(encoder: ColPaliEncoder, model_id: String) -> Self {
+        Self { encoder, model_id }
+    }
+
+    /// Encode a document image into patch embeddings.
+    ///
+    /// Returns multi-vector representation where each vector corresponds to
+    /// an image patch (14×14 pixels). Typically produces 1024 patch embeddings
+    /// for 448×448 images.
+    ///
+    /// # Arguments
+    ///
+    /// * `image_path` - Path to document image (PNG, JPEG, etc.)
+    ///
+    /// # Returns
+    ///
+    /// VisionEmbedding containing patch embeddings (shape: [1024, 128]).
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Image cannot be loaded
+    /// - Image preprocessing fails
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let doc_emb = embedder.encode_document("invoice.jpg")?;
+    /// println!("Patches: {}, Dim: {}", doc_emb.num_patches(), doc_emb.embedding_dim());
+    /// ```
+    pub fn encode_document(&self, image_path: &str) -> Result<VisionEmbedding> {
+        let path = Path::new(image_path);
+        self.encoder.encode_image(path)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode document image: '{}'", image_path),
+                source: e.into(),
+            })
+    }
+
+    /// Encode a text query into token embeddings.
+    ///
+    /// Returns multi-vector representation where each vector corresponds to
+    /// a query token. Compatible with late interaction (MaxSim) scoring
+    /// against document patch embeddings.
+    ///
+    /// # Arguments
+    ///
+    /// * `text` - Query text
+    ///
+    /// # Returns
+    ///
+    /// TokenEmbeddings containing query token embeddings.
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Tokenization fails
+    /// - Model inference fails
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let query_emb = embedder.encode_query("What is the total amount?")?;
+    /// println!("Query tokens: {}", query_emb.num_tokens);
+    /// ```
+    pub fn encode_query(&self, text: &str) -> Result<TokenEmbeddings> {
+        self.encoder.encode_text(text)
+            .map_err(|e| TesseraError::EncodingError {
+                context: format!("Failed to encode query text: '{}'", text),
+                source: e.into(),
+            })
+    }
+
+    /// Compute late interaction score between query and document.
+    ///
+    /// Uses MaxSim scoring: for each query token, find maximum similarity
+    /// across all document patches, then sum across query tokens.
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - Query token embeddings
+    /// * `document` - Document patch embeddings
+    ///
+    /// # Returns
+    ///
+    /// Similarity score (higher = more similar).
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let query_emb = embedder.encode_query("total amount")?;
+    /// let doc_emb = embedder.encode_document("invoice.jpg")?;
+    /// let score = embedder.search(&query_emb, &doc_emb)?;
+    /// ```
+    pub fn search(&self, query: &TokenEmbeddings, document: &VisionEmbedding) -> Result<f32> {
+        // Convert VisionEmbedding to format compatible with max_sim
+        // max_sim expects (&TokenEmbeddings, &TokenEmbeddings) but we can adapt it
+
+        // Create a TokenEmbeddings-like structure from VisionEmbedding
+        // We need to convert Vec<Vec<f32>> to Array2<f32>
+        let doc_array = ndarray::Array2::from_shape_vec(
+            (document.num_patches, document.embedding_dim),
+            document.embeddings.iter().flatten().copied().collect(),
+        ).map_err(|e| TesseraError::EncodingError {
+            context: "Failed to convert document embeddings to array".to_string(),
+            source: e.into(),
+        })?;
+
+        let doc_embeddings = TokenEmbeddings {
+            embeddings: doc_array,
+            num_tokens: document.num_patches,
+            embedding_dim: document.embedding_dim,
+            text: document.source.clone().unwrap_or_default(),
+        };
+
+        max_sim(query, &doc_embeddings)
+            .map_err(|e| TesseraError::EncodingError {
+                context: "Failed to compute MaxSim score".to_string(),
+                source: e.into(),
+            })
+    }
+
+    /// Convenience method: search with text query and image path.
+    ///
+    /// Encodes both query and document, then computes similarity.
+    pub fn search_document(&self, query_text: &str, image_path: &str) -> Result<f32> {
+        let query_emb = self.encode_query(query_text)?;
+        let doc_emb = self.encode_document(image_path)?;
+        self.search(&query_emb, &doc_emb)
+    }
+
+    /// Get the embedding dimension.
+    pub fn embedding_dim(&self) -> usize {
+        use crate::core::VisionEncoder;
+        self.encoder.embedding_dim()
+    }
+
+    /// Get the number of patches per image.
+    pub fn num_patches(&self) -> usize {
+        use crate::core::VisionEncoder;
+        self.encoder.num_patches()
+    }
+
+    /// Get the model identifier.
+    pub fn model(&self) -> &str {
+        &self.model_id
+    }
+}
+
+// ============================================================================
 // Unified Factory Enum
 // ============================================================================
 
@@ -875,6 +1090,9 @@ impl TesseraSparse {
 /// // Auto-detects sparse model -> creates Sparse variant
 /// let splade = Tessera::new("splade-cocondenser")?;
 ///
+/// // Auto-detects vision-language model -> creates Vision variant
+/// let colpali = Tessera::new("colpali-v1.3-hf")?;
+///
 /// // Pattern match to use specific API
 /// match colbert {
 ///     Tessera::MultiVector(mv) => {
@@ -889,6 +1107,10 @@ impl TesseraSparse {
 ///         let embedding = s.encode("query")?;
 ///         println!("Got {} non-zero dimensions", embedding.nnz());
 ///     }
+///     Tessera::Vision(v) => {
+///         let doc_emb = v.encode_document("invoice.jpg")?;
+///         println!("Got {} patches", doc_emb.num_patches);
+///     }
 /// }
 /// ```
 pub enum Tessera {
@@ -898,6 +1120,8 @@ pub enum Tessera {
     MultiVector(TesseraMultiVector),
     /// Sparse SPLADE-style embedder
     Sparse(TesseraSparse),
+    /// Vision-language ColPali-style embedder
+    Vision(TesseraVision),
 }
 
 impl Tessera {
@@ -908,6 +1132,7 @@ impl Tessera {
     /// - Dense models -> `Tessera::Dense(TesseraDense)`
     /// - MultiVector/Colbert models -> `Tessera::MultiVector(TesseraMultiVector)`
     /// - Sparse models -> `Tessera::Sparse(TesseraSparse)`
+    /// - VisionLanguage models -> `Tessera::Vision(TesseraVision)`
     ///
     /// # Arguments
     ///
@@ -921,7 +1146,7 @@ impl Tessera {
     ///
     /// Returns error if:
     /// - Model is not found in the registry
-    /// - Model type is not supported (e.g., Timeseries, Unified, VisionLanguage)
+    /// - Model type is not supported (e.g., Timeseries, Unified)
     /// - Model cannot be loaded
     ///
     /// # Example
@@ -932,6 +1157,7 @@ impl Tessera {
     /// let embedder = Tessera::new("colbert-v2")?;
     /// let embedder = Tessera::new("bge-base-en-v1.5")?;
     /// let embedder = Tessera::new("splade-cocondenser")?;
+    /// let embedder = Tessera::new("colpali-v1.3-hf")?;
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
         let model_info = get_model(model_id)
@@ -952,8 +1178,12 @@ impl Tessera {
                 let sparse = TesseraSparse::new(model_id)?;
                 Ok(Tessera::Sparse(sparse))
             }
+            ModelType::VisionLanguage => {
+                let vision = TesseraVision::new(model_id)?;
+                Ok(Tessera::Vision(vision))
+            }
             _ => Err(TesseraError::ConfigError(format!(
-                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse",
+                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage",
                 model_info.model_type
             ))),
         }

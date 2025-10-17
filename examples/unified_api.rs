@@ -27,6 +27,9 @@ fn main() -> Result<()> {
         Tessera::Sparse(_) => {
             println!("   ✗ Unexpected: Detected as Sparse\n");
         }
+        Tessera::Vision(_) => {
+            println!("   ✗ Unexpected: Detected as Vision\n");
+        }
     }
 
     // Example 2: Show error for unsupported model types
@@ -61,6 +64,12 @@ fn main() -> Result<()> {
                 println!("     - Supports quantization: No");
                 println!("     - Output: Sparse vocabulary vector");
                 println!("     - Similarity: Dot product");
+            }
+            Tessera::Vision(v) => {
+                println!("   Vision model: {}", v.model());
+                println!("     - Supports quantization: No");
+                println!("     - Output: Multi-vector patch embeddings");
+                println!("     - Similarity: MaxSim");
             }
         }
     }
