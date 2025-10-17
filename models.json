@@ -225,8 +225,8 @@
         {
           "id": "colpali-v1.2",
           "type": "vision-language",
-          "name": "ColPali v1.2 HF",
-          "huggingface_id": "vidore/colpali-v1.2-hf",
+          "name": "ColPali v1.2 Merged",
+          "huggingface_id": "vidore/colpali-v1.2-merged",
           "organization": "vidore",
           "release_date": "2024",
           "architecture": {
@@ -785,50 +785,8 @@
       ]
     },
     "timeseries": {
-      "description": "Time series foundation models (TimesFM, TTM, Chronos)",
+      "description": "Time series foundation models (TimesFM, Chronos)",
       "models": [
-        {
-          "id": "tinytimemixer",
-          "type": "timeseries",
-          "name": "TinyTimeMixer",
-          "huggingface_id": "ibm-granite/granite-timeseries-ttm-r2",
-          "organization": "IBM",
-          "release_date": "2024",
-          "architecture": {
-            "type": "mlp-mixer",
-            "variant": "tsm-mixer",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "specs": {
-            "parameters": "1M",
-            "embedding_dim": 64,
-            "hidden_dim": 64,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 0
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": [],
-            "modalities": ["timeseries"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16"]
-          },
-          "performance": {
-            "beir_avg": 0.0,
-            "ms_marco_mrr10": 0.0
-          },
-          "license": "Apache-2.0",
-          "description": "Lightweight time series foundation model using MLP-based mixing. Less than 1M parameters, no transformers, fast inference for forecasting tasks."
-        },
         {
           "id": "timesfm-1.0-200m",
           "type": "timeseries",
@@ -880,17 +838,24 @@
           "release_date": "2024",
           "architecture": {
             "type": "t5",
-            "variant": "t5-efficient",
-            "has_projection": false,
-            "projection_dims": null
+            "variant": "t5-encoder-decoder",
+            "has_projection": true,
+            "projection_dims": 512
           },
           "specs": {
             "parameters": "48M",
             "embedding_dim": 512,
-            "hidden_dim": 512,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 4096
+            "hidden_dim": 2048,
+            "context_length": 2048,
+            "prediction_length": 64,
+            "max_position_embeddings": 2048,
+            "vocab_size": 2,
+            "num_encoder_layers": 6,
+            "num_decoder_layers": 6,
+            "num_heads": 8,
+            "d_kv": 64,
+            "patch_size": 32,
+            "num_quantiles": 9
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -904,6 +869,7 @@
             "languages": [],
             "modalities": ["timeseries"],
             "multi_vector": false,
+            "probabilistic": true,
             "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
@@ -911,7 +877,7 @@
             "ms_marco_mrr10": 0.0
           },
           "license": "Apache-2.0",
-          "description": "Efficient T5-based time series model with fast inference. Treats time series as discrete tokens for probabilistic forecasting."
+          "description": "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting."
         }
       ]
     },

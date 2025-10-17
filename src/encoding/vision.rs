@@ -46,8 +46,8 @@ use crate::core::{Encoder, TokenEmbeddings, Tokenizer, VisionEmbedding, VisionEn
 use crate::models::ModelConfig;
 use crate::vision::ImageProcessor;
 use anyhow::{Context, Result};
-use candle_core::{DType, Device, IndexOp, Tensor};
-use candle_nn::VarBuilder;
+use candle_core::{DType, Device, IndexOp, Module, Tensor};
+use candle_nn::{Linear, VarBuilder};
 use candle_transformers::models::paligemma::{Config as PaliGemmaConfig, Model as PaliGemmaModel};
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
@@ -77,6 +77,10 @@ pub struct ColPaliEncoder {
 
     /// Image resolution (width, height)
     image_resolution: (u32, u32),
+
+    /// Custom text projection layer (2048 -> 128)
+    /// Projects text embeddings from PaliGemma's hidden size to ColPali's embedding dimension
+    custom_text_projection: Linear,
 }
 
 impl ColPaliEncoder {
@@ -115,16 +119,11 @@ impl ColPaliEncoder {
             .context("Failed to initialize HuggingFace API")?;
         let repo = api.model(config.model_name.clone());
 
-        // 2. Download required files
-        let config_path = repo
-            .get("config.json")
-            .context("Failed to download config.json")?;
-
-        // 3. Load tokenizer
+        // 2. Load tokenizer
         let tokenizer = Tokenizer::from_pretrained(&config.model_name)
             .context("Failed to load tokenizer")?;
 
-        // 4. Download model weights (handle both single file and sharded models)
+        // 3. Download model weights (handle both single file and sharded models)
         let weights_paths: Vec<PathBuf> = if let Ok(index_path) = repo.get("model.safetensors.index.json") {
             // Sharded model - load all shards
             let index: serde_json::Value = serde_json::from_reader(
@@ -156,21 +155,30 @@ impl ColPaliEncoder {
                 .context("Failed to download model.safetensors")?]
         };
 
-        // 5. Load VarBuilder from safetensors
+        // 4. Load VarBuilder from safetensors
         let vb = unsafe {
             VarBuilder::from_mmaped_safetensors(&weights_paths, DType::F32, &device)
                 .context("Failed to load model weights from safetensors")?
         };
 
-        // 6. Load PaliGemma configuration
-        let paligemma_config: PaliGemmaConfig = serde_json::from_reader(
-            std::fs::File::open(&config_path)
-                .context("Failed to open config.json")?
-        ).context("Failed to parse PaliGemma config")?;
+        // 5. Use hardcoded PaliGemma config to avoid deserialization errors
+        // ColPali models (both v1.2 and v1.3) use PaliGemma-3B-448 architecture.
+        // Using the factory method instead of parsing config.json avoids missing
+        // fields like attention_bias that cause deserialization failures.
+        let paligemma_config = PaliGemmaConfig::paligemma_3b_448();
 
-        // 7. Initialize PaliGemma model from candle-transformers
-        let model = PaliGemmaModel::new(&paligemma_config, vb)
+        // 6. Initialize PaliGemma model from candle-transformers
+        // Note: ColPali models have all weights under "vlm." prefix
+        let model = PaliGemmaModel::new(&paligemma_config, vb.pp("vlm"))
             .context("Failed to initialize PaliGemma model")?;
+
+        // 7. Load custom text projection layer (2048 -> 128)
+        // This projects text embeddings from PaliGemma's hidden size to ColPali's embedding dimension
+        let custom_text_projection = candle_nn::linear(
+            2048,  // PaliGemma text hidden size
+            128,   // ColPali embedding dimension
+            vb.pp("vlm").pp("custom_text_proj"),
+        ).context("Failed to load custom_text_proj layer")?;
 
         // 8. Determine image resolution and patches from config
         let image_size = paligemma_config.vision_config.image_size;
@@ -195,6 +203,7 @@ impl ColPaliEncoder {
             embedding_dim: config.embedding_dim,
             num_patches,
             image_resolution: (image_size as u32, image_size as u32),
+            custom_text_projection,
         })
     }
 
@@ -315,11 +324,23 @@ impl ColPaliEncoder {
             .squeeze(0)
             .context("Failed to squeeze batch dimension")?;
 
-        // 6. Convert to ndarray::Array2<f32>
-        let embeddings = self.tensor_to_array2(&token_embeddings)
+        // 6. Apply custom text projection (2048 -> 128)
+        let projected = self.custom_text_projection.forward(&token_embeddings)
+            .context("Failed to apply custom text projection")?;
+
+        // 7. Apply L2 normalization
+        // Sum over last dimension (embedding dim), keep dimension for broadcasting
+        let norms = projected.sqr()?
+            .sum_keepdim(1)?  // Sum over embedding dimension
+            .sqrt()?;
+        let normalized = projected.broadcast_div(&norms)
+            .context("Failed to normalize embeddings")?;
+
+        // 8. Convert to ndarray::Array2<f32>
+        let embeddings = self.tensor_to_array2(&normalized)
             .context("Failed to convert token embeddings to Array2")?;
 
-        // 7. Create TokenEmbeddings
+        // 9. Create TokenEmbeddings
         TokenEmbeddings::new(embeddings, text.to_string())
             .context("Failed to create TokenEmbeddings")
     }
@@ -386,6 +407,74 @@ impl ColPaliEncoder {
         // Convert to ndarray
         ndarray::Array2::from_shape_vec((num_rows, num_cols), flat_data)
             .context("Failed to create Array2 from flattened data")
+    }
+
+    /// Encode a specific page from a PDF file.
+    ///
+    /// # Arguments
+    /// * `pdf_path` - Path to PDF file
+    /// * `page_index` - Zero-based page index
+    ///
+    /// # Returns
+    /// VisionEmbedding for the specified PDF page
+    ///
+    /// # Errors
+    /// Returns error if:
+    /// - PDF rendering fails
+    /// - Image encoding fails
+    #[cfg(feature = "pdf")]
+    pub fn encode_pdf_page(&self, pdf_path: &Path, page_index: usize) -> Result<VisionEmbedding> {
+        use crate::utils::PdfRenderer;
+
+        // Render PDF page to image
+        let renderer = PdfRenderer::new()
+            .context("Failed to create PDF renderer")?;
+        let image = renderer.render_page(pdf_path, page_index, 200)
+            .with_context(|| format!("Failed to render page {} from PDF", page_index))?;
+
+        // Save to temp file and encode
+        let temp_path = std::env::temp_dir().join(format!("colpali_page_{}.png", page_index));
+        image.save(&temp_path)
+            .context("Failed to save rendered page")?;
+
+        let result = self.encode_image(&temp_path);
+
+        // Clean up temp file
+        let _ = std::fs::remove_file(&temp_path);
+
+        result
+    }
+
+    /// Encode all pages from a PDF document.
+    ///
+    /// Processes each page sequentially for memory efficiency.
+    ///
+    /// # Arguments
+    /// * `pdf_path` - Path to PDF file
+    ///
+    /// # Returns
+    /// Vector of VisionEmbeddings, one per page
+    ///
+    /// # Errors
+    /// Returns error if:
+    /// - PDF cannot be opened
+    /// - Any page rendering fails
+    #[cfg(feature = "pdf")]
+    pub fn encode_pdf_document(&self, pdf_path: &Path) -> Result<Vec<VisionEmbedding>> {
+        use crate::utils::PdfRenderer;
+
+        let renderer = PdfRenderer::new()
+            .context("Failed to create PDF renderer")?;
+        let page_count = renderer.page_count(pdf_path)?;
+
+        println!("Encoding {} pages from PDF...", page_count);
+
+        (0..page_count)
+            .map(|i| {
+                println!("  Processing page {}/{}...", i + 1, page_count);
+                self.encode_pdf_page(pdf_path, i)
+            })
+            .collect()
     }
 
     /// Create a ColPali encoder from a specific PaliGemma variant.

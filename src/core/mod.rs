@@ -40,5 +40,5 @@ pub use tokenizer::Tokenizer;
 // Export new unified trait hierarchy
 pub use embeddings::{
     DenseEmbedding, DenseEncoder, Encoder, MultiVectorEncoder, PoolingStrategy, SparseEmbedding,
-    SparseEncoder, VisionEmbedding, VisionEncoder,
+    SparseEncoder, TimeSeriesEmbedding, TimeSeriesEncoder, VisionEmbedding, VisionEncoder,
 };

@@ -57,6 +57,7 @@ pub mod encoding;
 pub mod error;
 pub mod models;
 pub mod quantization;
+pub mod timeseries;
 pub mod utils;
 pub mod vision;
 

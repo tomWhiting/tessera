@@ -11,7 +11,7 @@ path = "src/main.rs"
 default = []
 metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
-pdf = ["pdfium-render"]  # PDF rendering support for ColPali document processing
+pdf = ["pdf2image"]  # PDF rendering support for ColPali document processing
 python = []  # PyO3 bindings (TODO: add pyo3 dependency when implementing)
 wasm = []    # WebAssembly bindings (TODO: add wasm-bindgen when implementing)
 
@@ -35,7 +35,7 @@ tokenizers = "0.22.1"
 # Vision/Image Processing (Phase 3.1 - ColPali)
 image = "0.25"              # Image loading, format conversion, and resizing for vision models
 imageproc = "0.25"          # Advanced image processing operations (filtering, transformations)
-pdfium-render = { version = "0.8.35", optional = true }  # PDF to image rendering (enabled via 'pdf' feature)
+pdf2image = { version = "0.1.2", optional = true }  # PDF to image rendering (uses Poppler)
 
 [build-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
@@ -51,3 +51,9 @@ missing_docs = "warn"   # Warn on missing documentation
 all = "warn"
 pedantic = "warn"
 nursery = "warn"
+
+# Patch candle to use local fork with T5 hidden states support
+[patch.crates-io]
+candle-core = { path = "../candle-investigation/candle-core" }
+candle-nn = { path = "../candle-investigation/candle-nn" }
+candle-transformers = { path = "../candle-investigation/candle-transformers" }
