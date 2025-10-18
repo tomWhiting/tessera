@@ -12,6 +12,9 @@ use pdf2image::{RenderOptionsBuilder, PDF};
 use std::path::Path;
 
 #[cfg(feature = "pdf")]
+/// PDF rendering utility for ColPali document processing.
+///
+/// Uses Poppler via pdf2image to render PDF pages as images.
 pub struct PdfRenderer;
 
 #[cfg(feature = "pdf")]
@@ -80,6 +83,10 @@ impl PdfRenderer {
 }
 
 #[cfg(not(feature = "pdf"))]
+/// PDF rendering utility for ColPali document processing.
+///
+/// Uses Poppler via pdf2image to render PDF pages as images.
+/// This is a stub implementation when PDF feature is not enabled.
 pub struct PdfRenderer;
 
 #[cfg(not(feature = "pdf"))]
