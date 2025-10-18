@@ -17,18 +17,16 @@ fn main() -> tessera::Result<()> {
     // Test documents for semantic evaluation
     let text_pair_similar = (
         "Machine learning is a subset of artificial intelligence",
-        "Artificial intelligence includes machine learning"
+        "Artificial intelligence includes machine learning",
     );
 
     let text_pair_different = (
         "Machine learning is a subset of artificial intelligence",
-        "The weather forecast predicts rain tomorrow"
+        "The weather forecast predicts rain tomorrow",
     );
 
     // Test different dimension configurations
-    let dimension_tests = vec![
-        ("bge-base-en-v1.5", 768, "Full dimension (baseline)"),
-    ];
+    let dimension_tests = vec![("bge-base-en-v1.5", 768, "Full dimension (baseline)")];
 
     println!("Testing semantic similarity preservation across dimensions\n");
 
@@ -68,12 +66,16 @@ fn main() -> tessera::Result<()> {
             }
 
             // Normalize by dimension (approximately)
-            let full_sim_similar: f32 = emb1_full.embedding.iter()
+            let full_sim_similar: f32 = emb1_full
+                .embedding
+                .iter()
                 .zip(emb2_similar.embedding.iter())
                 .map(|(a, b)| a * b)
                 .sum();
 
-            let full_sim_different: f32 = emb1_full.embedding.iter()
+            let full_sim_different: f32 = emb1_full
+                .embedding
+                .iter()
                 .zip(emb3_different.embedding.iter())
                 .map(|(a, b)| a * b)
                 .sum();
@@ -117,7 +119,11 @@ fn main() -> tessera::Result<()> {
 
     let query = "How does machine learning work?";
 
-    println!("Searching {} documents with query: \"{}\"\n", documents.len(), query);
+    println!(
+        "Searching {} documents with query: \"{}\"\n",
+        documents.len(),
+        query
+    );
 
     let embedder = TesseraDense::new("bge-base-en-v1.5")?;
     let query_embedding = embedder.encode(query)?;
@@ -152,9 +158,11 @@ fn main() -> tessera::Result<()> {
 
     // Memory savings analysis
     println!("\n--- Memory Savings Analysis ---");
-    println!("For a collection of {} documents with {}MB base embeddings:\n", 
-        100_000, 
-        (100_000 * 768 * 4) / (1024 * 1024));
+    println!(
+        "For a collection of {} documents with {}MB base embeddings:\n",
+        100_000,
+        (100_000 * 768 * 4) / (1024 * 1024)
+    );
 
     let scenarios = vec![
         (768, "Full dimension (baseline)"),
@@ -166,7 +174,10 @@ fn main() -> tessera::Result<()> {
     for (dim, description) in scenarios {
         let memory_mb = (100_000 * dim * 4) as f64 / (1024.0 * 1024.0);
         let saved_percent = ((768 - dim) as f64 / 768.0) * 100.0;
-        println!("  {:>3} dims: {:>6.1} MB - {} (saves {:.0}%)", dim, memory_mb, description, saved_percent);
+        println!(
+            "  {:>3} dims: {:>6.1} MB - {} (saves {:.0}%)",
+            dim, memory_mb, description, saved_percent
+        );
     }
 
     println!("\nNote: Matryoshka embeddings allow graceful degradation:");

@@ -7,11 +7,11 @@
 //! cargo run --release --example colpali_pdf_demo --features pdf,metal
 //! ```
 
-use tessera::encoding::vision::ColPaliEncoder;
-use tessera::backends::candle::get_device;
-use tessera::models::ModelConfig;
 use anyhow::Context;
 use std::path::Path;
+use tessera::backends::candle::get_device;
+use tessera::encoding::vision::ColPaliEncoder;
+use tessera::models::ModelConfig;
 
 fn main() -> anyhow::Result<()> {
     println!("=== ColPali PDF Document Processing ===\n");
@@ -50,28 +50,26 @@ fn main() -> anyhow::Result<()> {
 
     println!("\nEncoding query...");
     let query_embedding = encoder.encode_text(query)?;
-    println!("Query encoded: {} tokens", query_embedding.embeddings.nrows());
+    println!(
+        "Query encoded: {} tokens",
+        query_embedding.embeddings.nrows()
+    );
 
     // Compute similarity with each page
     println!("\nComputing similarity with each page...");
-    use tessera::utils::similarity::max_sim;
-    use tessera::core::TokenEmbeddings;
     use ndarray::Array2;
+    use tessera::core::TokenEmbeddings;
+    use tessera::utils::similarity::max_sim;
 
     let mut page_scores: Vec<(usize, f32)> = Vec::new();
     for (page_idx, page_emb) in page_embeddings.iter().enumerate() {
         // Convert VisionEmbedding (Vec<Vec<f32>>) to Array2 for max_sim
         let flat: Vec<f32> = page_emb.embeddings.iter().flatten().copied().collect();
-        let page_array = Array2::from_shape_vec(
-            (page_emb.num_patches, page_emb.embedding_dim),
-            flat,
-        )?;
+        let page_array =
+            Array2::from_shape_vec((page_emb.num_patches, page_emb.embedding_dim), flat)?;
 
         // Create TokenEmbeddings from the page array
-        let page_token_emb = TokenEmbeddings::new(
-            page_array,
-            format!("Page {}", page_idx + 1),
-        )?;
+        let page_token_emb = TokenEmbeddings::new(page_array, format!("Page {}", page_idx + 1))?;
 
         let score = max_sim(&query_embedding, &page_token_emb)?;
         page_scores.push((page_idx + 1, score));
@@ -86,7 +84,10 @@ fn main() -> anyhow::Result<()> {
     }
 
     println!("\nColPali successfully processed the PDF document!");
-    println!("Each page is encoded as {} patch embeddings.", page_embeddings[0].num_patches);
+    println!(
+        "Each page is encoded as {} patch embeddings.",
+        page_embeddings[0].num_patches
+    );
 
     Ok(())
 }

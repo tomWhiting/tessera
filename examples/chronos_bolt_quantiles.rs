@@ -1,3 +1,6 @@
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
+use tessera::backends::candle::get_device;
 /// Test Chronos Bolt quantile predictions with pre-trained weights
 ///
 /// This example demonstrates:
@@ -7,11 +10,7 @@
 /// 4. Visualizing uncertainty through quantile ranges
 ///
 /// Run with: cargo run --example chronos_bolt_quantiles
-
 use tessera::timeseries::models::ChronosBolt;
-use tessera::backends::candle::get_device;
-use candle_core::{Tensor, IndexOp};
-use anyhow::{Result, Context};
 
 fn main() -> Result<()> {
     println!("\n{}\n", "=".repeat(80));
@@ -39,11 +38,15 @@ fn main() -> Result<()> {
     println!("[OK] Input shape: {:?}", input.shape());
 
     // Show context statistics
-    let last_10: Vec<f32> = input.i((0, (context_len-10)..))?.to_vec1()?;
+    let last_10: Vec<f32> = input.i((0, (context_len - 10)..))?.to_vec1()?;
     println!("\n   Last 10 values of context:");
-    println!("   {:?}", last_10.iter()
-        .map(|v| format!("{:.2}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        last_10
+            .iter()
+            .map(|v| format!("{:.2}", v))
+            .collect::<Vec<_>>()
+    );
 
     // 2. Load pre-trained model
     println!("\n[Loading] Downloading Chronos Bolt from HuggingFace...");
@@ -67,26 +70,31 @@ fn main() -> Result<()> {
     println!("\n[Extract] Extracting specific quantiles:");
     println!("{}", "-".repeat(80));
 
-    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?;  // 0.1 quantile (10th percentile)
-    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?;  // 0.5 quantile (median)
-    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?;  // 0.9 quantile (90th percentile)
+    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?; // 0.1 quantile (10th percentile)
+    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?; // 0.5 quantile (median)
+    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?; // 0.9 quantile (90th percentile)
 
     println!("\n   Quantile predictions for first 8 steps:\n");
     println!("   Step | Q10 (10%) | Q50 (Median) | Q90 (90%) | Range");
     println!("   {}", "-".repeat(60));
     for i in 0..8 {
         let range = q90[i] - q10[i];
-        println!("   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>5.2}",
-            i, q10[i], q50[i], q90[i], range);
+        println!(
+            "   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>5.2}",
+            i, q10[i], q50[i], q90[i], range
+        );
     }
 
     // 5. Calculate uncertainty metrics
     println!("\n[Uncertainty] Forecast Uncertainty Metrics:");
     println!("{}", "-".repeat(80));
 
-    let mean_range: f32 = q90.iter().zip(&q10)
+    let mean_range: f32 = q90
+        .iter()
+        .zip(&q10)
         .map(|(high, low)| high - low)
-        .sum::<f32>() / q90.len() as f32;
+        .sum::<f32>()
+        / q90.len() as f32;
 
     let mean_q50: f32 = q50.iter().sum::<f32>() / q50.len() as f32;
     let mean_q10: f32 = q10.iter().sum::<f32>() / q10.len() as f32;
@@ -105,13 +113,20 @@ fn main() -> Result<()> {
     let point_vals: Vec<f32> = point_forecast.i(0)?.to_vec1()?;
 
     println!("\n   Point forecast (median) for first 8 steps:");
-    println!("   {:?}", point_vals.iter().take(8)
-        .map(|v| format!("{:.2}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        point_vals
+            .iter()
+            .take(8)
+            .map(|v| format!("{:.2}", v))
+            .collect::<Vec<_>>()
+    );
 
     // Verify point forecast matches median from quantiles
     println!("\n   Verifying point forecast matches median quantile:");
-    let max_diff = point_vals.iter().zip(&q50)
+    let max_diff = point_vals
+        .iter()
+        .zip(&q50)
         .map(|(p, q)| (p - q).abs())
         .fold(0.0f32, |a, b| a.max(b));
     println!("   Max difference: {:.6}", max_diff);

@@ -123,9 +123,7 @@ impl Tokenizer {
             .unwrap_or(0);
 
         // Get padding token ID (typically 0 for BERT)
-        let pad_token_id = self.inner
-            .token_to_id("[PAD]")
-            .unwrap_or(0);
+        let pad_token_id = self.inner.token_to_id("[PAD]").unwrap_or(0);
 
         // Pad all sequences to max length
         let mut padded_batch = Vec::with_capacity(texts.len());

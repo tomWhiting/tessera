@@ -139,14 +139,16 @@ Tessera provides 23 production-ready models across five paradigms:
 - ColPali v1.3-hf (3B parameters, 128 dimensions, 1024 patches)
 - ColPali v1.2 (3B parameters, 128 dimensions, 1024 patches)
 
-**Time Series (2 models)**
-- Chronos Bolt Small/Base/Large (70M/200M/500M parameters)
+**Time Series (1 model, more coming)**
+- Chronos Bolt Small (48M parameters)
+
+*Note: Additional models are being added regularly. Check models.json for the current list.*
 
 ## Performance
 
 Tessera achieves competitive performance with state-of-the-art embedding libraries while providing unique capabilities through its multi-paradigm approach.
 
-### Throughput (on Apple M3 Max)
+### Throughput (on Apple M1 Max)
 
 | Operation | Time | Throughput |
 |-----------|------|------------|

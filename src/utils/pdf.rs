@@ -5,11 +5,11 @@
 //!
 //! Uses pdf2image (Poppler-based) for reliable cross-platform PDF rendering.
 
+use anyhow::{Context, Result};
+use image::DynamicImage;
 #[cfg(feature = "pdf")]
 use pdf2image::{RenderOptionsBuilder, PDF};
-use anyhow::{Context, Result};
 use std::path::Path;
-use image::DynamicImage;
 
 #[cfg(feature = "pdf")]
 pub struct PdfRenderer;
@@ -34,9 +34,13 @@ impl PdfRenderer {
     ///
     /// # Returns
     /// DynamicImage containing the rendered page
-    pub fn render_page(&self, pdf_path: &Path, page_index: usize, dpi: u32) -> Result<DynamicImage> {
-        let pdf = PDF::from_file(pdf_path)
-            .context("Failed to load PDF document")?;
+    pub fn render_page(
+        &self,
+        pdf_path: &Path,
+        page_index: usize,
+        dpi: u32,
+    ) -> Result<DynamicImage> {
+        let pdf = PDF::from_file(pdf_path).context("Failed to load PDF document")?;
 
         let render_options = RenderOptionsBuilder::default()
             .resolution(pdf2image::DPI::Uniform(dpi))
@@ -45,10 +49,13 @@ impl PdfRenderer {
 
         // pdf2image uses 1-based indexing
         let page_num = (page_index + 1) as u32;
-        let pages = pdf.render(pdf2image::Pages::Range(page_num..=page_num), render_options)
+        let pages = pdf
+            .render(pdf2image::Pages::Range(page_num..=page_num), render_options)
             .context("Failed to render PDF page")?;
 
-        let img = pages.into_iter().next()
+        let img = pages
+            .into_iter()
+            .next()
             .with_context(|| format!("Page {} not found in PDF", page_index))?;
 
         Ok(img)
@@ -56,8 +63,7 @@ impl PdfRenderer {
 
     /// Get the number of pages in a PDF.
     pub fn page_count(&self, pdf_path: &Path) -> Result<usize> {
-        let pdf = PDF::from_file(pdf_path)
-            .context("Failed to load PDF document")?;
+        let pdf = PDF::from_file(pdf_path).context("Failed to load PDF document")?;
         Ok(pdf.page_count() as usize)
     }
 

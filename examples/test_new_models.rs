@@ -18,11 +18,14 @@ fn main() {
     println!("   Name: {}", JINA_COLBERT_V2.name);
     println!("   HuggingFace: {}", JINA_COLBERT_V2.huggingface_id);
     println!("   Dimensions: {}", JINA_COLBERT_V2.embedding_dim);
-    println!("   Context length: {}K", JINA_COLBERT_V2.context_length / 1000);
+    println!(
+        "   Context length: {}K",
+        JINA_COLBERT_V2.context_length / 1000
+    );
     println!("   Languages: {}", JINA_COLBERT_V2.languages.len());
     println!("   Organization: {}", JINA_COLBERT_V2.organization);
     println!("   License: {}", JINA_COLBERT_V2.license);
-    
+
     // Check if Matryoshka
     let is_matryoshka = matches!(
         JINA_COLBERT_V2.embedding_dim,
@@ -41,18 +44,24 @@ fn main() {
     println!("   Name: {}", GTE_MODERN_COLBERT.name);
     println!("   HuggingFace: {}", GTE_MODERN_COLBERT.huggingface_id);
     println!("   Dimensions: {}", GTE_MODERN_COLBERT.embedding_dim);
-    println!("   Context length: {}K", GTE_MODERN_COLBERT.context_length / 1000);
+    println!(
+        "   Context length: {}K",
+        GTE_MODERN_COLBERT.context_length / 1000
+    );
     println!("   Languages: {:?}", GTE_MODERN_COLBERT.languages);
     println!("   Organization: {}", GTE_MODERN_COLBERT.organization);
     println!("   License: {}", GTE_MODERN_COLBERT.license);
-    println!("   Architecture: {}-{}", 
-        GTE_MODERN_COLBERT.architecture_type,
-        GTE_MODERN_COLBERT.architecture_variant
+    println!(
+        "   Architecture: {}-{}",
+        GTE_MODERN_COLBERT.architecture_type, GTE_MODERN_COLBERT.architecture_variant
     );
     println!("   Has projection: {}", GTE_MODERN_COLBERT.has_projection);
     println!("   Parameters: {}", GTE_MODERN_COLBERT.parameters);
     println!("   BEIR avg: {:.2}", GTE_MODERN_COLBERT.beir_avg);
-    println!("   MS MARCO MRR@10: {:.2}", GTE_MODERN_COLBERT.ms_marco_mrr10);
+    println!(
+        "   MS MARCO MRR@10: {:.2}",
+        GTE_MODERN_COLBERT.ms_marco_mrr10
+    );
     println!("   ✓ GTE-ModernColBERT verified\n");
 
     // Test 3: Load by ID from registry
@@ -83,13 +92,12 @@ fn main() {
     println!("5. Verifying total model count:");
     let total_models = tessera::model_registry::MODEL_REGISTRY.len();
     println!("   Total models in registry: {}", total_models);
-    
+
     // Count ColBERT models
-    let colbert_count = tessera::model_registry::models_by_type(
-        tessera::model_registry::ModelType::Colbert
-    ).len();
+    let colbert_count =
+        tessera::model_registry::models_by_type(tessera::model_registry::ModelType::Colbert).len();
     println!("   ColBERT models: {}", colbert_count);
-    
+
     if total_models >= 18 {
         println!("   ✓ Registry expanded successfully\n");
     } else {

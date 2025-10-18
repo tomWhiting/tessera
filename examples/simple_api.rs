@@ -18,9 +18,9 @@ fn main() -> Result<()> {
     let text = "What is machine learning?";
     let embeddings = embedder.encode(text)?;
     println!("   Text: '{}'", text);
-    println!("   Encoded to {} token vectors of {} dimensions\n", 
-        embeddings.num_tokens, 
-        embeddings.embedding_dim
+    println!(
+        "   Encoded to {} token vectors of {} dimensions\n",
+        embeddings.num_tokens, embeddings.embedding_dim
     );
 
     // Encode batch
@@ -42,25 +42,28 @@ fn main() -> Result<()> {
     let query = "What is machine learning?";
     let doc1 = "Machine learning is a subset of artificial intelligence";
     let doc2 = "Pizza is a type of Italian food";
-    
+
     let sim1 = embedder.similarity(query, doc1)?;
     let sim2 = embedder.similarity(query, doc2)?;
-    
+
     println!("   Query: '{}'", query);
     println!("   Doc 1: '{}' - Similarity: {:.4}", doc1, sim1);
     println!("   Doc 2: '{}' - Similarity: {:.4}", doc2, sim2);
-    println!("   Relevance ranking: {} > {}\n", 
+    println!(
+        "   Relevance ranking: {} > {}\n",
         if sim1 > sim2 { "Doc 1" } else { "Doc 2" },
         if sim1 > sim2 { "Doc 2" } else { "Doc 1" }
     );
 
     // Builder API
     println!("5. Builder API for advanced configuration");
-    let embedder2 = TesseraMultiVector::builder()
-        .model("colbert-v2")
-        .build()?;
+    let embedder2 = TesseraMultiVector::builder().model("colbert-v2").build()?;
     println!("   Created with builder pattern");
-    println!("   Model: {}, Dimension: {}\n", embedder2.model(), embedder2.dimension());
+    println!(
+        "   Model: {}, Dimension: {}\n",
+        embedder2.model(),
+        embedder2.dimension()
+    );
 
     println!("=== Demo Complete ===");
     Ok(())

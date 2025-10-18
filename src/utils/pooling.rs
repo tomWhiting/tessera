@@ -157,11 +157,7 @@ mod tests {
 
     #[test]
     fn test_cls_pooling() {
-        let embeddings = array![
-            [1.0, 2.0, 3.0],
-            [4.0, 5.0, 6.0],
-            [7.0, 8.0, 9.0],
-        ];
+        let embeddings = array![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0],];
         let mask = vec![1, 1, 1];
 
         let pooled = cls_pooling(&embeddings, &mask);
@@ -174,10 +170,7 @@ mod tests {
 
     #[test]
     fn test_mean_pooling_all_valid() {
-        let embeddings = array![
-            [1.0, 2.0],
-            [3.0, 4.0],
-        ];
+        let embeddings = array![[1.0, 2.0], [3.0, 4.0],];
         let mask = vec![1, 1];
 
         let pooled = mean_pooling(&embeddings, &mask);
@@ -192,7 +185,7 @@ mod tests {
         let embeddings = array![
             [1.0, 2.0],
             [3.0, 4.0],
-            [5.0, 6.0],  // This is padding
+            [5.0, 6.0], // This is padding
         ];
         let mask = vec![1, 1, 0];
 
@@ -205,10 +198,7 @@ mod tests {
 
     #[test]
     fn test_mean_pooling_all_padding() {
-        let embeddings = array![
-            [1.0, 2.0],
-            [3.0, 4.0],
-        ];
+        let embeddings = array![[1.0, 2.0], [3.0, 4.0],];
         let mask = vec![0, 0];
 
         let pooled = mean_pooling(&embeddings, &mask);
@@ -220,10 +210,7 @@ mod tests {
 
     #[test]
     fn test_max_pooling_all_valid() {
-        let embeddings = array![
-            [1.0, 5.0],
-            [3.0, 2.0],
-        ];
+        let embeddings = array![[1.0, 5.0], [3.0, 2.0],];
         let mask = vec![1, 1];
 
         let pooled = max_pooling(&embeddings, &mask);
@@ -238,7 +225,7 @@ mod tests {
         let embeddings = array![
             [1.0, 5.0],
             [3.0, 2.0],
-            [9.0, 9.0],  // This is padding
+            [9.0, 9.0], // This is padding
         ];
         let mask = vec![1, 1, 0];
 
@@ -251,10 +238,7 @@ mod tests {
 
     #[test]
     fn test_max_pooling_all_padding() {
-        let embeddings = array![
-            [1.0, 2.0],
-            [3.0, 4.0],
-        ];
+        let embeddings = array![[1.0, 2.0], [3.0, 4.0],];
         let mask = vec![0, 0];
 
         let pooled = max_pooling(&embeddings, &mask);

@@ -3,9 +3,9 @@
 //! This example verifies that the normalization matches the expected
 //! PaliGemma/SigLIP preprocessing by computing known values.
 
+use image::{ImageBuffer, Rgb};
 use tessera::backends::candle::get_device;
 use tessera::vision::ImageProcessor;
-use image::{ImageBuffer, Rgb};
 
 fn main() -> anyhow::Result<()> {
     println!("=== Image Normalization Verification ===\n");

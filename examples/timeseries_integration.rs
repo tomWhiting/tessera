@@ -9,11 +9,10 @@
 /// 5. Model introspection (context/prediction lengths, quantiles)
 ///
 /// Run with: cargo run --example timeseries_integration
-
-use anyhow::{Result, Context};
-use candle_core::{Tensor, IndexOp};
-use tessera::{Tessera, TesseraTimeSeries};
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
 use tessera::backends::candle::get_device;
+use tessera::{Tessera, TesseraTimeSeries};
 
 fn main() -> Result<()> {
     println!("\n{}\n", "=".repeat(80));
@@ -32,8 +31,8 @@ fn main() -> Result<()> {
     println!("{}", "-".repeat(80));
 
     println!("\n[Creating] Using factory pattern with auto-detection...");
-    let embedder = Tessera::new("chronos-bolt-small")
-        .context("Failed to create Tessera instance")?;
+    let embedder =
+        Tessera::new("chronos-bolt-small").context("Failed to create Tessera instance")?;
 
     // Pattern match to get the TimeSeries variant
     let mut forecaster = match embedder {
@@ -90,12 +89,15 @@ fn main() -> Result<()> {
     println!("[✓] Input shape: {:?}", input.shape());
 
     // Show last 5 values
-    let last_5: Vec<f32> = input.i((0, (context_len-5)..))?
-        .to_vec1()?;
+    let last_5: Vec<f32> = input.i((0, (context_len - 5)..))?.to_vec1()?;
     println!("\n   Last 5 context values:");
-    println!("   {:?}", last_5.iter()
-        .map(|v| format!("{:.2}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        last_5
+            .iter()
+            .map(|v| format!("{:.2}", v))
+            .collect::<Vec<_>>()
+    );
 
     // ========================================================================
     // Part 4: Point Forecasting (Median Prediction)
@@ -105,16 +107,22 @@ fn main() -> Result<()> {
     println!("{}", "-".repeat(80));
 
     println!("\n[Forecast] Generating point forecast (median)...");
-    let point_forecast = forecaster.forecast(&input)
+    let point_forecast = forecaster
+        .forecast(&input)
         .context("Failed to generate point forecast")?;
 
     println!("[✓] Forecast shape: {:?}", point_forecast.shape());
 
     let forecast_vals: Vec<f32> = point_forecast.i(0)?.to_vec1()?;
     println!("\n   First 10 forecasted values:");
-    println!("   {:?}", forecast_vals.iter().take(10)
-        .map(|v| format!("{:.2}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        forecast_vals
+            .iter()
+            .take(10)
+            .map(|v| format!("{:.2}", v))
+            .collect::<Vec<_>>()
+    );
 
     let mean_forecast: f32 = forecast_vals.iter().sum::<f32>() / forecast_vals.len() as f32;
     println!("\n   Average forecast value: {:.2}", mean_forecast);
@@ -127,30 +135,36 @@ fn main() -> Result<()> {
     println!("{}", "-".repeat(80));
 
     println!("\n[Forecast] Generating all quantile predictions...");
-    let quantiles = forecaster.forecast_quantiles(&input)
+    let quantiles = forecaster
+        .forecast_quantiles(&input)
         .context("Failed to generate quantile predictions")?;
 
     println!("[✓] Quantiles shape: {:?}", quantiles.shape());
     println!("    Expected: [batch=1, pred_len=64, quantiles=9]");
 
     // Extract specific quantiles
-    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?;  // 10th percentile
-    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?;  // Median
-    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?;  // 90th percentile
+    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?; // 10th percentile
+    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?; // Median
+    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?; // 90th percentile
 
     println!("\n   Prediction intervals for first 8 timesteps:\n");
     println!("   Step | Q10 (10%) | Q50 (Median) | Q90 (90%) | 80% Interval");
     println!("   {}", "-".repeat(65));
     for i in 0..8 {
         let interval = q90[i] - q10[i];
-        println!("   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>12.2}",
-            i, q10[i], q50[i], q90[i], interval);
+        println!(
+            "   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>12.2}",
+            i, q10[i], q50[i], q90[i], interval
+        );
     }
 
     // Calculate uncertainty metrics
-    let mean_interval: f32 = q90.iter().zip(&q10)
+    let mean_interval: f32 = q90
+        .iter()
+        .zip(&q10)
         .map(|(high, low)| high - low)
-        .sum::<f32>() / q90.len() as f32;
+        .sum::<f32>()
+        / q90.len() as f32;
 
     println!("\n   Average 80% prediction interval: {:.2}", mean_interval);
 
@@ -162,12 +176,24 @@ fn main() -> Result<()> {
     println!("{}", "-".repeat(80));
 
     println!("\n   Model ID: {}", forecaster.model());
-    println!("   Context Length: {} timesteps", forecaster.context_length());
-    println!("   Prediction Length: {} timesteps", forecaster.prediction_length());
+    println!(
+        "   Context Length: {} timesteps",
+        forecaster.context_length()
+    );
+    println!(
+        "   Prediction Length: {} timesteps",
+        forecaster.prediction_length()
+    );
     println!("   Quantile Levels: {:?}", forecaster.quantiles());
 
-    println!("\n   Forecast horizon: {} steps ahead", forecaster.prediction_length());
-    println!("   Required input: {} historical observations", forecaster.context_length());
+    println!(
+        "\n   Forecast horizon: {} steps ahead",
+        forecaster.prediction_length()
+    );
+    println!(
+        "   Required input: {} historical observations",
+        forecaster.context_length()
+    );
 
     // ========================================================================
     // Part 7: Verify Point Forecast Matches Median Quantile
@@ -176,7 +202,9 @@ fn main() -> Result<()> {
     println!("\n[Part 7] Verification - Point Forecast vs Median Quantile");
     println!("{}", "-".repeat(80));
 
-    let max_diff = forecast_vals.iter().zip(&q50)
+    let max_diff = forecast_vals
+        .iter()
+        .zip(&q50)
         .map(|(p, q)| (p - q).abs())
         .fold(0.0f32, |a, b| a.max(b));
 

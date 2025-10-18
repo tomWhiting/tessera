@@ -20,8 +20,8 @@
 //! - "Matryoshka Representation Learning" (Kusupati et al., 2022)
 //! - Jina AI ColBERT v2 documentation
 
-use candle_core::Tensor;
 use crate::error::{Result, TesseraError};
+use candle_core::Tensor;
 
 /// Matryoshka truncation strategy.
 ///
@@ -128,15 +128,13 @@ pub fn apply_matryoshka(
     // Truncate last dimension: narrow(dim, start, len)
     tensor
         .narrow(shape.len() - 1, 0, target_dim)
-        .map_err(|e| {
-            TesseraError::MatryoshkaError(format!("Failed to truncate tensor: {}", e))
-        })
+        .map_err(|e| TesseraError::MatryoshkaError(format!("Failed to truncate tensor: {}", e)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use candle_core::{Device, DType};
+    use candle_core::{DType, Device};
 
     #[test]
     fn test_strategy_from_str() {
@@ -213,13 +211,16 @@ mod tests {
         // Target dimension larger than current
         let result = apply_matryoshka(&tensor, 256, MatryoshkaStrategy::TruncateOutput);
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), TesseraError::MatryoshkaError(_)));
+        assert!(matches!(
+            result.unwrap_err(),
+            TesseraError::MatryoshkaError(_)
+        ));
     }
 
     #[test]
     fn test_matryoshka_preserves_values() -> Result<()> {
         let device = Device::Cpu;
-        
+
         // Create tensor with known values
         let data: Vec<f32> = (0..30).map(|i| i as f32).collect();
         let tensor = Tensor::from_vec(data, (3, 10), &device)?;

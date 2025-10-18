@@ -69,7 +69,13 @@ fn main() -> tessera::Result<()> {
 
         println!("Top 3 Results:");
         for (rank, (idx, title, score)) in results.iter().take(3).enumerate() {
-            println!("  {}. [Doc {}] Score: {:.4} - {}", rank + 1, idx + 1, score, title);
+            println!(
+                "  {}. [Doc {}] Score: {:.4} - {}",
+                rank + 1,
+                idx + 1,
+                score,
+                title
+            );
         }
         println!();
     }
@@ -84,7 +90,8 @@ fn main() -> tessera::Result<()> {
 
     let total_nnz: usize = doc_embeddings.iter().map(|e| e.nnz()).sum();
     let avg_nnz = total_nnz as f32 / doc_embeddings.len() as f32;
-    let avg_sparsity: f32 = doc_embeddings.iter().map(|e| e.sparsity()).sum::<f32>() / doc_embeddings.len() as f32;
+    let avg_sparsity: f32 =
+        doc_embeddings.iter().map(|e| e.sparsity()).sum::<f32>() / doc_embeddings.len() as f32;
 
     println!("Processed {} documents:", documents.len());
     println!("  Average non-zero dimensions: {:.1}", avg_nnz);
@@ -92,8 +99,10 @@ fn main() -> tessera::Result<()> {
     println!("  Vocabulary size: {}", embedder.vocab_size());
     println!();
 
-    println!("Sparse embeddings use ~{}x less storage than dense vectors!", 
-        (embedder.vocab_size() as f32 / avg_nnz).round() as usize);
+    println!(
+        "Sparse embeddings use ~{}x less storage than dense vectors!",
+        (embedder.vocab_size() as f32 / avg_nnz).round() as usize
+    );
 
     println!("\n=== Search Complete ===");
     Ok(())

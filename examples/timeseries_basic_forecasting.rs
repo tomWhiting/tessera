@@ -1,3 +1,6 @@
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
+use tessera::backends::candle::get_device;
 /// Basic time series forecasting with Chronos Bolt
 ///
 /// This example demonstrates:
@@ -7,11 +10,7 @@
 /// 4. Visualizing full output tensors
 ///
 /// Run with: cargo run --example timeseries_basic_forecasting
-
 use tessera::timeseries::models::ChronosBolt;
-use tessera::backends::candle::get_device;
-use candle_core::{Tensor, IndexOp};
-use anyhow::{Result, Context};
 
 fn main() -> Result<()> {
     println!("\n{}\n", "=".repeat(80));
@@ -24,7 +23,7 @@ fn main() -> Result<()> {
 
     // 1. Create synthetic time series data
     println!("[Data] Creating synthetic time series...");
-    let context_len = 2048;  // Chronos Bolt context length
+    let context_len = 2048; // Chronos Bolt context length
     let batch_size = 4;
 
     // Generate synthetic seasonal + trend data
@@ -41,24 +40,22 @@ fn main() -> Result<()> {
     }
 
     // Create tensor: [batch, timesteps]
-    let input_tensor = Tensor::from_vec(
-        data.clone(),
-        (batch_size, context_len),
-        &device,
-    )?;
+    let input_tensor = Tensor::from_vec(data.clone(), (batch_size, context_len), &device)?;
 
     println!("[OK] Input shape: {:?}", input_tensor.shape());
     println!("   Batch size: {}", batch_size);
     println!("   Context length: {}", context_len);
 
     // Show first few values of first series
-    let first_series: Vec<f32> = input_tensor
-        .i((0, ..10))?
-        .to_vec1()?;
+    let first_series: Vec<f32> = input_tensor.i((0, ..10))?.to_vec1()?;
     println!("\n   First 10 values of series #1:");
-    println!("   {:?}", first_series.iter()
-        .map(|v| format!("{:.3}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        first_series
+            .iter()
+            .map(|v| format!("{:.3}", v))
+            .collect::<Vec<_>>()
+    );
 
     // 2. Load pre-trained Chronos Bolt model
     println!("\n[Loading] Downloading Chronos Bolt from HuggingFace...");
@@ -82,24 +79,26 @@ fn main() -> Result<()> {
 
     println!("[OK] Forecast complete!");
     println!("   Output shape: {:?}", forecast.shape());
-    println!("   Expected: [batch={}, pred_len={}]",
-        batch_size, model.config.prediction_length);
+    println!(
+        "   Expected: [batch={}, pred_len={}]",
+        batch_size, model.config.prediction_length
+    );
 
     // 4. Display full forecast outputs
     println!("\n[Output] FULL FORECAST OUTPUTS (First series):");
     println!("{}", "-".repeat(80));
 
-    let forecast_series_1: Vec<f32> = forecast
-        .i((0, ..))?
-        .to_vec1()?;
+    let forecast_series_1: Vec<f32> = forecast.i((0, ..))?.to_vec1()?;
 
     println!("   Forecast for Series #1 (64 timesteps):");
     for (i, chunk) in forecast_series_1.chunks(8).enumerate() {
-        let values = chunk.iter()
+        let values = chunk
+            .iter()
             .map(|v| format!("{:>7.3}", v))
             .collect::<Vec<_>>()
             .join(", ");
-        println!("   [t={:>2}-{:>2}]: [{}]",
+        println!(
+            "   [t={:>2}-{:>2}]: [{}]",
             i * 8,
             i * 8 + chunk.len() - 1,
             values
@@ -108,8 +107,12 @@ fn main() -> Result<()> {
 
     // Show statistics
     let mean = forecast_series_1.iter().sum::<f32>() / forecast_series_1.len() as f32;
-    let min = forecast_series_1.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-    let max = forecast_series_1.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    let min = forecast_series_1
+        .iter()
+        .fold(f32::INFINITY, |a, &b| a.min(b));
+    let max = forecast_series_1
+        .iter()
+        .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
 
     println!("\n   Statistics:");
     println!("   • Mean:  {:.3}", mean);
@@ -122,19 +125,24 @@ fn main() -> Result<()> {
     println!("{}", "-".repeat(80));
 
     for batch_idx in 0..batch_size {
-        let series: Vec<f32> = forecast
-            .i((batch_idx, ..))?
-            .to_vec1()?;
+        let series: Vec<f32> = forecast.i((batch_idx, ..))?.to_vec1()?;
 
         let mean = series.iter().sum::<f32>() / series.len() as f32;
         let first_5 = &series[0..5];
         let last_5 = &series[59..64];
 
-        println!("   Series #{}: mean={:.3}, first_5={:?}, last_5={:?}",
+        println!(
+            "   Series #{}: mean={:.3}, first_5={:?}, last_5={:?}",
             batch_idx + 1,
             mean,
-            first_5.iter().map(|v| format!("{:.2}", v)).collect::<Vec<_>>(),
-            last_5.iter().map(|v| format!("{:.2}", v)).collect::<Vec<_>>(),
+            first_5
+                .iter()
+                .map(|v| format!("{:.2}", v))
+                .collect::<Vec<_>>(),
+            last_5
+                .iter()
+                .map(|v| format!("{:.2}", v))
+                .collect::<Vec<_>>(),
         );
     }
 
@@ -144,20 +152,25 @@ fn main() -> Result<()> {
 
     println!("[OK] Quantiles extracted!");
     println!("   Shape: {:?}", quantiles.shape());
-    println!("   Expected: [batch={}, pred_len=64, quantiles=9]", batch_size);
+    println!(
+        "   Expected: [batch={}, pred_len=64, quantiles=9]",
+        batch_size
+    );
 
     // Extract 10th, 50th, 90th percentiles for first series
-    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?;  // 0.1 quantile
-    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?;  // 0.5 quantile (median)
-    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?;  // 0.9 quantile
+    let q10 = quantiles.i((0, .., 0))?.to_vec1::<f32>()?; // 0.1 quantile
+    let q50 = quantiles.i((0, .., 4))?.to_vec1::<f32>()?; // 0.5 quantile (median)
+    let q90 = quantiles.i((0, .., 8))?.to_vec1::<f32>()?; // 0.9 quantile
 
     println!("\n   Uncertainty bands (first 8 steps):");
     println!("   Step | Q10 (10%) | Q50 (Median) | Q90 (90%) | Range");
     println!("   {}", "-".repeat(60));
     for i in 0..8 {
         let range = q90[i] - q10[i];
-        println!("   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>5.2}",
-            i, q10[i], q50[i], q90[i], range);
+        println!(
+            "   {:>4} | {:>9.2} | {:>12.2} | {:>9.2} | {:>5.2}",
+            i, q10[i], q50[i], q90[i], range
+        );
     }
 
     println!("\n{}", "=".repeat(80));

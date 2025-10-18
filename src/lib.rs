@@ -65,7 +65,7 @@ pub mod vision;
 pub use api::{
     QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
     TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
-    TesseraVision, TesseraVisionBuilder, TesseraTimeSeries, TesseraTimeSeriesBuilder,
+    TesseraTimeSeries, TesseraTimeSeriesBuilder, TesseraVision, TesseraVisionBuilder,
 };
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};

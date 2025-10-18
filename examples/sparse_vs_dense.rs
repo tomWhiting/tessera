@@ -8,7 +8,7 @@
 //! cargo run --release --example sparse_vs_dense
 //! ```
 
-use tessera::{TesseraSparse, TesseraDense};
+use tessera::{TesseraDense, TesseraSparse};
 
 fn main() -> tessera::Result<()> {
     println!("=== Sparse vs Dense Embeddings Comparison ===\n");
@@ -38,13 +38,22 @@ fn main() -> tessera::Result<()> {
 
     println!("Similarity Scores:");
     println!("  Similar texts (AI/ML):     {:.4}", sim_sparse_similar);
-    println!("  Different texts (AI/weather): {:.4}", sim_sparse_different);
-    println!("  Discrimination ratio:      {:.2}x\n", sim_sparse_similar / sim_sparse_different.max(0.001));
+    println!(
+        "  Different texts (AI/weather): {:.4}",
+        sim_sparse_different
+    );
+    println!(
+        "  Discrimination ratio:      {:.2}x\n",
+        sim_sparse_similar / sim_sparse_different.max(0.001)
+    );
 
     println!("Storage efficiency:");
     println!("  Full vector would use: {} floats", sparse_emb1.vocab_size);
     println!("  Sparse storage uses:   {} floats", sparse_emb1.nnz());
-    println!("  Compression ratio:     {:.1}x\n", sparse_emb1.vocab_size as f32 / sparse_emb1.nnz() as f32);
+    println!(
+        "  Compression ratio:     {:.1}x\n",
+        sparse_emb1.vocab_size as f32 / sparse_emb1.nnz() as f32
+    );
 
     println!("=== DENSE EMBEDDINGS (BERT) ===\n");
 
@@ -60,7 +69,10 @@ fn main() -> tessera::Result<()> {
     println!("Similarity Scores:");
     println!("  Similar texts (AI/ML):     {:.4}", sim_dense_similar);
     println!("  Different texts (AI/weather): {:.4}", sim_dense_different);
-    println!("  Discrimination ratio:      {:.2}x\n", sim_dense_similar / sim_dense_different.max(0.001));
+    println!(
+        "  Discrimination ratio:      {:.2}x\n",
+        sim_dense_similar / sim_dense_different.max(0.001)
+    );
 
     println!("Storage efficiency:");
     println!("  Fixed storage:         {} floats", dense_emb1.dim());
@@ -83,8 +95,10 @@ fn main() -> tessera::Result<()> {
 
     // Sparse batch processing
     let sparse_batch = sparse.encode_batch(&docs_ref)?;
-    let avg_sparse_nnz: f32 = sparse_batch.iter().map(|e| e.nnz() as f32).sum::<f32>() / sparse_batch.len() as f32;
-    let avg_sparse_sparsity: f32 = sparse_batch.iter().map(|e| e.sparsity()).sum::<f32>() / sparse_batch.len() as f32;
+    let avg_sparse_nnz: f32 =
+        sparse_batch.iter().map(|e| e.nnz() as f32).sum::<f32>() / sparse_batch.len() as f32;
+    let avg_sparse_sparsity: f32 =
+        sparse_batch.iter().map(|e| e.sparsity()).sum::<f32>() / sparse_batch.len() as f32;
 
     println!("Sparse Results:");
     println!("  Documents encoded: {}", sparse_batch.len());

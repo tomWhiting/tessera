@@ -187,10 +187,7 @@ pub trait Quantization {
 /// let quantized = quantize_multi(&quantizer, &vectors);
 /// assert_eq!(quantized.len(), 3);
 /// ```
-pub fn quantize_multi<Q: Quantization>(
-    quantizer: &Q,
-    vectors: &[Vec<f32>],
-) -> Vec<Q::Output> {
+pub fn quantize_multi<Q: Quantization>(quantizer: &Q, vectors: &[Vec<f32>]) -> Vec<Q::Output> {
     vectors
         .iter()
         .map(|v| quantizer.quantize_vector(v))

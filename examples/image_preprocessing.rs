@@ -12,7 +12,10 @@ fn main() -> anyhow::Result<()> {
     // 1. Create image processor with PaliGemma defaults
     let processor = ImageProcessor::new();
     println!("Created ImageProcessor:");
-    println!("  Target size: {}x{}", processor.target_size.0, processor.target_size.1);
+    println!(
+        "  Target size: {}x{}",
+        processor.target_size.0, processor.target_size.1
+    );
     println!("  Mean (RGB): {:?}", processor.mean);
     println!("  Std (RGB): {:?}", processor.std);
     println!();
@@ -26,7 +29,11 @@ fn main() -> anyhow::Result<()> {
         let b = ((x + y) % 256) as u8;
         Rgb([r, g, b])
     });
-    println!("Created test image: {}x{}", test_img.width(), test_img.height());
+    println!(
+        "Created test image: {}x{}",
+        test_img.width(),
+        test_img.height()
+    );
     println!();
 
     // 3. Preprocess the image
@@ -45,13 +52,13 @@ fn main() -> anyhow::Result<()> {
 
     // 4. Demonstrate custom configuration
     println!("\n--- Custom Configuration ---");
-    let custom_processor = ImageProcessor::with_config(
-        (224, 224),
-        [0.5, 0.5, 0.5],
-        [0.5, 0.5, 0.5],
-    );
+    let custom_processor =
+        ImageProcessor::with_config((224, 224), [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]);
     println!("Custom processor:");
-    println!("  Target size: {}x{}", custom_processor.target_size.0, custom_processor.target_size.1);
+    println!(
+        "  Target size: {}x{}",
+        custom_processor.target_size.0, custom_processor.target_size.1
+    );
     println!("  Mean (RGB): {:?}", custom_processor.mean);
     println!("  Std (RGB): {:?}", custom_processor.std);
 

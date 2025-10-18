@@ -31,7 +31,12 @@ fn main() -> tessera::Result<()> {
             let embedding = d.encode(text)?;
             println!("   Encoded text to {} dimensions", embedding.dim());
             let sample_len = 5.min(embedding.dim());
-            let sample: Vec<f32> = embedding.embedding.iter().take(sample_len).copied().collect();
+            let sample: Vec<f32> = embedding
+                .embedding
+                .iter()
+                .take(sample_len)
+                .copied()
+                .collect();
             println!("   Sample values (first 5): {:.4?}\n", sample);
         }
         Tessera::MultiVector(_) => {
@@ -62,7 +67,10 @@ fn main() -> tessera::Result<()> {
             let embeddings = m.encode(text)?;
             println!("   Encoded text to {} token vectors", embeddings.num_tokens);
             println!("   Each vector has {} dimensions", embeddings.embedding_dim);
-            println!("   Shape: ({} x {})\n", embeddings.num_tokens, embeddings.embedding_dim);
+            println!(
+                "   Shape: ({} x {})\n",
+                embeddings.num_tokens, embeddings.embedding_dim
+            );
         }
         Tessera::Dense(_) => {
             println!("   ✗ Error: Expected MultiVector but got Dense\n");
@@ -92,7 +100,10 @@ fn main() -> tessera::Result<()> {
             Tessera::Dense(d) => {
                 println!("     Type: Dense single-vector embedding");
                 println!("     - Suitable for: Semantic search, classification, clustering");
-                println!("     - Output: Single {} dimensional vector per text", d.dimension());
+                println!(
+                    "     - Output: Single {} dimensional vector per text",
+                    d.dimension()
+                );
                 println!("     - Similarity: Cosine distance");
                 println!("     - Use case: Fast, memory-efficient semantic search");
 
@@ -105,7 +116,10 @@ fn main() -> tessera::Result<()> {
             Tessera::MultiVector(m) => {
                 println!("     Type: MultiVector token-level embedding");
                 println!("     - Suitable for: Dense retrieval, ranking, fine-grained matching");
-                println!("     - Output: {} dimensional vector per token", m.dimension());
+                println!(
+                    "     - Output: {} dimensional vector per token",
+                    m.dimension()
+                );
                 println!("     - Similarity: MaxSim (late interaction)");
                 println!("     - Use case: Powerful retrieval with low latency");
 
@@ -118,7 +132,10 @@ fn main() -> tessera::Result<()> {
             Tessera::Sparse(s) => {
                 println!("     Type: Sparse vocabulary-level embedding");
                 println!("     - Suitable for: Interpretable search, inverted indexes");
-                println!("     - Output: Sparse {} dimensional vector", s.vocab_size());
+                println!(
+                    "     - Output: Sparse {} dimensional vector",
+                    s.vocab_size()
+                );
                 println!("     - Similarity: Dot product");
                 println!("     - Use case: Interpretable retrieval with term weighting");
 
@@ -131,7 +148,10 @@ fn main() -> tessera::Result<()> {
             Tessera::Vision(v) => {
                 println!("     Type: Vision-language multi-vector embedding");
                 println!("     - Suitable for: Document retrieval, image search");
-                println!("     - Output: {} dimensional vector per patch", v.embedding_dim());
+                println!(
+                    "     - Output: {} dimensional vector per patch",
+                    v.embedding_dim()
+                );
                 println!("     - Similarity: MaxSim (late interaction)");
                 println!("     - Use case: OCR-free document search");
                 println!("     - Note: Requires image files, not text\n");
@@ -157,7 +177,11 @@ fn main() -> tessera::Result<()> {
 
         // Batch encoding
         let batch = d.encode_batch(&texts)?;
-        println!("     Batch encode: {} texts -> {} embeddings", texts.len(), batch.len());
+        println!(
+            "     Batch encode: {} texts -> {} embeddings",
+            texts.len(),
+            batch.len()
+        );
         println!("     Each embedding: {} dims\n", batch[0].dim());
     }
 
@@ -172,20 +196,32 @@ fn main() -> tessera::Result<()> {
 
         // Single text encoding
         let single = m.encode(texts[0])?;
-        println!("     Single encode: {} -> {} tokens", texts[0], single.num_tokens);
+        println!(
+            "     Single encode: {} -> {} tokens",
+            texts[0], single.num_tokens
+        );
 
         // Batch encoding
         let batch = m.encode_batch(&texts)?;
-        println!("     Batch encode: {} texts -> {} embeddings", texts.len(), batch.len());
-        println!("     First embedding: {} tokens × {} dims\n", 
-            batch[0].num_tokens, batch[0].embedding_dim);
+        println!(
+            "     Batch encode: {} texts -> {} embeddings",
+            texts.len(),
+            batch.len()
+        );
+        println!(
+            "     First embedding: {} tokens × {} dims\n",
+            batch[0].num_tokens, batch[0].embedding_dim
+        );
     }
 
     // Example 5: Error handling for unsupported models
     println!("5. Error Handling for Unsupported Models\n");
 
     let invalid_model = "splade-v3";
-    println!("   Attempting to load '{}' (unsupported type)...", invalid_model);
+    println!(
+        "   Attempting to load '{}' (unsupported type)...",
+        invalid_model
+    );
 
     match Tessera::new(invalid_model) {
         Ok(_) => {
@@ -224,7 +260,9 @@ fn main() -> tessera::Result<()> {
 
             let mut results: Vec<(usize, f32)> = Vec::new();
             for (idx, doc_emb) in doc_embs.iter().enumerate() {
-                let sim: f32 = query_emb.embedding.iter()
+                let sim: f32 = query_emb
+                    .embedding
+                    .iter()
                     .zip(doc_emb.embedding.iter())
                     .map(|(a, b)| a * b)
                     .sum();
@@ -235,7 +273,12 @@ fn main() -> tessera::Result<()> {
 
             println!("   Results:");
             for (rank, (idx, score)) in results.iter().enumerate() {
-                println!("     {}. Score: {:.4} - {}", rank + 1, score, documents[*idx]);
+                println!(
+                    "     {}. Score: {:.4} - {}",
+                    rank + 1,
+                    score,
+                    documents[*idx]
+                );
             }
         }
         Tessera::MultiVector(_) => {

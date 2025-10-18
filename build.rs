@@ -149,7 +149,8 @@ fn main() {
 
     // ALSO write to src/models/generated.rs (visible in source tree)
     let visible_path = Path::new("src/models/generated.rs");
-    fs::write(visible_path, &generated_code).expect("Failed to write visible generated model registry code");
+    fs::write(visible_path, &generated_code)
+        .expect("Failed to write visible generated model registry code");
 
     println!(
         "cargo:warning=Generated model registry with {} models across {} categories",
@@ -164,57 +165,70 @@ fn validate_registry(registry: &ModelRegistry) {
     for cat_data in registry.model_categories.values() {
         for model in &cat_data.models {
             // Check for duplicate IDs
-            assert!(ids.insert(&model.id), "Duplicate model ID found: {}", model.id);
+            assert!(
+                ids.insert(&model.id),
+                "Duplicate model ID found: {}",
+                model.id
+            );
 
             // Validate embedding dimensions
-            let embedding_dim = match &model.specs.embedding_dim {
-                EmbeddingDimSpec::Fixed(dim) => {
-                    assert!(*dim != 0, "Model {} has invalid embedding_dim: 0", model.id);
-                    *dim
-                }
-                EmbeddingDimSpec::Matryoshka {
-                    default,
-                    matryoshka,
-                } => {
-                    // Validate Matryoshka configuration
-                    assert!(
-                        matryoshka.min < matryoshka.max,
-                        "Model {} has invalid Matryoshka range: min ({}) >= max ({})",
-                        model.id, matryoshka.min, matryoshka.max
-                    );
-                    assert!(
-                        *default >= matryoshka.min && *default <= matryoshka.max,
-                        "Model {} has default dimension ({}) outside Matryoshka range ({}-{})",
-                        model.id, default, matryoshka.min, matryoshka.max
-                    );
-                    // Validate all supported dimensions are within range
-                    for &dim in &matryoshka.supported {
+            let embedding_dim =
+                match &model.specs.embedding_dim {
+                    EmbeddingDimSpec::Fixed(dim) => {
+                        assert!(*dim != 0, "Model {} has invalid embedding_dim: 0", model.id);
+                        *dim
+                    }
+                    EmbeddingDimSpec::Matryoshka {
+                        default,
+                        matryoshka,
+                    } => {
+                        // Validate Matryoshka configuration
                         assert!(
+                            matryoshka.min < matryoshka.max,
+                            "Model {} has invalid Matryoshka range: min ({}) >= max ({})",
+                            model.id,
+                            matryoshka.min,
+                            matryoshka.max
+                        );
+                        assert!(
+                            *default >= matryoshka.min && *default <= matryoshka.max,
+                            "Model {} has default dimension ({}) outside Matryoshka range ({}-{})",
+                            model.id,
+                            default,
+                            matryoshka.min,
+                            matryoshka.max
+                        );
+                        // Validate all supported dimensions are within range
+                        for &dim in &matryoshka.supported {
+                            assert!(
                             dim >= matryoshka.min && dim <= matryoshka.max,
                             "Model {} has supported dimension {} outside Matryoshka range ({}-{})",
                             model.id, dim, matryoshka.min, matryoshka.max
                         );
-                    }
-                    // Validate supported dimensions are in ascending order
-                    let mut sorted = matryoshka.supported.clone();
-                    sorted.sort_unstable();
-                    assert!(
-                        sorted == matryoshka.supported,
-                        "Model {} Matryoshka supported dimensions must be in ascending order",
-                        model.id
-                    );
-                    // Validate strategy if present
-                    if let Some(ref strategy) = matryoshka.strategy {
-                        let valid_strategies = ["truncate_hidden", "truncate_output", "truncate_pooled"];
+                        }
+                        // Validate supported dimensions are in ascending order
+                        let mut sorted = matryoshka.supported.clone();
+                        sorted.sort_unstable();
                         assert!(
-                            valid_strategies.contains(&strategy.as_str()),
-                            "Model {} has invalid Matryoshka strategy '{}'. Valid: {:?}",
-                            model.id, strategy, valid_strategies
+                            sorted == matryoshka.supported,
+                            "Model {} Matryoshka supported dimensions must be in ascending order",
+                            model.id
                         );
+                        // Validate strategy if present
+                        if let Some(ref strategy) = matryoshka.strategy {
+                            let valid_strategies =
+                                ["truncate_hidden", "truncate_output", "truncate_pooled"];
+                            assert!(
+                                valid_strategies.contains(&strategy.as_str()),
+                                "Model {} has invalid Matryoshka strategy '{}'. Valid: {:?}",
+                                model.id,
+                                strategy,
+                                valid_strategies
+                            );
+                        }
+                        *default
                     }
-                    *default
-                }
-            };
+                };
 
             // Validate context length
             assert!(
@@ -227,7 +241,8 @@ fn validate_registry(registry: &ModelRegistry) {
             assert!(
                 model.huggingface_id.contains('/'),
                 "Model {} has invalid huggingface_id format: {}",
-                model.id, model.huggingface_id
+                model.id,
+                model.huggingface_id
             );
 
             // Validate projection consistency
@@ -242,7 +257,9 @@ fn validate_registry(registry: &ModelRegistry) {
                     assert!(
                         proj_dim == embedding_dim,
                         "Model {} projection_dims ({}) doesn't match embedding_dim ({})",
-                        model.id, proj_dim, embedding_dim
+                        model.id,
+                        proj_dim,
+                        embedding_dim
                     );
                 }
             }
@@ -254,7 +271,9 @@ fn validate_registry(registry: &ModelRegistry) {
                 assert!(
                     valid_strategies.contains(&strategy_lower.as_str()),
                     "Model {} has invalid pooling strategy '{}'. Valid: {:?}",
-                    model.id, pooling.strategy, valid_strategies
+                    model.id,
+                    pooling.strategy,
+                    valid_strategies
                 );
             }
         }
@@ -510,10 +529,10 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
     let const_name = to_screaming_snake_case(&model.id);
     let model_type = to_pascal_case(&model.model_type);
 
-    let projection_dims = model.architecture.projection_dims.map_or_else(
-        || "None".to_string(),
-        |dim| format!("Some({dim})"),
-    );
+    let projection_dims = model
+        .architecture
+        .projection_dims
+        .map_or_else(|| "None".to_string(), |dim| format!("Some({dim})"));
 
     // Generate pooling constant and reference
     let (pooling_const_def, pooling_ref) = if let Some(ref pooling_cfg) = model.pooling {
@@ -556,10 +575,9 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
         .join(", ");
 
     let (embedding_dim_code, embedding_dim_display) = match &model.specs.embedding_dim {
-        EmbeddingDimSpec::Fixed(dim) => (
-            format!("EmbeddingDimension::Fixed({dim})"),
-            dim.to_string(),
-        ),
+        EmbeddingDimSpec::Fixed(dim) => {
+            (format!("EmbeddingDimension::Fixed({dim})"), dim.to_string())
+        }
         EmbeddingDimSpec::Matryoshka {
             default,
             matryoshka,
@@ -570,14 +588,14 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
                 .map(std::string::ToString::to_string)
                 .collect::<Vec<_>>()
                 .join(", ");
-            let strategy_code = matryoshka.strategy.as_ref().map_or_else(
-                || "None".to_string(),
-                |s| format!("Some(\"{s}\")"),
-            );
-            let strategy_display = matryoshka.strategy.as_ref().map_or_else(
-                String::new,
-                |s| format!(" [{s}]"),
-            );
+            let strategy_code = matryoshka
+                .strategy
+                .as_ref()
+                .map_or_else(|| "None".to_string(), |s| format!("Some(\"{s}\")"));
+            let strategy_display = matryoshka
+                .strategy
+                .as_ref()
+                .map_or_else(String::new, |s| format!(" [{s}]"));
             (
                 format!(
                     "EmbeddingDimension::Matryoshka {{ default: {default}, min: {}, max: {}, supported: &[{supported}], strategy: {strategy_code} }}",
@@ -772,10 +790,9 @@ fn to_pascal_case(s: &str) -> String {
     s.split('-')
         .map(|word| {
             let mut chars = word.chars();
-            chars.next().map_or_else(
-                String::new,
-                |first| first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str()
-            )
+            chars.next().map_or_else(String::new, |first| {
+                first.to_uppercase().collect::<String>() + chars.as_str().to_lowercase().as_str()
+            })
         })
         .collect()
 }

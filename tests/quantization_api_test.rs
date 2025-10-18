@@ -1,6 +1,6 @@
 //! Integration tests for quantization API.
 
-use tessera::{Tessera, QuantizationConfig, Result};
+use tessera::{QuantizationConfig, Result, Tessera};
 
 #[test]
 fn test_quantization_workflow() -> Result<()> {
@@ -23,8 +23,16 @@ fn test_quantization_workflow() -> Result<()> {
 
     // Verify compression ratio (should be ~32x for binary)
     let ratio = quantized.compression_ratio();
-    assert!(ratio > 30.0, "Expected compression ratio > 30x, got {:.1}x", ratio);
-    assert!(ratio < 34.0, "Expected compression ratio < 34x, got {:.1}x", ratio);
+    assert!(
+        ratio > 30.0,
+        "Expected compression ratio > 30x, got {:.1}x",
+        ratio
+    );
+    assert!(
+        ratio < 34.0,
+        "Expected compression ratio < 34x, got {:.1}x",
+        ratio
+    );
 
     Ok(())
 }
@@ -61,8 +69,12 @@ fn test_similarity_quantized() -> Result<()> {
     let score2 = embedder.similarity_quantized(&query, &doc2)?;
 
     // Relevant document should score higher than irrelevant
-    assert!(score1 > score2, 
-        "Expected AI-related doc to score higher: {} > {}", score1, score2);
+    assert!(
+        score1 > score2,
+        "Expected AI-related doc to score higher: {} > {}",
+        score1,
+        score2
+    );
 
     Ok(())
 }
@@ -70,16 +82,14 @@ fn test_similarity_quantized() -> Result<()> {
 #[test]
 fn test_quantization_error_without_config() -> Result<()> {
     // Create embedder WITHOUT quantization
-    let embedder = Tessera::builder()
-        .model("colbert-v2")
-        .build()?;
+    let embedder = Tessera::builder().model("colbert-v2").build()?;
 
     let embeddings = embedder.encode("Test")?;
 
     // Should error when trying to quantize
     let result = embedder.quantize(&embeddings);
     assert!(result.is_err());
-    
+
     let err = result.unwrap_err();
     assert!(err.to_string().contains("No quantizer configured"));
 
@@ -120,23 +130,27 @@ fn test_ranking_preservation() -> Result<()> {
 
     let query = "machine learning algorithms";
     let docs = vec![
-        "Machine learning uses statistical algorithms",  // High relevance
+        "Machine learning uses statistical algorithms", // High relevance
         "Deep learning is a subset of machine learning", // High relevance
-        "The weather forecast predicts rain",            // Low relevance
-        "I like pizza and pasta",                        // Low relevance
+        "The weather forecast predicts rain",           // Low relevance
+        "I like pizza and pasta",                       // Low relevance
     ];
 
     // Get quantized scores
     let query_quant = embedder.encode_quantized(query)?;
-    let quant_scores: Vec<_> = docs.iter()
+    let quant_scores: Vec<_> = docs
+        .iter()
         .map(|doc| {
             let doc_quant = embedder.encode_quantized(doc).unwrap();
-            embedder.similarity_quantized(&query_quant, &doc_quant).unwrap()
+            embedder
+                .similarity_quantized(&query_quant, &doc_quant)
+                .unwrap()
         })
         .collect();
 
     // Get full precision scores
-    let full_scores: Vec<_> = docs.iter()
+    let full_scores: Vec<_> = docs
+        .iter()
         .map(|doc| embedder.similarity(query, doc).unwrap())
         .collect();
 
@@ -163,9 +177,7 @@ fn test_ranking_preservation() -> Result<()> {
 #[test]
 fn test_no_quantization_config_default() -> Result<()> {
     // Default should be no quantization
-    let embedder = Tessera::builder()
-        .model("colbert-v2")
-        .build()?;
+    let embedder = Tessera::builder().model("colbert-v2").build()?;
 
     let embeddings = embedder.encode("Test")?;
     let result = embedder.quantize(&embeddings);

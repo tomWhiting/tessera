@@ -51,7 +51,10 @@ fn main() -> tessera::Result<()> {
 
         // Encode query
         let query_embedding = embedder.encode(query)?;
-        println!("Query embedding computed ({} dimensions)\n", query_embedding.dim());
+        println!(
+            "Query embedding computed ({} dimensions)\n",
+            query_embedding.dim()
+        );
 
         // Compute similarity with all documents
         let mut results: Vec<(usize, &str, f32)> = Vec::new();
@@ -67,7 +70,13 @@ fn main() -> tessera::Result<()> {
 
         println!("Top 3 Results:");
         for (rank, (idx, title, score)) in results.iter().take(3).enumerate() {
-            println!("  {}. [Doc {}] Score: {:.4} - {}", rank + 1, idx + 1, score, title);
+            println!(
+                "  {}. [Doc {}] Score: {:.4} - {}",
+                rank + 1,
+                idx + 1,
+                score,
+                title
+            );
         }
         println!();
     }
@@ -78,7 +87,10 @@ fn main() -> tessera::Result<()> {
     let test_query = "What is artificial intelligence?";
     let doc_texts: Vec<&str> = documents.iter().map(|(_, text)| *text).collect();
 
-    println!("Computing similarities for {} documents...", documents.len());
+    println!(
+        "Computing similarities for {} documents...",
+        documents.len()
+    );
 
     // Encode all documents at once using batch processing
     let doc_embeddings = embedder.encode_batch(&doc_texts)?;
@@ -90,7 +102,8 @@ fn main() -> tessera::Result<()> {
     let mut batch_results: Vec<(usize, f32)> = Vec::new();
     for (idx, doc_emb) in doc_embeddings.iter().enumerate() {
         // Cosine similarity for normalized embeddings (dot product)
-        let similarity: f32 = query_emb.embedding
+        let similarity: f32 = query_emb
+            .embedding
             .iter()
             .zip(doc_emb.embedding.iter())
             .map(|(a, b)| a * b)
@@ -103,7 +116,12 @@ fn main() -> tessera::Result<()> {
 
     println!("\nTop matches for query: \"{}\"", test_query);
     for (rank, (idx, score)) in batch_results.iter().take(5).enumerate() {
-        println!("  {}. Score: {:.4} - {}", rank + 1, score, documents[*idx].0);
+        println!(
+            "  {}. Score: {:.4} - {}",
+            rank + 1,
+            score,
+            documents[*idx].0
+        );
     }
 
     println!("\n=== Search Complete ===");

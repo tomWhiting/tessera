@@ -9,7 +9,7 @@
 //! cargo run --release --example colpali_vs_text
 //! ```
 
-use tessera::{TesseraVision, TesseraDense};
+use tessera::{TesseraDense, TesseraVision};
 
 fn main() -> tessera::Result<()> {
     println!("=== Vision-Language vs Text-Only Retrieval ===\n");
@@ -34,8 +34,14 @@ fn main() -> tessera::Result<()> {
     println!("How it works:");
     println!("  Input: Document image (PNG, JPEG, etc.)");
     println!("  Processing:");
-    println!("    1. Image split into {} patches (14×14 pixels)", colpali.num_patches());
-    println!("    2. Each patch encoded to {}-dim embedding", colpali.embedding_dim());
+    println!(
+        "    1. Image split into {} patches (14×14 pixels)",
+        colpali.num_patches()
+    );
+    println!(
+        "    2. Each patch encoded to {}-dim embedding",
+        colpali.embedding_dim()
+    );
     println!("    3. Query text encoded to token embeddings");
     println!("    4. Late interaction (MaxSim) scoring");
     println!("  Output: Relevance score\n");
@@ -79,7 +85,10 @@ fn main() -> tessera::Result<()> {
     println!("  Processing:");
     println!("    1. Text tokenization (WordPiece/BPE)");
     println!("    2. BERT encoding");
-    println!("    3. Mean pooling to single {}-dim vector", bert.dimension());
+    println!(
+        "    3. Mean pooling to single {}-dim vector",
+        bert.dimension()
+    );
     println!("    4. Cosine similarity for search");
     println!("  Output: Similarity score\n");
 

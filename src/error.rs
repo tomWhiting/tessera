@@ -15,7 +15,7 @@ pub enum TesseraError {
     #[error("Model '{model_id}' not found in registry")]
     ModelNotFound {
         /// Model identifier that was not found
-        model_id: String
+        model_id: String,
     },
 
     /// Failed to load a model from disk or remote source.
@@ -71,7 +71,7 @@ pub enum TesseraError {
         /// Expected dimension size
         expected: usize,
         /// Actual dimension size received
-        actual: usize
+        actual: usize,
     },
 
     /// Matryoshka truncation error.
@@ -105,10 +105,7 @@ mod tests {
         let err = TesseraError::ModelNotFound {
             model_id: "colbert-v2".to_string(),
         };
-        assert_eq!(
-            err.to_string(),
-            "Model 'colbert-v2' not found in registry"
-        );
+        assert_eq!(err.to_string(), "Model 'colbert-v2' not found in registry");
     }
 
     #[test]
@@ -128,9 +125,6 @@ mod tests {
             expected: 128,
             actual: 64,
         };
-        assert_eq!(
-            err.to_string(),
-            "Dimension mismatch: expected 128, got 64"
-        );
+        assert_eq!(err.to_string(), "Dimension mismatch: expected 128, got 64");
     }
 }

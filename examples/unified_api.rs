@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     println!("1. Auto-detecting ColBERT model");
     let colbert = Tessera::new("colbert-v2")?;
     println!("   Model: colbert-v2");
-    
+
     match &colbert {
         Tessera::MultiVector(mv) => {
             println!("   ✓ Detected as MultiVector");
@@ -42,10 +42,10 @@ fn main() -> Result<()> {
     // Example 3: Pattern matching to handle both types
     println!("3. Pattern matching for type-specific operations");
     let models = vec!["colbert-v2"];
-    
+
     for model_id in models {
         let embedder = Tessera::new(model_id)?;
-        
+
         match embedder {
             Tessera::MultiVector(mv) => {
                 println!("   MultiVector model: {}", mv.model());
@@ -77,11 +77,11 @@ fn main() -> Result<()> {
 
     // Example 4: Direct type usage when you know the model type
     println!("4. Direct type usage (when model type is known)");
-    
+
     use tessera::TesseraMultiVector;
     let mv_embedder = TesseraMultiVector::new("colbert-v2")?;
     println!("   TesseraMultiVector: {} dims", mv_embedder.dimension());
-    
+
     println!();
 
     println!("=== Demo Complete ===");

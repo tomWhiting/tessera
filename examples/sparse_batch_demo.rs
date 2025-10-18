@@ -40,7 +40,8 @@ fn main() -> tessera::Result<()> {
     // Display individual embedding statistics
     println!("Individual Embedding Statistics:");
     for (i, emb) in embeddings.iter().enumerate() {
-        println!("  Doc {}: {} non-zero dims ({:.2}% sparse)",
+        println!(
+            "  Doc {}: {} non-zero dims ({:.2}% sparse)",
             i + 1,
             emb.nnz(),
             emb.sparsity() * 100.0
@@ -62,7 +63,10 @@ fn main() -> tessera::Result<()> {
     // Compute similarity matrix
     println!("\n=== Document Similarity Matrix ===\n");
 
-    println!("Computing pairwise similarities for {} documents...", documents.len());
+    println!(
+        "Computing pairwise similarities for {} documents...",
+        documents.len()
+    );
 
     // Create similarity matrix
     let mut sim_matrix: Vec<Vec<f32>> = vec![vec![0.0; embeddings.len()]; embeddings.len()];
@@ -72,7 +76,11 @@ fn main() -> tessera::Result<()> {
             // Compute sparse dot product
             let mut score = 0.0;
             for (idx_i, weight_i) in &embeddings[i].weights {
-                if let Some(&(_, weight_j)) = embeddings[j].weights.iter().find(|(idx_j, _)| idx_j == idx_i) {
+                if let Some(&(_, weight_j)) = embeddings[j]
+                    .weights
+                    .iter()
+                    .find(|(idx_j, _)| idx_j == idx_i)
+                {
                     score += weight_i * weight_j;
                 }
             }
@@ -135,9 +143,20 @@ fn main() -> tessera::Result<()> {
     let dense_storage = embeddings.len() * embeddings[0].vocab_size * 4; // All floats
 
     println!("Storage comparison:");
-    println!("  Sparse storage:    {} bytes ({:.2} KB)", sparse_storage, sparse_storage as f32 / 1024.0);
-    println!("  Dense equivalent:  {} bytes ({:.2} KB)", dense_storage, dense_storage as f32 / 1024.0);
-    println!("  Compression ratio: {:.1}x", dense_storage as f32 / sparse_storage as f32);
+    println!(
+        "  Sparse storage:    {} bytes ({:.2} KB)",
+        sparse_storage,
+        sparse_storage as f32 / 1024.0
+    );
+    println!(
+        "  Dense equivalent:  {} bytes ({:.2} KB)",
+        dense_storage,
+        dense_storage as f32 / 1024.0
+    );
+    println!(
+        "  Compression ratio: {:.1}x",
+        dense_storage as f32 / sparse_storage as f32
+    );
 
     println!("\n=== Key Insights ===\n");
     println!("1. Batch processing is efficient - encodes all documents together");

@@ -46,7 +46,12 @@ fn main() -> tessera::Result<()> {
 
         println!("   Top 10 activated dimensions:");
         for (rank, (idx, weight)) in weights_sorted.iter().take(10).enumerate() {
-            println!("      {}. Vocab index {} -> weight: {:.4}", rank + 1, idx, weight);
+            println!(
+                "      {}. Vocab index {} -> weight: {:.4}",
+                rank + 1,
+                idx,
+                weight
+            );
         }
 
         println!();
@@ -64,9 +69,12 @@ fn main() -> tessera::Result<()> {
     let emb3 = embedder.encode(query3)?;
 
     // Count overlapping dimensions
-    let indices1: std::collections::HashSet<usize> = emb1.weights.iter().map(|(idx, _)| *idx).collect();
-    let indices2: std::collections::HashSet<usize> = emb2.weights.iter().map(|(idx, _)| *idx).collect();
-    let indices3: std::collections::HashSet<usize> = emb3.weights.iter().map(|(idx, _)| *idx).collect();
+    let indices1: std::collections::HashSet<usize> =
+        emb1.weights.iter().map(|(idx, _)| *idx).collect();
+    let indices2: std::collections::HashSet<usize> =
+        emb2.weights.iter().map(|(idx, _)| *idx).collect();
+    let indices3: std::collections::HashSet<usize> =
+        emb3.weights.iter().map(|(idx, _)| *idx).collect();
 
     let overlap_1_2 = indices1.intersection(&indices2).count();
     let overlap_1_3 = indices1.intersection(&indices3).count();
@@ -77,16 +85,20 @@ fn main() -> tessera::Result<()> {
 
     println!("Query 2: \"{}\"", query2);
     println!("  Activated dimensions: {}", emb2.nnz());
-    println!("  Overlap with Query 1: {} dimensions ({:.1}%)",
+    println!(
+        "  Overlap with Query 1: {} dimensions ({:.1}%)",
         overlap_1_2,
-        100.0 * overlap_1_2 as f32 / emb1.nnz().min(emb2.nnz()) as f32);
+        100.0 * overlap_1_2 as f32 / emb1.nnz().min(emb2.nnz()) as f32
+    );
     println!();
 
     println!("Query 3: \"{}\"", query3);
     println!("  Activated dimensions: {}", emb3.nnz());
-    println!("  Overlap with Query 1: {} dimensions ({:.1}%)",
+    println!(
+        "  Overlap with Query 1: {} dimensions ({:.1}%)",
         overlap_1_3,
-        100.0 * overlap_1_3 as f32 / emb1.nnz().min(emb3.nnz()) as f32);
+        100.0 * overlap_1_3 as f32 / emb1.nnz().min(emb3.nnz()) as f32
+    );
     println!();
 
     println!("=== Key Insights ===\n");

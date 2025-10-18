@@ -20,15 +20,23 @@
 //! let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;
 //! ```
 
-use crate::api::{TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder, TesseraTimeSeriesBuilder};
+use crate::api::{
+    TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraTimeSeriesBuilder,
+    TesseraVisionBuilder,
+};
 use crate::backends::CandleBertEncoder;
-use crate::core::{DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings, VisionEmbedding};
+use crate::core::{
+    DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings,
+    VisionEmbedding,
+};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::encoding::sparse::CandleSparseEncoder;
 use crate::encoding::vision::ColPaliEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::registry::{get_model, ModelType};
-use crate::quantization::{binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization};
+use crate::quantization::{
+    binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization,
+};
 use crate::timeseries::models::ChronosBolt;
 use crate::utils::similarity::max_sim;
 use candle_core::Tensor;
@@ -152,8 +160,16 @@ impl TesseraMultiVector {
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(encoder: CandleBertEncoder, model_id: String, quantizer: Option<BinaryQuantization>) -> Self {
-        Self { encoder, model_id, quantizer }
+    pub(crate) fn from_encoder(
+        encoder: CandleBertEncoder,
+        model_id: String,
+        quantizer: Option<BinaryQuantization>,
+    ) -> Self {
+        Self {
+            encoder,
+            model_id,
+            quantizer,
+        }
     }
 
     /// Encode a single text into embeddings.
@@ -184,11 +200,10 @@ impl TesseraMultiVector {
     ///     embeddings.embedding_dim);
     /// ```
     pub fn encode(&self, text: &str) -> Result<TokenEmbeddings> {
-        TokenEmbedder::encode(&self.encoder, text)
-            .map_err(|e| TesseraError::EncodingError {
-                context: format!("Failed to encode text: '{}'", text),
-                source: e,
-            })
+        TokenEmbedder::encode(&self.encoder, text).map_err(|e| TesseraError::EncodingError {
+            context: format!("Failed to encode text: '{}'", text),
+            source: e,
+        })
     }
 
     /// Encode multiple texts in a batch.
@@ -217,11 +232,10 @@ impl TesseraMultiVector {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<TokenEmbeddings>> {
-        Encoder::encode_batch(&self.encoder, texts)
-            .map_err(|e| TesseraError::EncodingError {
-                context: format!("Failed to encode batch of {} texts", texts.len()),
-                source: e,
-            })
+        Encoder::encode_batch(&self.encoder, texts).map_err(|e| TesseraError::EncodingError {
+            context: format!("Failed to encode batch of {} texts", texts.len()),
+            source: e,
+        })
     }
 
     /// Compute similarity between two texts.
@@ -531,11 +545,12 @@ impl TesseraDense {
     /// println!("Encoded to {} dimensions", embedding.dim());
     /// ```
     pub fn encode(&self, text: &str) -> Result<DenseEmbedding> {
-        <CandleDenseEncoder as Encoder>::encode(&self.encoder, text)
-            .map_err(|e| TesseraError::EncodingError {
+        <CandleDenseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
+            TesseraError::EncodingError {
                 context: format!("Failed to encode text: '{}'", text),
                 source: e,
-            })
+            }
+        })
     }
 
     /// Encode multiple texts in a batch.
@@ -564,11 +579,12 @@ impl TesseraDense {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<DenseEmbedding>> {
-        <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts)
-            .map_err(|e| TesseraError::EncodingError {
+        <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(|e| {
+            TesseraError::EncodingError {
                 context: format!("Failed to encode batch of {} texts", texts.len()),
                 source: e,
-            })
+            }
+        })
     }
 
     /// Compute cosine similarity between two texts.
@@ -604,7 +620,9 @@ impl TesseraDense {
         let emb_b = self.encode(text_b)?;
 
         // Compute cosine similarity (dot product for normalized embeddings)
-        let dot_product: f32 = emb_a.embedding.iter()
+        let dot_product: f32 = emb_a
+            .embedding
+            .iter()
             .zip(emb_b.embedding.iter())
             .map(|(a, b)| a * b)
             .sum();
@@ -746,11 +764,12 @@ impl TesseraSparse {
     /// println!("Sparsity: {:.2}%", embedding.sparsity() * 100.0);
     /// ```
     pub fn encode(&self, text: &str) -> Result<SparseEmbedding> {
-        <CandleSparseEncoder as Encoder>::encode(&self.encoder, text)
-            .map_err(|e| TesseraError::EncodingError {
+        <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
+            TesseraError::EncodingError {
                 context: format!("Failed to encode text: '{}'", text),
                 source: e,
-            })
+            }
+        })
     }
 
     /// Encode multiple texts in a batch.
@@ -778,11 +797,12 @@ impl TesseraSparse {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<SparseEmbedding>> {
-        <CandleSparseEncoder as Encoder>::encode_batch(&self.encoder, texts)
-            .map_err(|e| TesseraError::EncodingError {
+        <CandleSparseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(|e| {
+            TesseraError::EncodingError {
                 context: format!("Failed to encode batch of {} texts", texts.len()),
                 source: e,
-            })
+            }
+        })
     }
 
     /// Compute dot product similarity between two texts.
@@ -951,7 +971,8 @@ impl TesseraVision {
     /// ```
     pub fn encode_document(&self, image_path: &str) -> Result<VisionEmbedding> {
         let path = Path::new(image_path);
-        self.encoder.encode_image(path)
+        self.encoder
+            .encode_image(path)
             .map_err(|e| TesseraError::EncodingError {
                 context: format!("Failed to encode document image: '{}'", image_path),
                 source: e.into(),
@@ -985,7 +1006,8 @@ impl TesseraVision {
     /// println!("Query tokens: {}", query_emb.num_tokens);
     /// ```
     pub fn encode_query(&self, text: &str) -> Result<TokenEmbeddings> {
-        self.encoder.encode_text(text)
+        self.encoder
+            .encode_text(text)
             .map_err(|e| TesseraError::EncodingError {
                 context: format!("Failed to encode query text: '{}'", text),
                 source: e.into(),
@@ -1022,7 +1044,8 @@ impl TesseraVision {
         let doc_array = ndarray::Array2::from_shape_vec(
             (document.num_patches, document.embedding_dim),
             document.embeddings.iter().flatten().copied().collect(),
-        ).map_err(|e| TesseraError::EncodingError {
+        )
+        .map_err(|e| TesseraError::EncodingError {
             context: "Failed to convert document embeddings to array".to_string(),
             source: e.into(),
         })?;
@@ -1034,11 +1057,10 @@ impl TesseraVision {
             text: document.source.clone().unwrap_or_default(),
         };
 
-        max_sim(query, &doc_embeddings)
-            .map_err(|e| TesseraError::EncodingError {
-                context: "Failed to compute MaxSim score".to_string(),
-                source: e.into(),
-            })
+        max_sim(query, &doc_embeddings).map_err(|e| TesseraError::EncodingError {
+            context: "Failed to compute MaxSim score".to_string(),
+            source: e.into(),
+        })
     }
 
     /// Convenience method: search with text query and image path.
@@ -1178,7 +1200,8 @@ impl TesseraTimeSeries {
     /// println!("Forecast shape: {:?}", forecast.shape());  // [1, 64]
     /// ```
     pub fn forecast(&mut self, context: &Tensor) -> Result<Tensor> {
-        self.encoder.forecast(context)
+        self.encoder
+            .forecast(context)
             .map_err(|e| TesseraError::EncodingError {
                 context: "Failed to generate forecast".to_string(),
                 source: e.into(),
@@ -1212,7 +1235,8 @@ impl TesseraTimeSeries {
     /// println!("Quantiles shape: {:?}", quantiles.shape());  // [1, 64, 9]
     /// ```
     pub fn forecast_quantiles(&mut self, context: &Tensor) -> Result<Tensor> {
-        self.encoder.predict_quantiles(context)
+        self.encoder
+            .predict_quantiles(context)
             .map_err(|e| TesseraError::EncodingError {
                 context: "Failed to generate quantile predictions".to_string(),
                 source: e.into(),
@@ -1377,10 +1401,9 @@ impl Tessera {
     /// let embedder = Tessera::new("chronos-bolt-small")?;
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
-        let model_info = get_model(model_id)
-            .ok_or_else(|| TesseraError::ModelNotFound {
-                model_id: model_id.to_string(),
-            })?;
+        let model_info = get_model(model_id).ok_or_else(|| TesseraError::ModelNotFound {
+            model_id: model_id.to_string(),
+        })?;
 
         match model_info.model_type {
             ModelType::Dense => {

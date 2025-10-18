@@ -32,8 +32,10 @@ jobs:
       - name: Build Python package
         uses: PyO3/maturin-action@v1
         with:
-          command: develop
-          args: --features python
+          command: build
+          args: --release --features python --out dist
+      - name: Install wheel
+        run: pip install dist/*.whl
       - name: Install test dependencies
         run: pip install pytest numpy
       - name: Run Python tests

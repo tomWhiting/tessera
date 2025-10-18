@@ -9,8 +9,8 @@
 //! cargo run --release --example colpali_document_search
 //! ```
 
-use tessera::TesseraVision;
 use std::path::Path;
+use tessera::TesseraVision;
 
 fn main() -> tessera::Result<()> {
     println!("=== ColPali Document Search Example ===\n");
@@ -30,7 +30,8 @@ fn main() -> tessera::Result<()> {
     ];
 
     // Filter to only existing documents
-    let documents: Vec<(&str, &str)> = test_docs.iter()
+    let documents: Vec<(&str, &str)> = test_docs
+        .iter()
         .filter(|(_, path)| Path::new(path).exists())
         .map(|(title, path)| (*title, *path))
         .collect();
@@ -79,8 +80,10 @@ fn main() -> tessera::Result<()> {
     let mut doc_embeddings = Vec::new();
     for (title, doc_path) in &documents {
         let emb = embedder.encode_document(doc_path)?;
-        println!("  Encoded '{}': {} patches × {} dimensions",
-            title, emb.num_patches, emb.embedding_dim);
+        println!(
+            "  Encoded '{}': {} patches × {} dimensions",
+            title, emb.num_patches, emb.embedding_dim
+        );
         doc_embeddings.push((title, emb));
     }
     println!();
@@ -127,8 +130,14 @@ fn main() -> tessera::Result<()> {
     println!("  - Multi-lingual without language-specific OCR\n");
 
     println!("How it works:");
-    println!("  1. Image split into {} patches (14×14 pixels each)", embedder.num_patches());
-    println!("  2. Each patch encoded to {}-dim embedding", embedder.embedding_dim());
+    println!(
+        "  1. Image split into {} patches (14×14 pixels each)",
+        embedder.num_patches()
+    );
+    println!(
+        "  2. Each patch encoded to {}-dim embedding",
+        embedder.embedding_dim()
+    );
     println!("  3. Query text encoded to token embeddings");
     println!("  4. Late interaction (MaxSim) scoring for relevance");
 

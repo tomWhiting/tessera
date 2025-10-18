@@ -147,8 +147,12 @@ impl CandleBertEncoder {
         // Determine Matryoshka strategy from registry if available
         let matryoshka_strategy = if model_config.target_dimension.is_some() {
             // Try to get strategy from registry
-            if let Some(model_info) = crate::models::registry::get_model_by_hf_id(&model_config.model_name) {
-                model_info.embedding_dim.matryoshka_strategy()
+            if let Some(model_info) =
+                crate::models::registry::get_model_by_hf_id(&model_config.model_name)
+            {
+                model_info
+                    .embedding_dim
+                    .matryoshka_strategy()
                     .and_then(crate::utils::MatryoshkaStrategy::from_str)
             } else {
                 None
@@ -414,12 +418,9 @@ impl Encoder for CandleBertEncoder {
             }
         }
 
-        let token_ids_tensor = Tensor::from_vec(
-            all_token_ids,
-            (batch_size, max_seq_len),
-            &self.device,
-        )
-        .context("Creating batch token IDs tensor")?;
+        let token_ids_tensor =
+            Tensor::from_vec(all_token_ids, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch token IDs tensor")?;
 
         // Convert attention masks to 2D tensor: [batch_size, max_seq_len]
         // Handle DistilBERT's inverted mask convention
@@ -429,7 +430,11 @@ impl Encoder for CandleBertEncoder {
                 let processed_val = match &self.model {
                     BertVariant::DistilBert(_) => {
                         // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
-                        if mask_val == 1 { 0i64 } else { 1i64 }
+                        if mask_val == 1 {
+                            0i64
+                        } else {
+                            1i64
+                        }
                     }
                     _ => {
                         // BERT and JinaBERT use standard mask: 1=attend, 0=pad
@@ -440,12 +445,9 @@ impl Encoder for CandleBertEncoder {
             }
         }
 
-        let attention_mask_tensor = Tensor::from_vec(
-            all_attention_masks,
-            (batch_size, max_seq_len),
-            &self.device,
-        )
-        .context("Creating batch attention mask tensor")?;
+        let attention_mask_tensor =
+            Tensor::from_vec(all_attention_masks, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch attention mask tensor")?;
 
         // Single forward pass for entire batch
         let mut batch_output = self
@@ -462,8 +464,9 @@ impl Encoder for CandleBertEncoder {
             match strategy {
                 MatryoshkaStrategy::TruncateHidden => {
                     // Truncate BEFORE projection
-                    batch_output = crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
-                        .context("Applying Matryoshka truncation to batch hidden states")?;
+                    batch_output =
+                        crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
+                            .context("Applying Matryoshka truncation to batch hidden states")?;
 
                     // Then apply projection if it exists
                     if let Some(ref projection) = self.projection {
@@ -483,8 +486,9 @@ impl Encoder for CandleBertEncoder {
                     }
 
                     // Then truncate the output
-                    batch_output = crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
-                        .context("Applying Matryoshka truncation to batch output")?;
+                    batch_output =
+                        crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
+                            .context("Applying Matryoshka truncation to batch output")?;
                 }
                 MatryoshkaStrategy::TruncatePooled => {
                     // For dense encoders - apply projection then truncate
@@ -495,8 +499,9 @@ impl Encoder for CandleBertEncoder {
                             .context("Applying projection to batch")?;
                     }
 
-                    batch_output = crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
-                        .context("Applying Matryoshka truncation to batch")?;
+                    batch_output =
+                        crate::utils::apply_matryoshka(&batch_output, target_dim, strategy)
+                            .context("Applying Matryoshka truncation to batch")?;
                 }
             }
         } else {
@@ -550,7 +555,9 @@ impl Encoder for CandleBertEncoder {
 
             // Extract only non-padded token embeddings
             let embeddings_filtered = if actual_length < seq_len {
-                embeddings_array.slice(ndarray::s![..actual_length, ..]).to_owned()
+                embeddings_array
+                    .slice(ndarray::s![..actual_length, ..])
+                    .to_owned()
             } else {
                 embeddings_array
             };

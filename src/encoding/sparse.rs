@@ -311,8 +311,7 @@ impl CandleSparseEncoder {
             let buffer = std::fs::read(weights_path)
                 .context("Reading safetensors file for prefix detection")?;
 
-            let tensors =
-                SafeTensors::deserialize(&buffer).context("Deserializing safetensors")?;
+            let tensors = SafeTensors::deserialize(&buffer).context("Deserializing safetensors")?;
 
             let tensor_names = tensors.names();
 
@@ -511,12 +510,8 @@ impl Encoder for CandleSparseEncoder {
 
         // Convert to tensors
         let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| x as i64).collect();
-        let token_ids_tensor = Tensor::from_vec(
-            token_ids_i64,
-            (1, token_ids.len()),
-            &self.device,
-        )
-        .context("Creating token IDs tensor")?;
+        let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
+            .context("Creating token IDs tensor")?;
 
         // Handle attention mask - DistilBERT expects inverted mask
         let attention_mask_processed: Vec<i64> = match &self.model {

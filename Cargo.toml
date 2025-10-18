@@ -64,6 +64,7 @@ nursery = "warn"
 
 # Patch candle to use local fork with T5 hidden states support
 [patch.crates-io]
-candle-core = { path = "../candle-investigation/candle-core" }
-candle-nn = { path = "../candle-investigation/candle-nn" }
-candle-transformers = { path = "../candle-investigation/candle-transformers" }
+# Use fork with T5 hidden states exposed for Chronos Bolt
+candle-core = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }
+candle-nn = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }
+candle-transformers = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }

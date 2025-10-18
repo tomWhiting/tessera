@@ -3,11 +3,11 @@
 //! This example verifies that text and image embeddings have matching dimensions
 //! after projection, which is required for MaxSim similarity computation.
 
-use tessera::encoding::vision::ColPaliEncoder;
-use tessera::backends::candle::get_device;
-use tessera::models::ModelConfig;
-use tessera::core::VisionEncoder;
 use anyhow::Result;
+use tessera::backends::candle::get_device;
+use tessera::core::VisionEncoder;
+use tessera::encoding::vision::ColPaliEncoder;
+use tessera::models::ModelConfig;
 
 fn main() -> Result<()> {
     println!("=== ColPali Shape Verification ===\n");
@@ -41,7 +41,10 @@ fn main() -> Result<()> {
             println!("Image embeddings shape: {:?}", image_emb.shape());
             println!("  num_patches: {}", image_emb.num_patches);
             println!("  embedding_dim: {}", image_emb.embedding_dim);
-            println!("  actual embeddings[0].len(): {}", image_emb.embeddings[0].len());
+            println!(
+                "  actual embeddings[0].len(): {}",
+                image_emb.embeddings[0].len()
+            );
 
             // Verify dimensions match
             println!("\n=== Verification ===");
@@ -54,7 +57,10 @@ fn main() -> Result<()> {
                 println!("  - MaxSim can now compute similarity between them!");
             } else {
                 println!("✗ FAILURE: Dimension mismatch!");
-                println!("  Text: {}, Image: {}", text_emb.embedding_dim, image_emb.embedding_dim);
+                println!(
+                    "  Text: {}, Image: {}",
+                    text_emb.embedding_dim, image_emb.embedding_dim
+                );
                 std::process::exit(1);
             }
         } else {

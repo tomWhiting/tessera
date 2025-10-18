@@ -100,4 +100,3 @@ fn run_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
 
     Ok(())
 }
-

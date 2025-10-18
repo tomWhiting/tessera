@@ -90,7 +90,7 @@ impl ImageProcessor {
             &rgb_img,
             self.target_size.0,
             self.target_size.1,
-            image::imageops::FilterType::CatmullRom,  // Bicubic
+            image::imageops::FilterType::CatmullRom, // Bicubic
         );
 
         // 3. Convert to f32 and normalize
@@ -172,11 +172,7 @@ mod tests {
 
     #[test]
     fn test_custom_config() {
-        let processor = ImageProcessor::with_config(
-            (224, 224),
-            [0.5, 0.5, 0.5],
-            [0.5, 0.5, 0.5],
-        );
+        let processor = ImageProcessor::with_config((224, 224), [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]);
         assert_eq!(processor.target_size, (224, 224));
         assert_eq!(processor.mean, [0.5, 0.5, 0.5]);
         assert_eq!(processor.std, [0.5, 0.5, 0.5]);
@@ -186,9 +182,8 @@ mod tests {
     fn test_normalization_output_size() {
         let processor = ImageProcessor::new();
         // Create a small test image
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(10, 10, |_, _| {
-            Rgb([128u8, 128u8, 128u8])
-        });
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(10, 10, |_, _| Rgb([128u8, 128u8, 128u8]));
 
         let normalized = processor.normalize_image(&img).unwrap();
         // Should have 3 channels * width * height
@@ -199,9 +194,8 @@ mod tests {
     fn test_normalization_formula() {
         let processor = ImageProcessor::new();
         // Create a test image with known pixel value
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> = ImageBuffer::from_fn(2, 2, |_, _| {
-            Rgb([255u8, 0u8, 128u8])
-        });
+        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
+            ImageBuffer::from_fn(2, 2, |_, _| Rgb([255u8, 0u8, 128u8]));
 
         let normalized = processor.normalize_image(&img).unwrap();
 

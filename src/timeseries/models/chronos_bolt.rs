@@ -179,9 +179,9 @@ impl ChronosBolt {
 
         // Load input patch embedding (patch_size=32 -> d_model=512)
         let input_patch_embedding = ResidualMLP::new(
-            config.patch_size,      // 32
-            config.d_model * 4,     // 2048 (hidden_layer.weight is [2048, 32])
-            config.d_model,         // 512
+            config.patch_size,  // 32
+            config.d_model * 4, // 2048 (hidden_layer.weight is [2048, 32])
+            config.d_model,     // 512
             vb.pp("input_patch_embedding"),
         )
         .context("Failed to load input patch embedding")?;
@@ -191,9 +191,9 @@ impl ChronosBolt {
         // mapped to prediction_length * num_quantiles values (64 steps × 9 quantiles = 576)
         let output_dim = config.prediction_length * config.quantiles.len();
         let output_patch_embedding = ResidualMLP::new(
-            config.d_model,         // 512
-            config.d_model * 4,     // 2048 (hidden_layer.weight is [2048, 512])
-            output_dim,             // 576 (64 prediction steps × 9 quantiles)
+            config.d_model,     // 512
+            config.d_model * 4, // 2048 (hidden_layer.weight is [2048, 512])
+            output_dim,         // 576 (64 prediction steps × 9 quantiles)
             vb.pp("output_patch_embedding"),
         )
         .context("Failed to load output patch embedding")?;
@@ -259,8 +259,7 @@ impl ChronosBolt {
     /// ```
     pub fn from_pretrained(model_id: &str, device: &Device) -> Result<Self> {
         // Download model files from HuggingFace
-        let api = hf_hub::api::sync::Api::new()
-            .context("Failed to initialize HuggingFace API")?;
+        let api = hf_hub::api::sync::Api::new().context("Failed to initialize HuggingFace API")?;
         let repo = api.model(model_id.to_string());
         let weights_path = repo
             .get("model.safetensors")
@@ -294,9 +293,7 @@ impl ChronosBolt {
     /// Returns error if forward pass fails
     pub fn forward(&mut self, input: &Tensor) -> Result<Tensor> {
         // Validate input shape
-        let (_batch, length) = input
-            .dims2()
-            .context("Input must be 2D [batch, length]")?;
+        let (_batch, length) = input.dims2().context("Input must be 2D [batch, length]")?;
         if length != self.config.context_length {
             anyhow::bail!(
                 "Input length {} does not match config context_length {}",
@@ -306,13 +303,12 @@ impl ChronosBolt {
         }
 
         // 1. Scale by absolute mean
-        let (scaled, scale) = scale_by_mean(input)
-            .context("Failed to scale time series")?;
+        let (scaled, scale) = scale_by_mean(input).context("Failed to scale time series")?;
         self.scale = Some(scale.clone());
 
         // 2. Create patches [batch, num_patches, patch_size]
-        let patches = create_patches(&scaled, self.config.patch_size)
-            .context("Failed to create patches")?;
+        let patches =
+            create_patches(&scaled, self.config.patch_size).context("Failed to create patches")?;
         let (batch, num_patches, patch_size) = patches.dims3()?;
 
         // 3. Apply input patch embedding (continuous, NO quantization!)
@@ -342,12 +338,9 @@ impl ChronosBolt {
 
         // 5. Create decoder input (single position that aggregates encoder context)
         // For forecasting, we use a single learned query (zeros for now)
-        let decoder_input = Tensor::zeros(
-            (batch, 1, self.config.d_model),
-            DType::F32,
-            &self.device,
-        )
-        .context("Failed to create decoder input")?;
+        let decoder_input =
+            Tensor::zeros((batch, 1, self.config.d_model), DType::F32, &self.device)
+                .context("Failed to create decoder input")?;
 
         // 6. Run T5 decoder
         // Use forward_with_embeddings to bypass the embedding layer
@@ -441,7 +434,9 @@ impl ChronosBolt {
         // Extract median (0.5 quantile, which is at index 4 in the standard 9-quantile setup)
         // config.quantiles = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         // So quantile index 4 corresponds to 0.5 (median)
-        let median_idx = self.config.quantiles
+        let median_idx = self
+            .config
+            .quantiles
             .iter()
             .position(|&q| (q - 0.5).abs() < 1e-6)
             .unwrap_or(self.config.quantiles.len() / 2); // fallback to middle quantile
@@ -539,7 +534,11 @@ mod tests {
         // Verify no NaN or Inf values
         let forecast_vec = forecast.flatten_all().unwrap().to_vec1::<f32>().unwrap();
         for val in forecast_vec {
-            assert!(val.is_finite(), "Forecast contains non-finite value: {}", val);
+            assert!(
+                val.is_finite(),
+                "Forecast contains non-finite value: {}",
+                val
+            );
         }
     }
 

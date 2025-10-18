@@ -115,45 +115,47 @@ impl ColPaliEncoder {
     /// ```
     pub fn new(config: ModelConfig, device: Device) -> Result<Self> {
         // 1. Initialize HuggingFace API
-        let api = hf_hub::api::sync::Api::new()
-            .context("Failed to initialize HuggingFace API")?;
+        let api = hf_hub::api::sync::Api::new().context("Failed to initialize HuggingFace API")?;
         let repo = api.model(config.model_name.clone());
 
         // 2. Load tokenizer
-        let tokenizer = Tokenizer::from_pretrained(&config.model_name)
-            .context("Failed to load tokenizer")?;
+        let tokenizer =
+            Tokenizer::from_pretrained(&config.model_name).context("Failed to load tokenizer")?;
 
         // 3. Download model weights (handle both single file and sharded models)
-        let weights_paths: Vec<PathBuf> = if let Ok(index_path) = repo.get("model.safetensors.index.json") {
-            // Sharded model - load all shards
-            let index: serde_json::Value = serde_json::from_reader(
-                std::fs::File::open(&index_path)
-                    .context("Failed to open safetensors index")?
-            ).context("Failed to parse safetensors index")?;
+        let weights_paths: Vec<PathBuf> =
+            if let Ok(index_path) = repo.get("model.safetensors.index.json") {
+                // Sharded model - load all shards
+                let index: serde_json::Value = serde_json::from_reader(
+                    std::fs::File::open(&index_path).context("Failed to open safetensors index")?,
+                )
+                .context("Failed to parse safetensors index")?;
 
-            // Get unique weight files from index
-            let weight_map = index["weight_map"]
-                .as_object()
-                .ok_or_else(|| anyhow::anyhow!("Invalid safetensors index: missing weight_map"))?;
+                // Get unique weight files from index
+                let weight_map = index["weight_map"].as_object().ok_or_else(|| {
+                    anyhow::anyhow!("Invalid safetensors index: missing weight_map")
+                })?;
 
-            let mut files: Vec<String> = weight_map
-                .values()
-                .filter_map(|v| v.as_str())
-                .map(|s| s.to_string())
-                .collect();
-            files.sort();
-            files.dedup();
+                let mut files: Vec<String> = weight_map
+                    .values()
+                    .filter_map(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .collect();
+                files.sort();
+                files.dedup();
 
-            // Download all shard files
-            files.iter()
-                .map(|f| repo.get(f))
-                .collect::<std::result::Result<Vec<_>, _>>()
-                .context("Failed to download model shard files")?
-        } else {
-            // Single file model
-            vec![repo.get("model.safetensors")
-                .context("Failed to download model.safetensors")?]
-        };
+                // Download all shard files
+                files
+                    .iter()
+                    .map(|f| repo.get(f))
+                    .collect::<std::result::Result<Vec<_>, _>>()
+                    .context("Failed to download model shard files")?
+            } else {
+                // Single file model
+                vec![repo
+                    .get("model.safetensors")
+                    .context("Failed to download model.safetensors")?]
+            };
 
         // 4. Load VarBuilder from safetensors
         let vb = unsafe {
@@ -176,10 +178,11 @@ impl ColPaliEncoder {
         // This projects text embeddings from PaliGemma's hidden size to ColPali's embedding dimension
         // Note: In v1.2-merged, custom_text_proj is at root level (not under vlm)
         let custom_text_projection = candle_nn::linear(
-            2048,  // PaliGemma text hidden size
-            128,   // ColPali embedding dimension
+            2048, // PaliGemma text hidden size
+            128,  // ColPali embedding dimension
             vb.pp("custom_text_proj"),
-        ).context("Failed to load custom_text_proj layer")?;
+        )
+        .context("Failed to load custom_text_proj layer")?;
 
         // 8. Determine image resolution and patches from config
         let image_size = paligemma_config.vision_config.image_size;
@@ -226,7 +229,8 @@ impl ColPaliEncoder {
     /// - Inference fails
     pub fn encode_image(&self, image_path: &Path) -> Result<VisionEmbedding> {
         // 1. Preprocess image to tensor [3, H, W]
-        let image_tensor = self.image_processor
+        let image_tensor = self
+            .image_processor
             .preprocess_from_path(image_path, &self.device)
             .context("Failed to preprocess image")?;
 
@@ -237,8 +241,7 @@ impl ColPaliEncoder {
 
         // 3. Create dummy input_ids for setup (PaliGemma requires both images and text)
         // We use a minimal token sequence just to get the image features
-        let dummy_input_ids = Tensor::new(&[0u32], &self.device)?
-            .unsqueeze(0)?;  // [1, 1]
+        let dummy_input_ids = Tensor::new(&[0u32], &self.device)?.unsqueeze(0)?; // [1, 1]
 
         // 4. Borrow model mutably through RefCell
         let mut model = self.model.borrow_mut();
@@ -246,12 +249,14 @@ impl ColPaliEncoder {
         // 5. Run PaliGemma setup to get image features
         // Note: PaliGemma's setup() method processes the image and returns combined features
         // We need to extract just the image patch embeddings from the output
-        let _output = model.setup(&batched_image, &dummy_input_ids)
+        let _output = model
+            .setup(&batched_image, &dummy_input_ids)
             .context("Failed to run PaliGemma setup for image encoding")?;
 
         // 6. Extract image features from vision tower directly
         // Use setup_without_projection to get pre-projection features if needed
-        let image_features = model.setup_without_projection(&batched_image, &dummy_input_ids)
+        let image_features = model
+            .setup_without_projection(&batched_image, &dummy_input_ids)
             .context("Failed to extract image features")?;
 
         // 7. The output is [batch_size, seq_len, hidden_dim]
@@ -270,18 +275,23 @@ impl ColPaliEncoder {
         // Note: In ColPali v1.2-merged, the same projection layer is used for both
         // text and vision embeddings to project from PaliGemma's hidden size (2048)
         // to ColPali's embedding dimension (128) for efficient late interaction.
-        let projected = self.custom_text_projection.forward(&patch_embeddings)
+        let projected = self
+            .custom_text_projection
+            .forward(&patch_embeddings)
             .context("Failed to apply projection to image embeddings")?;
 
         // 10. Apply L2 normalization
-        let norms = projected.sqr()?
-            .sum_keepdim(1)?  // Sum over embedding dimension
+        let norms = projected
+            .sqr()?
+            .sum_keepdim(1)? // Sum over embedding dimension
             .sqrt()?;
-        let normalized = projected.broadcast_div(&norms)
+        let normalized = projected
+            .broadcast_div(&norms)
             .context("Failed to normalize image embeddings")?;
 
         // 11. Convert to CPU and extract as Vec<Vec<f32>>
-        let embeddings = self.tensor_to_vec2(&normalized)
+        let embeddings = self
+            .tensor_to_vec2(&normalized)
             .context("Failed to convert patch embeddings to Vec<Vec<f32>>")?;
 
         // 12. Create VisionEmbedding with correct embedding dimension (128)
@@ -320,18 +330,16 @@ impl ColPaliEncoder {
 
         // 2. Convert token IDs to tensor [1, seq_len]
         let token_ids_i64: Vec<i64> = token_ids.iter().map(|&id| id as i64).collect();
-        let token_ids_tensor = Tensor::from_vec(
-            token_ids_i64,
-            (1, token_ids.len()),
-            &self.device,
-        ).context("Failed to create token IDs tensor")?;
+        let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
+            .context("Failed to create token IDs tensor")?;
 
         // 3. Borrow model mutably through RefCell
         let mut model = self.model.borrow_mut();
 
         // 4. For text-only encoding, we use forward_without_projection
         // This gives us the language model embeddings without image context
-        let token_embeddings = model.forward_without_projection(&token_ids_tensor)
+        let token_embeddings = model
+            .forward_without_projection(&token_ids_tensor)
             .context("Failed to encode text through language model")?;
 
         // 5. Remove batch dimension [seq_len, hidden_dim]
@@ -340,19 +348,24 @@ impl ColPaliEncoder {
             .context("Failed to squeeze batch dimension")?;
 
         // 6. Apply custom text projection (2048 -> 128)
-        let projected = self.custom_text_projection.forward(&token_embeddings)
+        let projected = self
+            .custom_text_projection
+            .forward(&token_embeddings)
             .context("Failed to apply custom text projection")?;
 
         // 7. Apply L2 normalization
         // Sum over last dimension (embedding dim), keep dimension for broadcasting
-        let norms = projected.sqr()?
-            .sum_keepdim(1)?  // Sum over embedding dimension
+        let norms = projected
+            .sqr()?
+            .sum_keepdim(1)? // Sum over embedding dimension
             .sqrt()?;
-        let normalized = projected.broadcast_div(&norms)
+        let normalized = projected
+            .broadcast_div(&norms)
             .context("Failed to normalize embeddings")?;
 
         // 8. Convert to ndarray::Array2<f32>
-        let embeddings = self.tensor_to_array2(&normalized)
+        let embeddings = self
+            .tensor_to_array2(&normalized)
             .context("Failed to convert token embeddings to Array2")?;
 
         // 9. Create TokenEmbeddings
@@ -442,14 +455,15 @@ impl ColPaliEncoder {
         use crate::utils::PdfRenderer;
 
         // Render PDF page to image
-        let renderer = PdfRenderer::new()
-            .context("Failed to create PDF renderer")?;
-        let image = renderer.render_page(pdf_path, page_index, 200)
+        let renderer = PdfRenderer::new().context("Failed to create PDF renderer")?;
+        let image = renderer
+            .render_page(pdf_path, page_index, 200)
             .with_context(|| format!("Failed to render page {} from PDF", page_index))?;
 
         // Save to temp file and encode
         let temp_path = std::env::temp_dir().join(format!("colpali_page_{}.png", page_index));
-        image.save(&temp_path)
+        image
+            .save(&temp_path)
             .context("Failed to save rendered page")?;
 
         let result = self.encode_image(&temp_path);
@@ -478,8 +492,7 @@ impl ColPaliEncoder {
     pub fn encode_pdf_document(&self, pdf_path: &Path) -> Result<Vec<VisionEmbedding>> {
         use crate::utils::PdfRenderer;
 
-        let renderer = PdfRenderer::new()
-            .context("Failed to create PDF renderer")?;
+        let renderer = PdfRenderer::new().context("Failed to create PDF renderer")?;
         let page_count = renderer.page_count(pdf_path)?;
 
         println!("Encoding {} pages from PDF...", page_count);
@@ -503,10 +516,7 @@ impl ColPaliEncoder {
     ///
     /// Initialized encoder
     #[allow(dead_code)]
-    fn from_paligemma_variant(
-        variant: PaliGemmaVariant,
-        _device: Device,
-    ) -> Result<Self> {
+    fn from_paligemma_variant(variant: PaliGemmaVariant, _device: Device) -> Result<Self> {
         // Create config for variant
         let paligemma_config = variant.to_config();
 
@@ -515,9 +525,9 @@ impl ColPaliEncoder {
         let embedding_dim = paligemma_config.projection_dim;
 
         let _model_config = ModelConfig::custom(
-            "google/paligemma-3b",  // Base model name
+            "google/paligemma-3b", // Base model name
             embedding_dim,
-            8192,  // Max sequence length from Gemma config
+            8192, // Max sequence length from Gemma config
         );
 
         // Initialize with VarBuilder (weights need to be provided separately)
@@ -543,9 +553,7 @@ impl Encoder for ColPaliEncoder {
 
     fn encode_batch(&self, inputs: &[&str]) -> Result<Vec<Self::Output>> {
         // Encode each image path in batch
-        inputs.iter()
-            .map(|&path| self.encode(path))
-            .collect()
+        inputs.iter().map(|&path| self.encode(path)).collect()
     }
 }
 

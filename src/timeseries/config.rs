@@ -70,7 +70,7 @@ impl ChronosBoltConfig {
     /// Configuration for Chronos Bolt Small
     pub fn chronos_bolt_small() -> Self {
         Self {
-            vocab_size: 2,  // PAD and EOS only (Bolt uses continuous patches, not discrete tokens)
+            vocab_size: 2, // PAD and EOS only (Bolt uses continuous patches, not discrete tokens)
             d_model: 512,
             d_kv: 64,
             d_ff: 2048,
@@ -80,7 +80,7 @@ impl ChronosBoltConfig {
             dropout: 0.1,
             context_length: 2048,
             prediction_length: 64,
-            patch_size: 32,  // Based on input_patch_embedding.hidden_layer.weight shape
+            patch_size: 32, // Based on input_patch_embedding.hidden_layer.weight shape
             num_bins: 4096,
             quantiles: vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         }
@@ -94,7 +94,7 @@ impl ChronosBoltConfig {
     /// Configuration for Chronos Bolt Base
     pub fn chronos_bolt_base() -> Self {
         Self {
-            vocab_size: 2,  // PAD and EOS only
+            vocab_size: 2, // PAD and EOS only
             d_model: 768,
             d_kv: 64,
             d_ff: 3072,
@@ -104,7 +104,7 @@ impl ChronosBoltConfig {
             dropout: 0.1,
             context_length: 2048,
             prediction_length: 64,
-            patch_size: 32,  // Based on actual Chronos Bolt architecture
+            patch_size: 32, // Based on actual Chronos Bolt architecture
             num_bins: 4096,
             quantiles: vec![0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         }
@@ -118,10 +118,7 @@ impl ChronosBoltConfig {
     ///
     /// # Returns
     /// Customized Chronos Bolt configuration
-    pub fn custom(
-        context_length: usize,
-        prediction_length: usize,
-    ) -> Self {
+    pub fn custom(context_length: usize, prediction_length: usize) -> Self {
         Self {
             context_length,
             prediction_length,
@@ -164,10 +161,7 @@ impl ChronosBoltConfig {
             self.context_length,
             self.patch_size
         );
-        anyhow::ensure!(
-            !self.quantiles.is_empty(),
-            "quantiles must not be empty"
-        );
+        anyhow::ensure!(!self.quantiles.is_empty(), "quantiles must not be empty");
         anyhow::ensure!(
             self.quantiles.iter().all(|&q| q > 0.0 && q < 1.0),
             "all quantiles must be in range (0, 1)"

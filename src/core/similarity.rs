@@ -37,7 +37,10 @@ use super::embeddings::TokenEmbeddings;
 ///
 /// # Deprecated
 /// Use `crate::utils::similarity::max_sim` instead
-#[deprecated(since = "0.2.0", note = "Use crate::utils::similarity::max_sim instead")]
+#[deprecated(
+    since = "0.2.0",
+    note = "Use crate::utils::similarity::max_sim instead"
+)]
 pub fn max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f32> {
     // Delegate to the new implementation
     crate::utils::similarity::max_sim(query, document)

@@ -59,7 +59,10 @@ fn main() -> tessera::Result<()> {
         }
         let seq_duration = seq_start.elapsed();
         println!("  Time: {:?}", seq_duration);
-        println!("  Per-doc: {:.2} ms", seq_duration.as_secs_f64() * 1000.0 / batch_size as f64);
+        println!(
+            "  Per-doc: {:.2} ms",
+            seq_duration.as_secs_f64() * 1000.0 / batch_size as f64
+        );
 
         // Batch encoding
         println!("Batch encoding:");
@@ -67,7 +70,10 @@ fn main() -> tessera::Result<()> {
         let batch_embeddings = embedder.encode_batch(batch_docs)?;
         let batch_duration = batch_start.elapsed();
         println!("  Time: {:?}", batch_duration);
-        println!("  Per-doc: {:.2} ms", batch_duration.as_secs_f64() * 1000.0 / batch_size as f64);
+        println!(
+            "  Per-doc: {:.2} ms",
+            batch_duration.as_secs_f64() * 1000.0 / batch_size as f64
+        );
 
         // Calculate speedup
         let speedup = seq_duration.as_secs_f64() / batch_duration.as_secs_f64();
@@ -78,7 +84,11 @@ fn main() -> tessera::Result<()> {
         let mut all_match = true;
         let mut max_diff = 0.0f32;
 
-        for (i, (seq_emb, batch_emb)) in sequential_embeddings.iter().zip(batch_embeddings.iter()).enumerate() {
+        for (i, (seq_emb, batch_emb)) in sequential_embeddings
+            .iter()
+            .zip(batch_embeddings.iter())
+            .enumerate()
+        {
             let mut doc_max_diff = 0.0f32;
             for (a, b) in seq_emb.embedding.iter().zip(batch_emb.embedding.iter()) {
                 let diff = (a - b).abs();
@@ -99,7 +109,9 @@ fn main() -> tessera::Result<()> {
         if all_match {
             println!("Overall: ✓ Results are numerically consistent\n");
         } else {
-            println!("Overall: ~ Some differences detected (expected due to numerical precision)\n");
+            println!(
+                "Overall: ~ Some differences detected (expected due to numerical precision)\n"
+            );
         }
     }
 
@@ -110,7 +122,10 @@ fn main() -> tessera::Result<()> {
     let query_embedding = embedder.encode(query)?;
 
     println!("Query: \"{}\"\n", query);
-    println!("Computing similarities for {} documents using batch processing...\n", documents.len());
+    println!(
+        "Computing similarities for {} documents using batch processing...\n",
+        documents.len()
+    );
 
     // Batch encode all documents
     let batch_start = Instant::now();
@@ -122,7 +137,8 @@ fn main() -> tessera::Result<()> {
     let sim_start = Instant::now();
     let mut similarities: Vec<(usize, f32)> = Vec::new();
     for (idx, doc_emb) in batch_embeddings.iter().enumerate() {
-        let similarity: f32 = query_embedding.embedding
+        let similarity: f32 = query_embedding
+            .embedding
             .iter()
             .zip(doc_emb.embedding.iter())
             .map(|(a, b)| a * b)
@@ -138,8 +154,10 @@ fn main() -> tessera::Result<()> {
     println!("  Batch encoding: {:?}", encoding_time);
     println!("  Similarity computation: {:?}", sim_time);
     println!("  Total time: {:?}", encoding_time + sim_time);
-    println!("  Throughput: {:.2} docs/sec\n", 
-        documents.len() as f64 / (encoding_time + sim_time).as_secs_f64());
+    println!(
+        "  Throughput: {:.2} docs/sec\n",
+        documents.len() as f64 / (encoding_time + sim_time).as_secs_f64()
+    );
 
     println!("Top 5 Results:");
     for (rank, (idx, score)) in similarities.iter().take(5).enumerate() {

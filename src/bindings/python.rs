@@ -33,15 +33,15 @@
 //! ```
 
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
-#[cfg(feature = "python")]
-use pyo3::exceptions::*;
-#[cfg(feature = "python")]
-use numpy::{PyArray1, PyArray2, PyArray3, PyArrayMethods, PyUntypedArrayMethods};
+use crate::core::{DenseEmbedding, SparseEmbedding, TokenEmbeddings, VisionEmbedding};
 #[cfg(feature = "python")]
 use crate::error::TesseraError;
 #[cfg(feature = "python")]
-use crate::core::{TokenEmbeddings, DenseEmbedding, SparseEmbedding, VisionEmbedding};
+use numpy::{PyArray1, PyArray2, PyArray3, PyArrayMethods, PyUntypedArrayMethods};
+#[cfg(feature = "python")]
+use pyo3::exceptions::*;
+#[cfg(feature = "python")]
+use pyo3::prelude::*;
 
 // ============================================================================
 // Error Conversion
@@ -59,21 +59,22 @@ fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
         TesseraError::EncodingError { context, source } => {
             PyRuntimeError::new_err(format!("Encoding failed: {} - {}", context, source))
         }
-        TesseraError::UnsupportedDimension { model_id, requested, supported } => {
-            PyValueError::new_err(format!(
-                "Unsupported dimension {} for model '{}'. Supported: {:?}",
-                requested, model_id, supported
-            ))
-        }
-        TesseraError::DeviceError(msg) => {
-            PyRuntimeError::new_err(format!("Device error: {}", msg))
-        }
+        TesseraError::UnsupportedDimension {
+            model_id,
+            requested,
+            supported,
+        } => PyValueError::new_err(format!(
+            "Unsupported dimension {} for model '{}'. Supported: {:?}",
+            requested, model_id, supported
+        )),
+        TesseraError::DeviceError(msg) => PyRuntimeError::new_err(format!("Device error: {}", msg)),
         TesseraError::QuantizationError(msg) => {
             PyValueError::new_err(format!("Quantization error: {}", msg))
         }
-        TesseraError::DimensionMismatch { expected, actual } => {
-            PyValueError::new_err(format!("Dimension mismatch: expected {}, got {}", expected, actual))
-        }
+        TesseraError::DimensionMismatch { expected, actual } => PyValueError::new_err(format!(
+            "Dimension mismatch: expected {}, got {}",
+            expected, actual
+        )),
         TesseraError::TokenizationError(e) => {
             PyRuntimeError::new_err(format!("Tokenization error: {}", e))
         }
@@ -83,15 +84,11 @@ fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
         TesseraError::MatryoshkaError(msg) => {
             PyValueError::new_err(format!("Matryoshka truncation error: {}", msg))
         }
-        TesseraError::IoError(e) => {
-            PyIOError::new_err(format!("IO error: {}", e))
-        }
+        TesseraError::IoError(e) => PyIOError::new_err(format!("IO error: {}", e)),
         TesseraError::TensorError(e) => {
             PyRuntimeError::new_err(format!("Tensor operation error: {}", e))
         }
-        TesseraError::Other(e) => {
-            PyRuntimeError::new_err(format!("Error: {}", e))
-        }
+        TesseraError::Other(e) => PyRuntimeError::new_err(format!("Error: {}", e)),
     }
 }
 
@@ -109,7 +106,8 @@ fn token_embeddings_to_pyarray(
     // Collect rows into Vec<Vec<f32>>
     let rows: Vec<Vec<f32>> = (0..embeddings.num_tokens)
         .map(|i| {
-            embeddings.embeddings
+            embeddings
+                .embeddings
                 .row(i)
                 .iter()
                 .copied()
@@ -147,7 +145,11 @@ fn sparse_embedding_to_pyarrays(
     embedding: &SparseEmbedding,
 ) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
     // Extract indices and values separately
-    let indices: Vec<i32> = embedding.weights.iter().map(|(idx, _)| *idx as i32).collect();
+    let indices: Vec<i32> = embedding
+        .weights
+        .iter()
+        .map(|(idx, _)| *idx as i32)
+        .collect();
     let values: Vec<f32> = embedding.weights.iter().map(|(_, val)| *val).collect();
 
     // Create PyArray1s
@@ -172,16 +174,13 @@ fn vision_embedding_to_pyarray(
 
 /// Convert a candle Tensor to PyArray2<f32> (for time series).
 #[cfg(feature = "python")]
-fn tensor_to_pyarray2(
-    py: Python<'_>,
-    tensor: &candle_core::Tensor,
-) -> PyResult<Py<PyArray2<f32>>> {
+fn tensor_to_pyarray2(py: Python<'_>, tensor: &candle_core::Tensor) -> PyResult<Py<PyArray2<f32>>> {
     use candle_core::Device;
 
     // Get tensor on CPU
-    let tensor_cpu = tensor.to_device(&Device::Cpu).map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to move tensor to CPU: {}", e))
-    })?;
+    let tensor_cpu = tensor
+        .to_device(&Device::Cpu)
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to move tensor to CPU: {}", e)))?;
 
     // Get dimensions
     let dims = tensor_cpu.dims();
@@ -193,19 +192,16 @@ fn tensor_to_pyarray2(
     }
 
     // Flatten to Vec<f32>
-    let data = tensor_cpu.flatten_all().map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to flatten tensor: {}", e))
-    })?;
+    let data = tensor_cpu
+        .flatten_all()
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to flatten tensor: {}", e)))?;
 
-    let vec = data.to_vec1::<f32>().map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to convert tensor to vec: {}", e))
-    })?;
+    let vec = data
+        .to_vec1::<f32>()
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to convert tensor to vec: {}", e)))?;
 
     // Create rows for PyArray2
-    let rows: Vec<Vec<f32>> = vec
-        .chunks(dims[1])
-        .map(|chunk| chunk.to_vec())
-        .collect();
+    let rows: Vec<Vec<f32>> = vec.chunks(dims[1]).map(|chunk| chunk.to_vec()).collect();
 
     let array_bound = PyArray2::from_vec2_bound(py, &rows)?;
     Ok(array_bound.unbind())
@@ -213,16 +209,13 @@ fn tensor_to_pyarray2(
 
 /// Convert a candle Tensor to PyArray3<f32> (for time series quantiles).
 #[cfg(feature = "python")]
-fn tensor_to_pyarray3(
-    py: Python<'_>,
-    tensor: &candle_core::Tensor,
-) -> PyResult<Py<PyArray3<f32>>> {
+fn tensor_to_pyarray3(py: Python<'_>, tensor: &candle_core::Tensor) -> PyResult<Py<PyArray3<f32>>> {
     use candle_core::Device;
 
     // Get tensor on CPU
-    let tensor_cpu = tensor.to_device(&Device::Cpu).map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to move tensor to CPU: {}", e))
-    })?;
+    let tensor_cpu = tensor
+        .to_device(&Device::Cpu)
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to move tensor to CPU: {}", e)))?;
 
     // Get dimensions
     let dims = tensor_cpu.dims();
@@ -234,13 +227,13 @@ fn tensor_to_pyarray3(
     }
 
     // Flatten to Vec<f32>
-    let data = tensor_cpu.flatten_all().map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to flatten tensor: {}", e))
-    })?;
+    let data = tensor_cpu
+        .flatten_all()
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to flatten tensor: {}", e)))?;
 
-    let vec = data.to_vec1::<f32>().map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to convert tensor to vec: {}", e))
-    })?;
+    let vec = data
+        .to_vec1::<f32>()
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to convert tensor to vec: {}", e)))?;
 
     // Reshape to 3D: [batch, prediction_length, num_quantiles]
     let batch_size = dims[0];
@@ -273,9 +266,7 @@ fn tensor_to_pyarray3(
 
 /// Convert PyArray2<f32> to candle Tensor.
 #[cfg(feature = "python")]
-fn pyarray2_to_tensor(
-    array: &Bound<'_, PyArray2<f32>>,
-) -> PyResult<candle_core::Tensor> {
+fn pyarray2_to_tensor(array: &Bound<'_, PyArray2<f32>>) -> PyResult<candle_core::Tensor> {
     use candle_core::{Device, Tensor};
 
     // Get shape
@@ -289,14 +280,13 @@ fn pyarray2_to_tensor(
 
     // Get readonly array and convert to Vec
     let readonly = array.readonly();
-    let slice = readonly.as_slice().map_err(|e| {
-        PyValueError::new_err(format!("Failed to get array slice: {}", e))
-    })?;
+    let slice = readonly
+        .as_slice()
+        .map_err(|e| PyValueError::new_err(format!("Failed to get array slice: {}", e)))?;
 
     // Create tensor
-    Tensor::from_slice(slice, (shape[0], shape[1]), &Device::Cpu).map_err(|e| {
-        PyRuntimeError::new_err(format!("Failed to create tensor: {}", e))
-    })
+    Tensor::from_slice(slice, (shape[0], shape[1]), &Device::Cpu)
+        .map_err(|e| PyRuntimeError::new_err(format!("Failed to create tensor: {}", e)))
 }
 
 // ============================================================================
@@ -328,8 +318,8 @@ impl PyTesseraMultiVector {
     ///     >>> embeddings = embedder.encode("What is machine learning?")
     #[new]
     fn new(model_id: &str) -> PyResult<Self> {
-        let inner = crate::api::TesseraMultiVector::new(model_id)
-            .map_err(tessera_error_to_pyerr)?;
+        let inner =
+            crate::api::TesseraMultiVector::new(model_id).map_err(tessera_error_to_pyerr)?;
         Ok(Self { inner })
     }
 
@@ -349,8 +339,7 @@ impl PyTesseraMultiVector {
     ///     >>> print(embeddings.shape)
     ///     (8, 128)
     fn encode(&self, py: Python<'_>, text: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embeddings = self.inner.encode(text)
-            .map_err(tessera_error_to_pyerr)?;
+        let embeddings = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
         token_embeddings_to_pyarray(py, &embeddings)
     }
 
@@ -372,15 +361,13 @@ impl PyTesseraMultiVector {
     ///     >>> batch_embs = embedder.encode_batch(texts)
     ///     >>> len(batch_embs)
     ///     3
-    fn encode_batch(
-        &self,
-        py: Python<'_>,
-        texts: Vec<String>,
-    ) -> PyResult<Vec<Py<PyArray2<f32>>>> {
+    fn encode_batch(&self, py: Python<'_>, texts: Vec<String>) -> PyResult<Vec<Py<PyArray2<f32>>>> {
         // Convert Vec<String> to Vec<&str> for the Rust API
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
 
-        let embeddings_vec = self.inner.encode_batch(&text_refs)
+        let embeddings_vec = self
+            .inner
+            .encode_batch(&text_refs)
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -411,7 +398,8 @@ impl PyTesseraMultiVector {
     ///     >>> print(f"Similarity: {score:.4f}")
     ///     Similarity: 0.8523
     fn similarity(&self, text_a: &str, text_b: &str) -> PyResult<f32> {
-        self.inner.similarity(text_a, text_b)
+        self.inner
+            .similarity(text_a, text_b)
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -485,8 +473,7 @@ impl PyTesseraDense {
     ///     >>> embedding = embedder.encode("What is machine learning?")
     #[new]
     fn new(model_id: &str) -> PyResult<Self> {
-        let inner = crate::api::TesseraDense::new(model_id)
-            .map_err(tessera_error_to_pyerr)?;
+        let inner = crate::api::TesseraDense::new(model_id).map_err(tessera_error_to_pyerr)?;
         Ok(Self { inner })
     }
 
@@ -506,8 +493,7 @@ impl PyTesseraDense {
     ///     >>> print(embedding.shape)
     ///     (768,)
     fn encode(&self, py: Python<'_>, text: &str) -> PyResult<Py<PyArray1<f32>>> {
-        let embedding = self.inner.encode(text)
-            .map_err(tessera_error_to_pyerr)?;
+        let embedding = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
         dense_embedding_to_pyarray(py, &embedding)
     }
 
@@ -527,13 +513,11 @@ impl PyTesseraDense {
     ///     >>> batch_embs = embedder.encode_batch(texts)
     ///     >>> len(batch_embs)
     ///     2
-    fn encode_batch(
-        &self,
-        py: Python<'_>,
-        texts: Vec<String>,
-    ) -> PyResult<Vec<Py<PyArray1<f32>>>> {
+    fn encode_batch(&self, py: Python<'_>, texts: Vec<String>) -> PyResult<Vec<Py<PyArray1<f32>>>> {
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings_vec = self.inner.encode_batch(&text_refs)
+        let embeddings_vec = self
+            .inner
+            .encode_batch(&text_refs)
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -558,7 +542,8 @@ impl PyTesseraDense {
     ///     ... )
     ///     >>> print(f"Similarity: {score:.4f}")
     fn similarity(&self, text_a: &str, text_b: &str) -> PyResult<f32> {
-        self.inner.similarity(text_a, text_b)
+        self.inner
+            .similarity(text_a, text_b)
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -628,8 +613,7 @@ impl PyTesseraSparse {
     ///     >>> indices, values = embedder.encode("What is machine learning?")
     #[new]
     fn new(model_id: &str) -> PyResult<Self> {
-        let inner = crate::api::TesseraSparse::new(model_id)
-            .map_err(tessera_error_to_pyerr)?;
+        let inner = crate::api::TesseraSparse::new(model_id).map_err(tessera_error_to_pyerr)?;
         Ok(Self { inner })
     }
 
@@ -647,9 +631,12 @@ impl PyTesseraSparse {
     /// Example:
     ///     >>> indices, values = embedder.encode("machine learning")
     ///     >>> print(f"Non-zero dims: {len(indices)}")
-    fn encode<'py>(&self, py: Python<'py>, text: &str) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
-        let embedding = self.inner.encode(text)
-            .map_err(tessera_error_to_pyerr)?;
+    fn encode<'py>(
+        &self,
+        py: Python<'py>,
+        text: &str,
+    ) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
+        let embedding = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
         sparse_embedding_to_pyarrays(py, &embedding)
     }
 
@@ -675,7 +662,9 @@ impl PyTesseraSparse {
         texts: Vec<String>,
     ) -> PyResult<Vec<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)>> {
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings_vec = self.inner.encode_batch(&text_refs)
+        let embeddings_vec = self
+            .inner
+            .encode_batch(&text_refs)
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -697,7 +686,8 @@ impl PyTesseraSparse {
     ///     >>> score = embedder.similarity("machine learning", "deep learning")
     ///     >>> print(f"Similarity: {score:.4f}")
     fn similarity(&self, text_a: &str, text_b: &str) -> PyResult<f32> {
-        self.inner.similarity(text_a, text_b)
+        self.inner
+            .similarity(text_a, text_b)
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -763,8 +753,7 @@ impl PyTesseraVision {
     ///     >>> doc_emb = embedder.encode_document("invoice.jpg")
     #[new]
     fn new(model_id: &str) -> PyResult<Self> {
-        let inner = crate::api::TesseraVision::new(model_id)
-            .map_err(tessera_error_to_pyerr)?;
+        let inner = crate::api::TesseraVision::new(model_id).map_err(tessera_error_to_pyerr)?;
         Ok(Self { inner })
     }
 
@@ -784,7 +773,9 @@ impl PyTesseraVision {
     ///     >>> print(doc_emb.shape)
     ///     (1024, 128)
     fn encode_document<'py>(&self, py: Python<'py>, path: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embedding = self.inner.encode_document(path)
+        let embedding = self
+            .inner
+            .encode_document(path)
             .map_err(tessera_error_to_pyerr)?;
         vision_embedding_to_pyarray(py, &embedding)
     }
@@ -805,7 +796,9 @@ impl PyTesseraVision {
     ///     >>> print(query_emb.shape)
     ///     (8, 128)
     fn encode_query<'py>(&self, py: Python<'py>, text: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embedding = self.inner.encode_query(text)
+        let embedding = self
+            .inner
+            .encode_query(text)
             .map_err(tessera_error_to_pyerr)?;
         token_embeddings_to_pyarray(py, &embedding)
     }
@@ -823,7 +816,11 @@ impl PyTesseraVision {
     ///     >>> query_emb = embedder.encode_query("total amount")
     ///     >>> doc_emb = embedder.encode_document("invoice.jpg")
     ///     >>> score = embedder.search(query_emb, doc_emb)
-    fn search(&self, query: &Bound<'_, PyArray2<f32>>, document: &Bound<'_, PyArray2<f32>>) -> PyResult<f32> {
+    fn search(
+        &self,
+        query: &Bound<'_, PyArray2<f32>>,
+        document: &Bound<'_, PyArray2<f32>>,
+    ) -> PyResult<f32> {
         // Convert PyArray2 to TokenEmbeddings and VisionEmbedding structures
         let query_shape = query.shape();
         let doc_shape = document.shape();
@@ -841,10 +838,11 @@ impl PyTesseraVision {
         })?;
 
         // Convert to TokenEmbeddings for query
-        let query_array = ndarray::Array2::from_shape_vec(
-            (query_shape[0], query_shape[1]),
-            query_slice.to_vec(),
-        ).map_err(|e| PyValueError::new_err(format!("Failed to create query array: {}", e)))?;
+        let query_array =
+            ndarray::Array2::from_shape_vec((query_shape[0], query_shape[1]), query_slice.to_vec())
+                .map_err(|e| {
+                    PyValueError::new_err(format!("Failed to create query array: {}", e))
+                })?;
 
         let query_emb = TokenEmbeddings {
             embeddings: query_array,
@@ -867,7 +865,8 @@ impl PyTesseraVision {
         };
 
         // Compute similarity
-        self.inner.search(&query_emb, &doc_emb)
+        self.inner
+            .search(&query_emb, &doc_emb)
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -884,7 +883,8 @@ impl PyTesseraVision {
     ///     >>> score = embedder.search_document("total amount", "invoice.jpg")
     ///     >>> print(f"Score: {score:.4f}")
     fn search_document(&self, query_text: &str, document_path: &str) -> PyResult<f32> {
-        self.inner.search_document(query_text, document_path)
+        self.inner
+            .search_document(query_text, document_path)
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -955,8 +955,7 @@ impl PyTesseraTimeSeries {
     ///     >>> forecast = forecaster.forecast(data)
     #[new]
     fn new(model_id: &str) -> PyResult<Self> {
-        let inner = crate::api::TesseraTimeSeries::new(model_id)
-            .map_err(tessera_error_to_pyerr)?;
+        let inner = crate::api::TesseraTimeSeries::new(model_id).map_err(tessera_error_to_pyerr)?;
         Ok(Self { inner })
     }
 
@@ -977,12 +976,18 @@ impl PyTesseraTimeSeries {
     ///     >>> forecast = forecaster.forecast(data)
     ///     >>> print(forecast.shape)
     ///     (1, 64)
-    fn forecast<'py>(&mut self, py: Python<'py>, context: &Bound<'_, PyArray2<f32>>) -> PyResult<Py<PyArray2<f32>>> {
+    fn forecast<'py>(
+        &mut self,
+        py: Python<'py>,
+        context: &Bound<'_, PyArray2<f32>>,
+    ) -> PyResult<Py<PyArray2<f32>>> {
         // Convert PyArray2 to Tensor
         let tensor = pyarray2_to_tensor(context)?;
 
         // Generate forecast
-        let forecast_tensor = self.inner.forecast(&tensor)
+        let forecast_tensor = self
+            .inner
+            .forecast(&tensor)
             .map_err(tessera_error_to_pyerr)?;
 
         // Convert back to PyArray2
@@ -1005,12 +1010,18 @@ impl PyTesseraTimeSeries {
     ///     >>> quantiles = forecaster.forecast_quantiles(data)
     ///     >>> print(quantiles.shape)
     ///     (1, 64, 9)
-    fn forecast_quantiles<'py>(&mut self, py: Python<'py>, context: &Bound<'_, PyArray2<f32>>) -> PyResult<Py<PyArray3<f32>>> {
+    fn forecast_quantiles<'py>(
+        &mut self,
+        py: Python<'py>,
+        context: &Bound<'_, PyArray2<f32>>,
+    ) -> PyResult<Py<PyArray3<f32>>> {
         // Convert PyArray2 to Tensor
         let tensor = pyarray2_to_tensor(context)?;
 
         // Generate quantile forecasts
-        let quantiles_tensor = self.inner.forecast_quantiles(&tensor)
+        let quantiles_tensor = self
+            .inner
+            .forecast_quantiles(&tensor)
             .map_err(tessera_error_to_pyerr)?;
 
         // Convert back to PyArray3

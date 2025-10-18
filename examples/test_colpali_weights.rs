@@ -3,11 +3,11 @@
 //! Run with:
 //! cargo run --release --features metal test_colpali_weights.rs
 
-use tessera::encoding::vision::ColPaliEncoder;
-use tessera::backends::candle::get_device;
-use tessera::models::ModelConfig;
-use tessera::core::VisionEncoder;
 use anyhow::Context;
+use tessera::backends::candle::get_device;
+use tessera::core::VisionEncoder;
+use tessera::encoding::vision::ColPaliEncoder;
+use tessera::models::ModelConfig;
 
 fn main() -> anyhow::Result<()> {
     println!("=== ColPali v1.2-merged Weight Loading Test ===\n");

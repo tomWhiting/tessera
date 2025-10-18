@@ -1,3 +1,7 @@
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
+use std::f32::consts::PI;
+use tessera::backends::candle::get_device;
 /// Time series similarity search using Chronos Bolt forecasts
 ///
 /// This example demonstrates:
@@ -10,15 +14,13 @@
 /// but we can use forecast patterns as a form of similarity measure
 ///
 /// Run with: cargo run --example timeseries_similarity_search
-
 use tessera::timeseries::models::ChronosBolt;
-use tessera::backends::candle::get_device;
-use candle_core::{Tensor, IndexOp};
-use anyhow::{Result, Context};
-use std::f32::consts::PI;
 
 /// Generate different time series patterns
-fn generate_patterns(context_len: usize, device: &candle_core::Device) -> Result<(Tensor, Vec<String>)> {
+fn generate_patterns(
+    context_len: usize,
+    device: &candle_core::Device,
+) -> Result<(Tensor, Vec<String>)> {
     let mut all_series = Vec::new();
     let mut labels = Vec::new();
 
@@ -93,11 +95,7 @@ fn generate_patterns(context_len: usize, device: &candle_core::Device) -> Result
     all_series.extend(series);
 
     let batch_size = labels.len();
-    let tensor = Tensor::from_vec(
-        all_series,
-        (batch_size, context_len),
-        device,
-    )?;
+    let tensor = Tensor::from_vec(all_series, (batch_size, context_len), device)?;
 
     Ok((tensor, labels))
 }
@@ -111,7 +109,7 @@ fn main() -> Result<()> {
     let device = get_device().context("Getting compute device")?;
     println!("[Device] Device: {:?}\n", device);
 
-    let context_len = 2048;  // Chronos Bolt context length
+    let context_len = 2048; // Chronos Bolt context length
 
     // 1. Generate diverse time series patterns
     println!("[Data] Generating 8 different time series patterns...\n");
@@ -151,25 +149,41 @@ fn main() -> Result<()> {
 
     println!("   64-dimensional forecast vector:\n");
     for (i, chunk) in forecast_full.chunks(8).enumerate() {
-        let values = chunk.iter()
+        let values = chunk
+            .iter()
             .map(|v| format!("{:>8.4}", v))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("   [t {:>2}-{:>2}]: {}", i * 8, (i * 8) + chunk.len() - 1, values);
+        println!(
+            "   [t {:>2}-{:>2}]: {}",
+            i * 8,
+            (i * 8) + chunk.len() - 1,
+            values
+        );
     }
 
     // Compute stats
     let mean = forecast_full.iter().sum::<f32>() / forecast_full.len() as f32;
-    let variance = forecast_full.iter()
+    let variance = forecast_full
+        .iter()
         .map(|x| (x - mean).powi(2))
-        .sum::<f32>() / forecast_full.len() as f32;
+        .sum::<f32>()
+        / forecast_full.len() as f32;
     let std_dev = variance.sqrt();
 
     println!("\n   Forecast statistics:");
     println!("   • Mean:    {:>8.4}", mean);
     println!("   • Std Dev: {:>8.4}", std_dev);
-    println!("   • Min:     {:>8.4}", forecast_full.iter().fold(f32::INFINITY, |a, &b| a.min(b)));
-    println!("   • Max:     {:>8.4}", forecast_full.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b)));
+    println!(
+        "   • Min:     {:>8.4}",
+        forecast_full.iter().fold(f32::INFINITY, |a, &b| a.min(b))
+    );
+    println!(
+        "   • Max:     {:>8.4}",
+        forecast_full
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b))
+    );
 
     // 5. Compute pairwise similarities based on forecasts
     println!("\n\n[Compute] Computing pairwise cosine similarities...\n");
@@ -235,7 +249,7 @@ fn main() -> Result<()> {
 
     let mut similarities = Vec::new();
     for i in 0..batch_size {
-        for j in (i+1)..batch_size {
+        for j in (i + 1)..batch_size {
             similarities.push((i, j, sim_matrix[i][j]));
         }
     }
@@ -279,7 +293,11 @@ fn main() -> Result<()> {
 
     ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    println!("   Query: Pattern {} - {}\n", query_idx + 1, labels[query_idx]);
+    println!(
+        "   Query: Pattern {} - {}\n",
+        query_idx + 1,
+        labels[query_idx]
+    );
     println!("   Top 3 most similar patterns:\n");
 
     for (rank, (i, sim)) in ranked.iter().take(3).enumerate() {

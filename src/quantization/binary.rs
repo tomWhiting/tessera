@@ -246,7 +246,9 @@ mod tests {
     #[test]
     fn test_binary_large_dimension() {
         let quantizer = BinaryQuantization::new();
-        let vector: Vec<f32> = (0..128).map(|i| if i % 2 == 0 { 1.0 } else { -1.0 }).collect();
+        let vector: Vec<f32> = (0..128)
+            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
 
         let binary = quantizer.quantize_vector(&vector);
         assert_eq!(binary.dim, 128);

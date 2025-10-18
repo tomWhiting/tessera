@@ -55,7 +55,11 @@ fn main() -> tessera::Result<()> {
                 let _ = embedder.encode(text)?;
             }
             let elapsed = start.elapsed();
-            println!("Sequential: {:?} ({:.2} ms/text)", elapsed, elapsed.as_secs_f64() * 1000.0 / batch_size as f64);
+            println!(
+                "Sequential: {:?} ({:.2} ms/text)",
+                elapsed,
+                elapsed.as_secs_f64() * 1000.0 / batch_size as f64
+            );
             Some(elapsed)
         } else {
             println!("Sequential: Skipped (too slow for large batches)");
@@ -66,7 +70,11 @@ fn main() -> tessera::Result<()> {
         let start = Instant::now();
         let batch_results = embedder.encode_batch(&text_refs)?;
         let batch_time = start.elapsed();
-        println!("Batch:      {:?} ({:.2} ms/text)", batch_time, batch_time.as_secs_f64() * 1000.0 / batch_size as f64);
+        println!(
+            "Batch:      {:?} ({:.2} ms/text)",
+            batch_time,
+            batch_time.as_secs_f64() * 1000.0 / batch_size as f64
+        );
 
         // Calculate speedup
         if let Some(seq_time) = sequential_time {
@@ -81,9 +89,10 @@ fn main() -> tessera::Result<()> {
 
         // Verify correctness: spot check first result
         let first_embedding = &batch_results[0];
-        println!("Output:     {} tokens × {} dimensions", 
-            first_embedding.num_tokens, 
-            first_embedding.embedding_dim);
+        println!(
+            "Output:     {} tokens × {} dimensions",
+            first_embedding.num_tokens, first_embedding.embedding_dim
+        );
 
         println!();
     }
@@ -107,18 +116,26 @@ fn main() -> tessera::Result<()> {
 
     println!("Comparing results...");
     let mut all_match = true;
-    for (i, (seq, batch)) in sequential_results.iter().zip(batch_results.iter()).enumerate() {
+    for (i, (seq, batch)) in sequential_results
+        .iter()
+        .zip(batch_results.iter())
+        .enumerate()
+    {
         // Check dimensions match
         if seq.num_tokens != batch.num_tokens {
-            println!("  Text {}: Token count mismatch! {} vs {}", 
-                i, seq.num_tokens, batch.num_tokens);
+            println!(
+                "  Text {}: Token count mismatch! {} vs {}",
+                i, seq.num_tokens, batch.num_tokens
+            );
             all_match = false;
             continue;
         }
 
         if seq.embedding_dim != batch.embedding_dim {
-            println!("  Text {}: Dimension mismatch! {} vs {}", 
-                i, seq.embedding_dim, batch.embedding_dim);
+            println!(
+                "  Text {}: Dimension mismatch! {} vs {}",
+                i, seq.embedding_dim, batch.embedding_dim
+            );
             all_match = false;
             continue;
         }
@@ -159,10 +176,12 @@ fn main() -> tessera::Result<()> {
         println!("  Text {}: max diff = {:.2e}", i, max_diff);
 
         // For practical correctness, we check that differences are reasonable
-        if max_diff > 0.5 {  // > 50% difference is concerning
+        if max_diff > 0.5 {
+            // > 50% difference is concerning
             println!("           ⚠ Large difference - may indicate an issue");
             all_match = false;
-        } else if max_diff < 0.001 {  // < 0.1% difference is excellent
+        } else if max_diff < 0.001 {
+            // < 0.1% difference is excellent
             println!("           ✓ Excellent match");
         } else {
             println!("           ✓ Acceptable (expected padding effects)");
@@ -184,7 +203,7 @@ fn main() -> tessera::Result<()> {
     println!("Computing pairwise similarities (sequential):");
     let mut seq_similarities = Vec::new();
     for i in 0..sequential_results.len() {
-        for j in (i+1)..sequential_results.len() {
+        for j in (i + 1)..sequential_results.len() {
             use tessera::utils::max_sim;
             let sim = max_sim(&sequential_results[i], &sequential_results[j])?;
             println!("  Text {} <-> Text {}: {:.4}", i, j, sim);
@@ -195,7 +214,7 @@ fn main() -> tessera::Result<()> {
     println!("\nComputing pairwise similarities (batch):");
     let mut batch_similarities = Vec::new();
     for i in 0..batch_results.len() {
-        for j in (i+1)..batch_results.len() {
+        for j in (i + 1)..batch_results.len() {
             use tessera::utils::max_sim;
             let sim = max_sim(&batch_results[i], &batch_results[j])?;
             println!("  Text {} <-> Text {}: {:.4}", i, j, sim);
@@ -205,13 +224,24 @@ fn main() -> tessera::Result<()> {
 
     println!("\nSimilarity score comparison:");
     let mut sim_all_match = true;
-    for (idx, (seq_sim, batch_sim)) in seq_similarities.iter().zip(batch_similarities.iter()).enumerate() {
+    for (idx, (seq_sim, batch_sim)) in seq_similarities
+        .iter()
+        .zip(batch_similarities.iter())
+        .enumerate()
+    {
         let diff = (seq_sim - batch_sim).abs();
         let rel_diff = diff / seq_sim.max(1e-6);
-        println!("  Pair {}: seq={:.4}, batch={:.4}, diff={:.4} ({:.2}%)",
-            idx, seq_sim, batch_sim, diff, rel_diff * 100.0);
+        println!(
+            "  Pair {}: seq={:.4}, batch={:.4}, diff={:.4} ({:.2}%)",
+            idx,
+            seq_sim,
+            batch_sim,
+            diff,
+            rel_diff * 100.0
+        );
 
-        if rel_diff > 0.05 {  // > 5% relative difference in similarity is concerning
+        if rel_diff > 0.05 {
+            // > 5% relative difference in similarity is concerning
             sim_all_match = false;
         }
     }

@@ -7,7 +7,7 @@
 //! - Compute similarity with quantized embeddings
 //! - Compare accuracy vs full precision
 
-use tessera::{TesseraMultiVector, QuantizationConfig, Result};
+use tessera::{QuantizationConfig, Result, TesseraMultiVector};
 
 fn main() -> Result<()> {
     println!("=== Binary Quantization Demo ===\n");
@@ -38,7 +38,10 @@ fn main() -> Result<()> {
     println!("Query embeddings:");
     println!("  Tokens: {}", query_quant.num_tokens);
     println!("  Dimension: {}", query_quant.original_dim);
-    println!("  Memory (float32): {} bytes", query_full.num_tokens * query_full.embedding_dim * 4);
+    println!(
+        "  Memory (float32): {} bytes",
+        query_full.num_tokens * query_full.embedding_dim * 4
+    );
     println!("  Memory (binary): {} bytes", query_quant.memory_bytes());
     println!("  Compression: {:.1}x\n", query_quant.compression_ratio());
 
@@ -73,18 +76,24 @@ fn main() -> Result<()> {
 
     // Accuracy analysis
     println!("\n=== Accuracy Analysis ===\n");
-    
+
     // Compare rankings
     let mut full_results = results.clone();
     full_results.sort_by(|a, b| b.3.partial_cmp(&a.3).unwrap());
 
     println!("Ranking comparison:");
-    println!("  Binary quantized: {:?}", results.iter().map(|r| r.0).collect::<Vec<_>>());
-    println!("  Full precision:   {:?}", full_results.iter().map(|r| r.0).collect::<Vec<_>>());
+    println!(
+        "  Binary quantized: {:?}",
+        results.iter().map(|r| r.0).collect::<Vec<_>>()
+    );
+    println!(
+        "  Full precision:   {:?}",
+        full_results.iter().map(|r| r.0).collect::<Vec<_>>()
+    );
 
-    let same_ranking = results.iter().map(|r| r.0).collect::<Vec<_>>() == 
-                      full_results.iter().map(|r| r.0).collect::<Vec<_>>();
-    
+    let same_ranking = results.iter().map(|r| r.0).collect::<Vec<_>>()
+        == full_results.iter().map(|r| r.0).collect::<Vec<_>>();
+
     if same_ranking {
         println!("  ✓ Rankings match perfectly!");
     } else {
@@ -95,7 +104,7 @@ fn main() -> Result<()> {
     let top_doc_idx = results[0].0;
     let score_binary = results[0].2;
     let score_float = results.iter().find(|r| r.0 == top_doc_idx).unwrap().3;
-    
+
     // Normalize scores for comparison (binary scores are on different scale)
     println!("\nTop document score preservation:");
     println!("  Binary score: {:.2}", score_binary);
@@ -108,8 +117,9 @@ fn main() -> Result<()> {
     let quick_quant = embedder.encode_quantized("Quick encoding example")?;
     println!("encode_quantized() convenience method:");
     println!("  Encodes and quantizes in one call");
-    println!("  Result: {} tokens, {:.1}x compression", 
-        quick_quant.num_tokens, 
+    println!(
+        "  Result: {} tokens, {:.1}x compression",
+        quick_quant.num_tokens,
         quick_quant.compression_ratio()
     );
 

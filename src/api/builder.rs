@@ -28,7 +28,9 @@
 //!     .build()?;
 //! ```
 
-use crate::api::{TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision, TesseraTimeSeries};
+use crate::api::{
+    TesseraDense, TesseraMultiVector, TesseraSparse, TesseraTimeSeries, TesseraVision,
+};
 use crate::backends::CandleBertEncoder;
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::encoding::sparse::CandleSparseEncoder;
@@ -213,16 +215,17 @@ impl TesseraMultiVectorBuilder {
     /// ```
     pub fn build(self) -> Result<TesseraMultiVector> {
         // Validate model ID was provided
-        let model_id = self.model_id.ok_or_else(|| TesseraError::ConfigError(
-            "Model ID must be specified. Use .model(\"model-id\")".to_string(),
-        ))?;
+        let model_id = self.model_id.ok_or_else(|| {
+            TesseraError::ConfigError(
+                "Model ID must be specified. Use .model(\"model-id\")".to_string(),
+            )
+        })?;
 
         // Look up model in registry
-        let model_info = registry::get_model(&model_id).ok_or_else(|| {
-            TesseraError::ModelNotFound {
+        let model_info =
+            registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
-            }
-        })?;
+            })?;
 
         // Validate dimension if specified
         if let Some(dim) = self.dimension {
@@ -264,12 +267,11 @@ impl TesseraMultiVectorBuilder {
         };
 
         // Create encoder
-        let encoder = CandleBertEncoder::new(config, device).map_err(|e| {
-            TesseraError::ModelLoadError {
+        let encoder =
+            CandleBertEncoder::new(config, device).map_err(|e| TesseraError::ModelLoadError {
                 model_id: model_id.clone(),
                 source: e,
-            }
-        })?;
+            })?;
 
         // Create quantizer if requested
         let quantizer = match self.quantization.unwrap_or(QuantizationConfig::None) {
@@ -283,7 +285,9 @@ impl TesseraMultiVectorBuilder {
         };
 
         // Create TesseraMultiVector instance
-        Ok(TesseraMultiVector::from_encoder(encoder, model_id, quantizer))
+        Ok(TesseraMultiVector::from_encoder(
+            encoder, model_id, quantizer,
+        ))
     }
 }
 
@@ -425,16 +429,17 @@ impl TesseraDenseBuilder {
     /// ```
     pub fn build(self) -> Result<TesseraDense> {
         // Validate model ID was provided
-        let model_id = self.model_id.ok_or_else(|| TesseraError::ConfigError(
-            "Model ID must be specified. Use .model(\"model-id\")".to_string(),
-        ))?;
+        let model_id = self.model_id.ok_or_else(|| {
+            TesseraError::ConfigError(
+                "Model ID must be specified. Use .model(\"model-id\")".to_string(),
+            )
+        })?;
 
         // Look up model in registry
-        let model_info = registry::get_model(&model_id).ok_or_else(|| {
-            TesseraError::ModelNotFound {
+        let model_info =
+            registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
-            }
-        })?;
+            })?;
 
         // Validate model type is Dense
         if model_info.model_type != registry::ModelType::Dense {
@@ -484,12 +489,11 @@ impl TesseraDenseBuilder {
         };
 
         // Create dense encoder
-        let encoder = CandleDenseEncoder::new(config, device).map_err(|e| {
-            TesseraError::ModelLoadError {
+        let encoder =
+            CandleDenseEncoder::new(config, device).map_err(|e| TesseraError::ModelLoadError {
                 model_id: model_id.clone(),
                 source: e,
-            }
-        })?;
+            })?;
 
         // Create TesseraDense instance
         Ok(TesseraDense::from_encoder(encoder, model_id))
@@ -607,16 +611,17 @@ impl TesseraSparseBuilder {
     /// ```
     pub fn build(self) -> Result<TesseraSparse> {
         // Validate model ID was provided
-        let model_id = self.model_id.ok_or_else(|| TesseraError::ConfigError(
-            "Model ID must be specified. Use .model(\"model-id\")".to_string(),
-        ))?;
+        let model_id = self.model_id.ok_or_else(|| {
+            TesseraError::ConfigError(
+                "Model ID must be specified. Use .model(\"model-id\")".to_string(),
+            )
+        })?;
 
         // Look up model in registry
-        let model_info = registry::get_model(&model_id).ok_or_else(|| {
-            TesseraError::ModelNotFound {
+        let model_info =
+            registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
-            }
-        })?;
+            })?;
 
         // Validate model type is Sparse
         if model_info.model_type != registry::ModelType::Sparse {
@@ -644,12 +649,11 @@ impl TesseraSparseBuilder {
         })?;
 
         // Create sparse encoder
-        let encoder = CandleSparseEncoder::new(config, device).map_err(|e| {
-            TesseraError::ModelLoadError {
+        let encoder =
+            CandleSparseEncoder::new(config, device).map_err(|e| TesseraError::ModelLoadError {
                 model_id: model_id.clone(),
                 source: e,
-            }
-        })?;
+            })?;
 
         // Create TesseraSparse instance
         Ok(TesseraSparse::from_encoder(encoder, model_id))
@@ -707,12 +711,13 @@ impl TesseraVisionBuilder {
     /// - Model is not a vision-language type
     /// - Model loading fails
     pub fn build(self) -> Result<TesseraVision> {
-        let model_id = self.model_id
+        let model_id = self
+            .model_id
             .ok_or_else(|| TesseraError::ConfigError("Model ID is required".into()))?;
 
         // Get model info from registry
-        let model_info = registry::get_model(&model_id)
-            .ok_or_else(|| TesseraError::ModelNotFound {
+        let model_info =
+            registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
             })?;
 
@@ -792,12 +797,13 @@ impl TesseraTimeSeriesBuilder {
     /// - Model is not a time series type
     /// - Model loading fails
     pub fn build(self) -> Result<TesseraTimeSeries> {
-        let model_id = self.model_id
+        let model_id = self
+            .model_id
             .ok_or_else(|| TesseraError::ConfigError("Model ID is required".into()))?;
 
         // Get model info from registry
-        let model_info = registry::get_model(&model_id)
-            .ok_or_else(|| TesseraError::ModelNotFound {
+        let model_info =
+            registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
             })?;
 

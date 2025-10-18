@@ -1,3 +1,7 @@
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
+use std::f32::consts::PI;
+use tessera::backends::candle::get_device;
 /// Multivariate time series forecasting with Chronos Bolt
 ///
 /// This example demonstrates:
@@ -9,12 +13,7 @@
 /// Note: Chronos Bolt processes univariate series, so we forecast each channel separately
 ///
 /// Run with: cargo run --example timeseries_multivariate
-
 use tessera::timeseries::models::ChronosBolt;
-use tessera::backends::candle::get_device;
-use candle_core::{Tensor, IndexOp};
-use anyhow::{Result, Context};
-use std::f32::consts::PI;
 
 /// Generate realistic multivariate financial time series
 /// Returns: (tensor, channel_names)
@@ -61,11 +60,7 @@ fn generate_financial_data(
         "Market Sentiment (-1 to 1)".to_string(),
     ];
 
-    let tensor = Tensor::from_vec(
-        all_data,
-        (batch_size, num_channels, context_len),
-        device,
-    )?;
+    let tensor = Tensor::from_vec(all_data, (batch_size, num_channels, context_len), device)?;
 
     Ok((tensor, channel_names))
 }
@@ -80,18 +75,17 @@ fn main() -> Result<()> {
     println!("[Device] Device: {:?}\n", device);
 
     let batch_size = 2; // 2 different stocks
-    let context_len = 2048;  // Chronos Bolt context length
+    let context_len = 2048; // Chronos Bolt context length
     let num_channels = 3;
 
     // 1. Generate multivariate financial data
     println!("[Data] Generating multivariate financial time series...\n");
-    let (input_tensor, channel_names) = generate_financial_data(
-        batch_size,
-        context_len,
-        &device,
-    )?;
+    let (input_tensor, channel_names) = generate_financial_data(batch_size, context_len, &device)?;
 
-    println!("[OK] Generated {} stocks with {} channels each", batch_size, num_channels);
+    println!(
+        "[OK] Generated {} stocks with {} channels each",
+        batch_size, num_channels
+    );
     println!("   Context length: {}\n", context_len);
 
     println!("   Channels:");
@@ -102,10 +96,9 @@ fn main() -> Result<()> {
     // Show sample values from first stock
     println!("\n   Sample values from Stock #1 (first 10 timesteps):\n");
     for (ch_idx, ch_name) in channel_names.iter().enumerate() {
-        let values: Vec<f32> = input_tensor
-            .i((0, ch_idx, ..10))?
-            .to_vec1()?;
-        let formatted = values.iter()
+        let values: Vec<f32> = input_tensor.i((0, ch_idx, ..10))?.to_vec1()?;
+        let formatted = values
+            .iter()
             .map(|v| format!("{:>7.2}", v))
             .collect::<Vec<_>>()
             .join(", ");
@@ -139,11 +132,16 @@ fn main() -> Result<()> {
 
     println!("[OK] Forecast complete!");
     println!("   Output shape: {:?}", forecast.shape());
-    println!("   [batch={}, channels={}, pred_len={}]\n",
-        batch_size, num_channels, model.config.prediction_length);
+    println!(
+        "   [batch={}, channels={}, pred_len={}]\n",
+        batch_size, num_channels, model.config.prediction_length
+    );
 
     // 4. Display FULL forecast for Stock #1, all channels
-    println!("[Output] FULL FORECAST for Stock #1 (all {} channels)", num_channels);
+    println!(
+        "[Output] FULL FORECAST for Stock #1 (all {} channels)",
+        num_channels
+    );
     println!("{}", "-".repeat(80));
     println!();
 
@@ -151,17 +149,17 @@ fn main() -> Result<()> {
         println!("   Channel: {}", ch_name);
         println!("   {}", "-".repeat(78));
 
-        let channel_forecast: Vec<f32> = forecast
-            .i((0, ch_idx, ..))?
-            .to_vec1()?;
+        let channel_forecast: Vec<f32> = forecast.i((0, ch_idx, ..))?.to_vec1()?;
 
         // Display in chunks of 8 for readability
         for (i, chunk) in channel_forecast.chunks(8).enumerate() {
-            let values = chunk.iter()
+            let values = chunk
+                .iter()
                 .map(|v| format!("{:>8.2}", v))
                 .collect::<Vec<_>>()
                 .join(" ");
-            println!("   [t={:>2}-{:>2}]: {}",
+            println!(
+                "   [t={:>2}-{:>2}]: {}",
                 i * 8,
                 i * 8 + chunk.len() - 1,
                 values
@@ -170,8 +168,12 @@ fn main() -> Result<()> {
 
         // Statistics
         let mean = channel_forecast.iter().sum::<f32>() / channel_forecast.len() as f32;
-        let min = channel_forecast.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-        let max = channel_forecast.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+        let min = channel_forecast
+            .iter()
+            .fold(f32::INFINITY, |a, &b| a.min(b));
+        let max = channel_forecast
+            .iter()
+            .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
 
         println!("\n   Statistics:");
         println!("   • Mean:  {:>8.2}", mean);
@@ -189,16 +191,15 @@ fn main() -> Result<()> {
         println!("   {}:", ch_name);
 
         for stock_idx in 0..batch_size {
-            let forecast_data: Vec<f32> = forecast
-                .i((stock_idx, ch_idx, ..))?
-                .to_vec1()?;
+            let forecast_data: Vec<f32> = forecast.i((stock_idx, ch_idx, ..))?.to_vec1()?;
 
             let mean = forecast_data.iter().sum::<f32>() / forecast_data.len() as f32;
             let first_val = forecast_data[0];
             let last_val = forecast_data[forecast_data.len() - 1];
             let change = last_val - first_val;
 
-            println!("      Stock #{}: mean={:>7.2}, start={:>7.2}, end={:>7.2}, change={:>+7.2}",
+            println!(
+                "      Stock #{}: mean={:>7.2}, start={:>7.2}, end={:>7.2}, change={:>+7.2}",
                 stock_idx + 1,
                 mean,
                 first_val,

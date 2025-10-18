@@ -235,8 +235,7 @@ impl CandleDenseEncoder {
             let buffer = std::fs::read(weights_path)
                 .context("Reading safetensors file for prefix detection")?;
 
-            let tensors = SafeTensors::deserialize(&buffer)
-                .context("Deserializing safetensors")?;
+            let tensors = SafeTensors::deserialize(&buffer).context("Deserializing safetensors")?;
 
             let tensor_names = tensors.names();
 
@@ -325,14 +324,15 @@ impl CandleDenseEncoder {
     ///
     /// # Errors
     /// Returns an error if the token embeddings cannot be reshaped (shape mismatch)
-    fn apply_pooling(&self, token_embeddings: &Array1<f32>, attention_mask: &[i64]) -> Result<Array1<f32>> {
+    fn apply_pooling(
+        &self,
+        token_embeddings: &Array1<f32>,
+        attention_mask: &[i64],
+    ) -> Result<Array1<f32>> {
         // Convert flattened array back to 2D for pooling functions
         let seq_len = attention_mask.len();
 
-        anyhow::ensure!(
-            seq_len > 0,
-            "Attention mask cannot be empty"
-        );
+        anyhow::ensure!(seq_len > 0, "Attention mask cannot be empty");
 
         let total_elements = token_embeddings.len();
         anyhow::ensure!(
@@ -344,16 +344,20 @@ impl CandleDenseEncoder {
         );
 
         let hidden_dim = total_elements / seq_len;
-        let embeddings_2d = ndarray::Array2::from_shape_vec(
-            (seq_len, hidden_dim),
-            token_embeddings.to_vec(),
-        )
-        .context("Failed to reshape token embeddings: ndarray shape mismatch")?;
+        let embeddings_2d =
+            ndarray::Array2::from_shape_vec((seq_len, hidden_dim), token_embeddings.to_vec())
+                .context("Failed to reshape token embeddings: ndarray shape mismatch")?;
 
         let pooled = match self.pooling_strategy {
-            PoolingStrategy::Cls => crate::utils::pooling::cls_pooling(&embeddings_2d, attention_mask),
-            PoolingStrategy::Mean => crate::utils::pooling::mean_pooling(&embeddings_2d, attention_mask),
-            PoolingStrategy::Max => crate::utils::pooling::max_pooling(&embeddings_2d, attention_mask),
+            PoolingStrategy::Cls => {
+                crate::utils::pooling::cls_pooling(&embeddings_2d, attention_mask)
+            }
+            PoolingStrategy::Mean => {
+                crate::utils::pooling::mean_pooling(&embeddings_2d, attention_mask)
+            }
+            PoolingStrategy::Max => {
+                crate::utils::pooling::max_pooling(&embeddings_2d, attention_mask)
+            }
         };
 
         Ok(pooled)
@@ -505,12 +509,9 @@ impl CandleDenseEncoder {
             }
         }
 
-        let token_ids_tensor = Tensor::from_vec(
-            all_token_ids,
-            (batch_size, max_seq_len),
-            &self.device,
-        )
-        .context("Creating batch token IDs tensor")?;
+        let token_ids_tensor =
+            Tensor::from_vec(all_token_ids, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch token IDs tensor")?;
 
         // Convert attention masks - handle DistilBERT's inverted mask convention
         // We maintain two versions:
@@ -527,7 +528,11 @@ impl CandleDenseEncoder {
                 let processed_val = match &self.model {
                     BertVariant::DistilBert(_) => {
                         // DistilBERT expects: 0=attend, 1=pad
-                        if mask_val == 1 { 0i64 } else { 1i64 }
+                        if mask_val == 1 {
+                            0i64
+                        } else {
+                            1i64
+                        }
                     }
                     _ => {
                         // Standard BERT: 1=attend, 0=pad
@@ -543,12 +548,9 @@ impl CandleDenseEncoder {
             attention_masks_for_pooling.push(mask_for_pooling);
         }
 
-        let attention_mask_tensor = Tensor::from_vec(
-            all_attention_masks,
-            (batch_size, max_seq_len),
-            &self.device,
-        )
-        .context("Creating batch attention mask tensor")?;
+        let attention_mask_tensor =
+            Tensor::from_vec(all_attention_masks, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch attention mask tensor")?;
 
         // Single forward pass for entire batch
         let batch_output = self
@@ -608,7 +610,9 @@ impl Encoder for CandleDenseEncoder {
 impl DenseEncoder for CandleDenseEncoder {
     fn embedding_dim(&self) -> usize {
         // Return target dimension if Matryoshka is configured, otherwise base dimension
-        self.config.target_dimension.unwrap_or(self.config.embedding_dim)
+        self.config
+            .target_dimension
+            .unwrap_or(self.config.embedding_dim)
     }
 
     fn pooling_strategy(&self) -> PoolingStrategy {

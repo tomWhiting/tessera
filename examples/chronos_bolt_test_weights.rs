@@ -1,3 +1,6 @@
+use anyhow::{Context, Result};
+use candle_core::{IndexOp, Tensor};
+use tessera::backends::candle::get_device;
 /// Test Chronos Bolt with real pre-trained weights from HuggingFace
 ///
 /// This example:
@@ -7,11 +10,7 @@
 /// 4. Displays full quantile predictions
 ///
 /// Run with: cargo run --example chronos_bolt_test_weights
-
 use tessera::timeseries::models::ChronosBolt;
-use tessera::backends::candle::get_device;
-use candle_core::{Tensor, IndexOp};
-use anyhow::{Result, Context};
 
 fn main() -> Result<()> {
     println!("\n{}\n", "=".repeat(80));
@@ -24,7 +23,7 @@ fn main() -> Result<()> {
 
     // 1. Create synthetic time series
     println!("[Data] Creating synthetic time series...");
-    let context_len = 2048;  // Chronos Bolt context length
+    let context_len = 2048; // Chronos Bolt context length
     let batch_size = 2;
 
     let mut data = Vec::new();
@@ -45,9 +44,13 @@ fn main() -> Result<()> {
     // Show first few values
     let first_10: Vec<f32> = input.i((0, ..10))?.to_vec1()?;
     println!("\n   First 10 values of series #1:");
-    println!("   {:?}", first_10.iter()
-        .map(|v| format!("{:.2}", v))
-        .collect::<Vec<_>>());
+    println!(
+        "   {:?}",
+        first_10
+            .iter()
+            .map(|v| format!("{:.2}", v))
+            .collect::<Vec<_>>()
+    );
 
     // 2. Load pre-trained model from HuggingFace
     println!("\n[Loading] Downloading Chronos Bolt from HuggingFace...");
@@ -69,8 +72,10 @@ fn main() -> Result<()> {
 
     println!("[OK] Forecast complete!");
     println!("   Output shape: {:?}", forecast.shape());
-    println!("   Expected: [batch={}, pred_len={}]",
-        batch_size, model.config.prediction_length);
+    println!(
+        "   Expected: [batch={}, pred_len={}]",
+        batch_size, model.config.prediction_length
+    );
 
     // 4. Display full forecast for both series
     println!("\n[Output] FULL FORECAST OUTPUT");
@@ -80,11 +85,13 @@ fn main() -> Result<()> {
 
     println!("   Full 64-step forecast for Series #1:\n");
     for (i, chunk) in forecast_series1.chunks(8).enumerate() {
-        let values = chunk.iter()
+        let values = chunk
+            .iter()
             .map(|v| format!("{:>7.2}", v))
             .collect::<Vec<_>>()
             .join(" ");
-        println!("   [t={:>2}-{:>2}]: {}",
+        println!(
+            "   [t={:>2}-{:>2}]: {}",
             i * 8,
             (i * 8 + chunk.len() - 1).min(63),
             values
@@ -93,8 +100,12 @@ fn main() -> Result<()> {
 
     // 5. Statistics
     let mean = forecast_series1.iter().sum::<f32>() / forecast_series1.len() as f32;
-    let min = forecast_series1.iter().fold(f32::INFINITY, |a, &b| a.min(b));
-    let max = forecast_series1.iter().fold(f32::NEG_INFINITY, |a, &b| a.max(b));
+    let min = forecast_series1
+        .iter()
+        .fold(f32::INFINITY, |a, &b| a.min(b));
+    let max = forecast_series1
+        .iter()
+        .fold(f32::NEG_INFINITY, |a, &b| a.max(b));
 
     println!("\n   Statistics:");
     println!("   Mean:  {:.2}", mean);
@@ -112,8 +123,14 @@ fn main() -> Result<()> {
         let first = series_forecast[0];
         let last = series_forecast[series_forecast.len() - 1];
 
-        println!("   Series #{}: mean={:.2}, start={:.2}, end={:.2}, change={:+.2}",
-            series_idx + 1, mean, first, last, last - first);
+        println!(
+            "   Series #{}: mean={:.2}, start={:.2}, end={:.2}, change={:+.2}",
+            series_idx + 1,
+            mean,
+            first,
+            last,
+            last - first
+        );
     }
 
     println!("\n{}", "=".repeat(80));

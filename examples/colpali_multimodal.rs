@@ -9,8 +9,8 @@
 //! cargo run --release --example colpali_multimodal
 //! ```
 
-use tessera::TesseraVision;
 use std::path::Path;
+use tessera::TesseraVision;
 
 fn main() -> tessera::Result<()> {
     println!("=== ColPali Multi-Modal Document Search ===\n");
@@ -30,7 +30,8 @@ fn main() -> tessera::Result<()> {
     ];
 
     // Filter to only existing documents
-    let documents: Vec<(&str, &str, &str)> = all_documents.iter()
+    let documents: Vec<(&str, &str, &str)> = all_documents
+        .iter()
         .filter(|(_, _, path)| Path::new(path).exists())
         .map(|(cat, doc_type, path)| (*cat, *doc_type, *path))
         .collect();
@@ -103,8 +104,10 @@ fn main() -> tessera::Result<()> {
     let mut doc_embeddings = Vec::new();
     for (category, doc_type, path) in &documents {
         let emb = embedder.encode_document(path)?;
-        println!("  Encoded [{}] {}: {} patches",
-            category, doc_type, emb.num_patches);
+        println!(
+            "  Encoded [{}] {}: {} patches",
+            category, doc_type, emb.num_patches
+        );
         doc_embeddings.push((category, doc_type, emb));
     }
     println!();
@@ -120,8 +123,11 @@ fn main() -> tessera::Result<()> {
     ];
 
     println!("=== Cross-Modal Search ===\n");
-    println!("Testing {} queries across {} document types\n",
-        queries.len(), documents.len());
+    println!(
+        "Testing {} queries across {} document types\n",
+        queries.len(),
+        documents.len()
+    );
 
     for (query_type, query_text) in &queries {
         println!("Query [{}]: \"{}\"", query_type, query_text);
@@ -141,7 +147,10 @@ fn main() -> tessera::Result<()> {
 
         // Show top match
         let (top_category, top_type, top_score) = scores[0];
-        println!("  Top match: [{}] {} (score: {:.4})", top_category, top_type, top_score);
+        println!(
+            "  Top match: [{}] {} (score: {:.4})",
+            top_category, top_type, top_score
+        );
 
         // Show if query matched expected document type
         if *top_category == query_type {

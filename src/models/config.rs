@@ -121,7 +121,8 @@ impl ModelConfig {
         let model = super::registry::get_model(id)
             .ok_or_else(|| anyhow!("Model '{}' not found in registry", id))?;
 
-        let (pooling_strategy, normalize_embeddings) = model.pooling
+        let (pooling_strategy, normalize_embeddings) = model
+            .pooling
             .map(|p| (Some(p.strategy), p.normalize))
             .unwrap_or((None, false));
 
@@ -162,7 +163,8 @@ impl ModelConfig {
             ));
         }
 
-        let (pooling_strategy, normalize_embeddings) = model.pooling
+        let (pooling_strategy, normalize_embeddings) = model
+            .pooling
             .map(|p| (Some(p.strategy), p.normalize))
             .unwrap_or((None, false));
 

@@ -9,8 +9,8 @@
 //! cargo run --release --example colpali_demo
 //! ```
 
-use tessera::{TesseraVision, Tessera};
 use std::path::Path;
+use tessera::{Tessera, TesseraVision};
 
 fn main() -> tessera::Result<()> {
     println!("=== ColPali Vision-Language Embeddings Demo ===\n");
@@ -51,8 +51,10 @@ fn main() -> tessera::Result<()> {
     let query_emb = vision.encode_query(query_text)?;
     println!("  Query: \"{}\"", query_text);
     println!("  Tokens: {}", query_emb.num_tokens);
-    println!("  Embedding shape: {} tokens × {} dimensions\n",
-        query_emb.num_tokens, query_emb.embedding_dim);
+    println!(
+        "  Embedding shape: {} tokens × {} dimensions\n",
+        query_emb.num_tokens, query_emb.embedding_dim
+    );
 
     // Check for test image
     let test_image = "test_data/sample.png";
@@ -62,8 +64,10 @@ fn main() -> tessera::Result<()> {
         let doc_emb = vision.encode_document(test_image)?;
         println!("  Image: {}", test_image);
         println!("  Patches: {}", doc_emb.num_patches);
-        println!("  Embedding shape: {} patches × {} dimensions\n",
-            doc_emb.num_patches, doc_emb.embedding_dim);
+        println!(
+            "  Embedding shape: {} patches × {} dimensions\n",
+            doc_emb.num_patches, doc_emb.embedding_dim
+        );
 
         println!("Computing similarity:");
         let score = vision.search(&query_emb, &doc_emb)?;
@@ -75,7 +79,6 @@ fn main() -> tessera::Result<()> {
         let score2 = vision.search_document(query_text, test_image)?;
         println!("  vision.search_document(query, image) = {:.4}", score2);
         println!("  (Encodes both query and document internally)\n");
-
     } else {
         println!("No test image found at {}", test_image);
         println!("\nTo test document encoding:");

@@ -59,7 +59,8 @@ fn main() -> Result<()> {
 
     // Create encoder
     println!("Loading model: {}", config.model_name);
-    let encoder = CandleBertEncoder::new(config.clone(), device).context("Creating ColBERT encoder")?;
+    let encoder =
+        CandleBertEncoder::new(config.clone(), device).context("Creating ColBERT encoder")?;
     println!("Model loaded successfully");
     println!();
 

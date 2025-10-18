@@ -213,10 +213,7 @@ mod tests {
     #[test]
     fn test_quantize_to_bins() {
         let device = Device::Cpu;
-        let input = Tensor::new(
-            &[[[0.0f32, 5.0, -5.0, 10.0, -10.0]]],
-            &device,
-        ).unwrap();
+        let input = Tensor::new(&[[[0.0f32, 5.0, -5.0, 10.0, -10.0]]], &device).unwrap();
 
         let bins = quantize_to_bins(&input, 4096).unwrap();
 
@@ -259,10 +256,7 @@ mod tests {
     #[test]
     fn test_quantize_dequantize_roundtrip() {
         let device = Device::Cpu;
-        let input = Tensor::new(
-            &[[[0.0f32, 1.0, -1.0, 5.0, -5.0]]],
-            &device,
-        ).unwrap();
+        let input = Tensor::new(&[[[0.0f32, 1.0, -1.0, 5.0, -5.0]]], &device).unwrap();
 
         // Quantize
         let bins = quantize_to_bins(&input, 4096).unwrap();
