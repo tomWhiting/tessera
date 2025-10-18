@@ -13,7 +13,7 @@
 //!
 //! Feature-gated behind `python` feature flag. Provides:
 //! - `Tessera` class matching Rust API
-//! - NumPy array interop for embeddings
+//! - `NumPy` array interop for embeddings
 //! - Pythonic error messages
 //! - Type hints for IDE support
 //!
@@ -30,7 +30,7 @@
 //! Feature-gated behind `wasm` feature flag. Provides:
 //! - `Tessera` class for TypeScript/JavaScript
 //! - Async API with Promise support
-//! - Float32Array interop for embeddings
+//! - `Float32Array` interop for embeddings
 //! - Browser and Node.js compatibility
 //!
 //! Example:

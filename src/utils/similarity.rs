@@ -5,7 +5,7 @@
 //! - Cosine similarity: Normalized dot product (angle-based)
 //! - Dot product: Raw inner product similarity
 //! - Euclidean distance: L2 norm of difference vector
-//! - MaxSim: Late interaction similarity for multi-vector embeddings
+//! - `MaxSim`: Late interaction similarity for multi-vector embeddings
 //!
 //! These functions are the building blocks for retrieval, ranking, and clustering.
 
@@ -142,9 +142,9 @@ pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
     Ok(diff.dot(&diff).sqrt())
 }
 
-/// Computes MaxSim similarity between query and document embeddings.
+/// Computes `MaxSim` similarity between query and document embeddings.
 ///
-/// MaxSim algorithm (late interaction for multi-vector embeddings):
+/// `MaxSim` algorithm (late interaction for multi-vector embeddings):
 /// For each query token vector qᵢ:
 ///   1. Compute dot product with all document token vectors dⱼ
 ///   2. Take the maximum score across all document tokens
@@ -160,7 +160,7 @@ pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// * `document` - Document token embeddings
 ///
 /// # Returns
-/// MaxSim similarity score (higher = more similar)
+/// `MaxSim` similarity score (higher = more similar)
 ///
 /// # Errors
 /// Returns an error if embedding dimensions don't match

@@ -1,21 +1,21 @@
 //! Tokenization abstraction layer.
 //!
-//! This module provides a wrapper around the HuggingFace tokenizers library
+//! This module provides a wrapper around the `HuggingFace` tokenizers library
 //! for loading and using BERT-compatible tokenizers.
 
 use anyhow::{Context, Result};
 use tokenizers::Tokenizer as HfTokenizer;
 
-/// Wrapper around HuggingFace tokenizer for BERT models.
+/// Wrapper around `HuggingFace` tokenizer for BERT models.
 pub struct Tokenizer {
     inner: HfTokenizer,
 }
 
 impl Tokenizer {
-    /// Loads a tokenizer from the HuggingFace Hub.
+    /// Loads a tokenizer from the `HuggingFace` Hub.
     ///
     /// # Arguments
-    /// * `model_name` - Name of the model on HuggingFace Hub (e.g., "bert-base-uncased")
+    /// * `model_name` - Name of the model on `HuggingFace` Hub (e.g., "bert-base-uncased")
     ///
     /// # Returns
     /// A new Tokenizer instance
@@ -27,12 +27,12 @@ impl Tokenizer {
 
         let tokenizer_path = repo
             .get("tokenizer.json")
-            .with_context(|| format!("Downloading tokenizer for {}", model_name))?;
+            .with_context(|| format!("Downloading tokenizer for {model_name}"))?;
 
         // Load tokenizer from file
         let inner = HfTokenizer::from_file(&tokenizer_path)
-            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {}", e))
-            .with_context(|| format!("Loading tokenizer for model: {}", model_name))?;
+            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {e}"))
+            .with_context(|| format!("Loading tokenizer for model: {model_name}"))?;
 
         Ok(Self { inner })
     }
@@ -44,12 +44,12 @@ impl Tokenizer {
     /// * `add_special_tokens` - Whether to add [CLS], [SEP] tokens
     ///
     /// # Returns
-    /// A tuple of (token_ids, attention_mask)
+    /// A tuple of (`token_ids`, `attention_mask`)
     pub fn encode(&self, text: &str, add_special_tokens: bool) -> Result<(Vec<u32>, Vec<u32>)> {
         let encoding = self
             .inner
             .encode(text, add_special_tokens)
-            .map_err(|e| anyhow::anyhow!("Failed to encode text: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to encode text: {e}"))
             .context("Encoding text with tokenizer")?;
 
         let token_ids = encoding.get_ids().to_vec();
@@ -69,7 +69,7 @@ impl Tokenizer {
     pub fn decode(&self, token_ids: &[u32], skip_special_tokens: bool) -> Result<String> {
         self.inner
             .decode(token_ids, skip_special_tokens)
-            .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {}", e))
+            .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {e}"))
             .context("Decoding token IDs")
     }
 
@@ -88,7 +88,7 @@ impl Tokenizer {
     /// * `add_special_tokens` - Whether to add [CLS], [SEP] tokens
     ///
     /// # Returns
-    /// A vector of tuples (token_ids, attention_mask), one per input text.
+    /// A vector of tuples (`token_ids`, `attention_mask`), one per input text.
     /// All sequences have the same length (padded to max).
     ///
     /// # Example

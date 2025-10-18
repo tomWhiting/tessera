@@ -1,7 +1,7 @@
 //! PDF rendering utilities for vision-language models.
 //!
 //! Provides page-by-page rendering of PDF documents to images
-//! for processing with vision models like ColPali.
+//! for processing with vision models like `ColPali`.
 //!
 //! Uses pdf2image (Poppler-based) for reliable cross-platform PDF rendering.
 
@@ -21,7 +21,7 @@ impl PdfRenderer {
     /// Note: Requires Poppler to be installed on the system.
     /// - macOS: `brew install poppler`
     /// - Ubuntu: `apt-get install poppler-utils`
-    pub fn new() -> Result<Self> {
+    pub const fn new() -> Result<Self> {
         Ok(Self)
     }
 
@@ -30,10 +30,10 @@ impl PdfRenderer {
     /// # Arguments
     /// * `pdf_path` - Path to PDF file
     /// * `page_index` - Zero-based page index
-    /// * `dpi` - Render resolution (default: 200 DPI works well for ColPali)
+    /// * `dpi` - Render resolution (default: 200 DPI works well for `ColPali`)
     ///
     /// # Returns
-    /// DynamicImage containing the rendered page
+    /// `DynamicImage` containing the rendered page
     pub fn render_page(
         &self,
         pdf_path: &Path,
@@ -56,7 +56,7 @@ impl PdfRenderer {
         let img = pages
             .into_iter()
             .next()
-            .with_context(|| format!("Page {} not found in PDF", page_index))?;
+            .with_context(|| format!("Page {page_index} not found in PDF"))?;
 
         Ok(img)
     }

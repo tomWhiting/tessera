@@ -1,9 +1,9 @@
 //! Backend implementations for model inference.
 //!
-//! Tessera uses the HuggingFace Candle framework as its primary backend,
+//! Tessera uses the `HuggingFace` Candle framework as its primary backend,
 //! providing excellent performance across multiple platforms:
 //!
-//! - [`candle`]: Production backend using HuggingFace Candle framework.
+//! - [`candle`]: Production backend using `HuggingFace` Candle framework.
 //!   Supports CPU, Metal (Apple Silicon), and CUDA acceleration.
 //!   Mature, well-tested, recommended for all production use.
 //!

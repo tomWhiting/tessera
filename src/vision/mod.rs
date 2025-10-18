@@ -1,7 +1,7 @@
-//! Vision-language embedding support (ColPali).
+//! Vision-language embedding support (`ColPali`).
 //!
 //! Implements image preprocessing and vision-language retrieval
-//! using ColPali architecture.
+//! using `ColPali` architecture.
 
 pub mod preprocessing;
 

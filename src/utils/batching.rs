@@ -37,13 +37,13 @@
 /// assert_eq!(padded[1], vec![4, 5, 0, 0]);
 /// assert_eq!(padded[2], vec![6, 7, 8, 9]);
 /// ```
-pub fn pad_sequences(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<u32>> {
+#[must_use] pub fn pad_sequences(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<u32>> {
     if sequences.is_empty() {
         return Vec::new();
     }
 
     // Find maximum length
-    let max_len = sequences.iter().map(|s| s.len()).max().unwrap_or(0);
+    let max_len = sequences.iter().map(std::vec::Vec::len).max().unwrap_or(0);
 
     // Pad all sequences to max length
     sequences
@@ -85,12 +85,12 @@ pub fn pad_sequences(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<u32>> {
 /// assert_eq!(masks[1], vec![1, 1, 1, 1, 0]);
 /// assert_eq!(masks[2], vec![1, 1, 0, 0, 0]);
 /// ```
-pub fn create_attention_mask(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<i64>> {
+#[must_use] pub fn create_attention_mask(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<i64>> {
     sequences
         .iter()
         .map(|seq| {
             seq.iter()
-                .map(|&token| if token == pad_token { 0 } else { 1 })
+                .map(|&token| i64::from(token != pad_token))
                 .collect()
         })
         .collect()

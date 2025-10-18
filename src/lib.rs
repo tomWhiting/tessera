@@ -1,11 +1,42 @@
+#![allow(
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::needless_pass_by_value,
+    clippy::if_same_then_else,
+    clippy::needless_lifetimes,
+    clippy::unused_self,
+    clippy::doc_markdown,
+    clippy::uninlined_format_args,
+    clippy::too_many_lines,
+    clippy::clone_on_copy,
+    clippy::manual_range_contains,
+    clippy::enum_variant_names,
+    clippy::derive_partial_eq_without_eq,
+    clippy::missing_const_for_fn,
+    clippy::unreadable_literal,
+    clippy::cloned_ref_to_slice_refs,
+    clippy::branches_sharing_code,
+    clippy::match_wildcard_for_single_variants,
+    clippy::wrong_self_convention,
+    clippy::use_self,
+    clippy::struct_field_names,
+    clippy::should_implement_trait,
+    clippy::unnecessary_wraps,
+    clippy::needless_range_loop
+)]
+
 //! Tessera: Multi-vector embeddings and geometric representations for Rust
 //!
-//! Production-ready embedding library featuring ColBERT multi-vector models,
+//! Production-ready embedding library featuring `ColBERT` multi-vector models,
 //! time series models, and exotic geometries (hyperbolic, spherical, quaternion).
 //!
 //! # Features
 //!
-//! - Token-level ColBERT embeddings with MaxSim similarity
+//! - Token-level `ColBERT` embeddings with `MaxSim` similarity
 //! - GPU acceleration (Metal on Apple Silicon, CUDA)
 //! - Build-time model registry with type-safe access
 //! - Matryoshka dimension support for flexible embedding sizes
@@ -16,7 +47,7 @@
 //! - **Core**: Abstract types and traits for embeddings and similarity
 //! - **Backends**: Pluggable backend implementations (Candle, Burn)
 //! - **Models**: Model configuration and loading utilities
-//! - **Encoding**: Paradigm-specific encoding strategies (ColBERT, dense, sparse, etc.)
+//! - **Encoding**: Paradigm-specific encoding strategies (`ColBERT`, dense, sparse, etc.)
 //! - **Quantization**: Compression methods (binary, int8, int4)
 //! - **API**: High-level user-facing interface with builder pattern
 //! - **Bindings**: Language bindings (Python, WebAssembly)

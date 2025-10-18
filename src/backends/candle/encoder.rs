@@ -2,8 +2,8 @@
 //!
 //! Supports multiple BERT variants:
 //! - BERT (bert-base-uncased, colbert-ir/colbertv2.0, etc.)
-//! - DistilBERT (distilbert-base-uncased, answerdotai/answerai-colbert-small-v1)
-//! - JinaBERT (jinaai/jina-colbert-v2)
+//! - `DistilBERT` (distilbert-base-uncased, answerdotai/answerai-colbert-small-v1)
+//! - `JinaBERT` (jinaai/jina-colbert-v2)
 
 use anyhow::{Context, Result};
 use candle_core::{DType, Device, Module, Tensor};
@@ -24,13 +24,13 @@ enum BertVariant {
 impl BertVariant {
     fn forward(&self, token_ids: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
         match self {
-            BertVariant::Bert(model) => model
+            Self::Bert(model) => model
                 .forward(token_ids, attention_mask, None)
                 .context("BERT forward pass"),
-            BertVariant::DistilBert(model) => model
+            Self::DistilBert(model) => model
                 .forward(token_ids, attention_mask)
                 .context("DistilBERT forward pass"),
-            BertVariant::JinaBert(model) => {
+            Self::JinaBert(model) => {
                 // JinaBERT uses ALiBi position embeddings and doesn't need attention_mask
                 // in its forward pass
                 model.forward(token_ids).context("JinaBERT forward pass")
@@ -66,7 +66,7 @@ pub struct CandleBertEncoder {
 impl CandleBertEncoder {
     /// Creates a new Candle-based BERT encoder.
     ///
-    /// Automatically detects the model type (BERT, DistilBERT, JinaBERT) from config.json
+    /// Automatically detects the model type (BERT, `DistilBERT`, `JinaBERT`) from config.json
     /// and loads the appropriate model variant.
     ///
     /// # Arguments
@@ -74,13 +74,17 @@ impl CandleBertEncoder {
     /// * `device` - Device to run the model on (CPU or Metal)
     ///
     /// # Returns
-    /// A new CandleEncoder instance with the loaded model
+    /// A new `CandleEncoder` instance with the loaded model
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tokenizer or model cannot be loaded.
     pub fn new(model_config: ModelConfig, device: Device) -> Result<Self> {
         let model_name = &model_config.model_name;
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_pretrained(model_name)
-            .with_context(|| format!("Loading tokenizer for {}", model_name))?;
+            .with_context(|| format!("Loading tokenizer for {model_name}"))?;
 
         // Download model files from HuggingFace Hub
         let api =
@@ -90,7 +94,7 @@ impl CandleBertEncoder {
         // Load config to detect model type
         let config_path = repo
             .get("config.json")
-            .with_context(|| format!("Downloading config for {}", model_name))?;
+            .with_context(|| format!("Downloading config for {model_name}"))?;
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
@@ -100,13 +104,13 @@ impl CandleBertEncoder {
             serde_json::from_str(&config_str).context("Parsing config to detect model type")?;
 
         let model_type = Self::detect_model_type(&detector)
-            .with_context(|| format!("Detecting model type for {}", model_name))?;
+            .with_context(|| format!("Detecting model type for {model_name}"))?;
 
         // Try to load safetensors first, fall back to pytorch_model.bin
         let weights_path = repo
             .get("model.safetensors")
             .or_else(|_| repo.get("pytorch_model.bin"))
-            .with_context(|| format!("Downloading model weights for {}", model_name))?;
+            .with_context(|| format!("Downloading model weights for {model_name}"))?;
 
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
@@ -128,7 +132,7 @@ impl CandleBertEncoder {
         };
 
         let model = Self::load_model(&config_str, model_vb, &model_type)
-            .with_context(|| format!("Loading {} model", model_type))?;
+            .with_context(|| format!("Loading {model_type} model"))?;
 
         // Try to load ColBERT projection layer (linear.weight)
         // This is optional - only ColBERT models have this layer
@@ -145,6 +149,7 @@ impl CandleBertEncoder {
         }
 
         // Determine Matryoshka strategy from registry if available
+        #[allow(clippy::option_if_let_else)]
         let matryoshka_strategy = if model_config.target_dimension.is_some() {
             // Try to get strategy from registry
             if let Some(model_info) =
@@ -228,14 +233,14 @@ impl CandleBertEncoder {
 
     /// Converts token IDs to a Candle tensor.
     fn tokens_to_tensor(&self, token_ids: &[u32]) -> Result<Tensor> {
-        let token_ids_u32: Vec<u32> = token_ids.to_vec();
-        let token_ids_i64: Vec<i64> = token_ids_u32.iter().map(|&x| x as i64).collect();
+        let token_ids_as_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();
 
-        Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
+        Tensor::from_vec(token_ids_as_i64, (1, token_ids.len()), &self.device)
             .context("Creating token ID tensor")
     }
 
     /// Extracts token embeddings from BERT model output.
+    #[allow(clippy::unused_self)]
     fn extract_embeddings(&self, output: &Tensor) -> Result<Array2<f32>> {
         // Output shape is (batch_size=1, seq_len, hidden_size)
         // We need to squeeze the batch dimension and convert to ndarray
@@ -271,7 +276,7 @@ impl TokenEmbedder for CandleBertEncoder {
         let (token_ids, attention_mask) = self
             .tokenizer
             .encode(text, true)
-            .with_context(|| format!("Tokenizing text: {}", text))?;
+            .with_context(|| format!("Tokenizing text: {text}"))?;
 
         // Convert to tensors
         let token_ids_tensor = self.tokens_to_tensor(&token_ids)?;
@@ -283,12 +288,12 @@ impl TokenEmbedder for CandleBertEncoder {
                 // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
                 attention_mask
                     .iter()
-                    .map(|&x| if x == 1 { 0i64 } else { 1i64 })
+                    .map(|&x| i64::from(x != 1))
                     .collect()
             }
             _ => {
                 // BERT and JinaBERT use standard mask: 1=attend, 0=pad
-                attention_mask.iter().map(|&x| x as i64).collect()
+                attention_mask.iter().map(|&x| i64::from(x)).collect()
             }
         };
 
@@ -390,6 +395,7 @@ impl Encoder for CandleBertEncoder {
         <Self as TokenEmbedder>::encode(self, input)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn encode_batch(&self, inputs: &[&str]) -> Result<Vec<Self::Output>> {
         if inputs.is_empty() {
             return Ok(Vec::new());
@@ -414,7 +420,7 @@ impl Encoder for CandleBertEncoder {
         let mut all_token_ids = Vec::with_capacity(batch_size * max_seq_len);
         for (token_ids, _) in &batch_tokenized {
             for &token_id in token_ids {
-                all_token_ids.push(token_id as i64);
+                all_token_ids.push(i64::from(token_id));
             }
         }
 
@@ -430,15 +436,11 @@ impl Encoder for CandleBertEncoder {
                 let processed_val = match &self.model {
                     BertVariant::DistilBert(_) => {
                         // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
-                        if mask_val == 1 {
-                            0i64
-                        } else {
-                            1i64
-                        }
+                        i64::from(mask_val != 1)
                     }
                     _ => {
                         // BERT and JinaBERT use standard mask: 1=attend, 0=pad
-                        mask_val as i64
+                        i64::from(mask_val)
                     }
                 };
                 all_attention_masks.push(processed_val);
@@ -579,7 +581,7 @@ impl MultiVectorEncoder for CandleBertEncoder {
         let (token_ids, _) = self
             .tokenizer
             .encode(text, true)
-            .with_context(|| format!("Tokenizing text to count vectors: {}", text))?;
+            .with_context(|| format!("Tokenizing text to count vectors: {text}"))?;
 
         Ok(token_ids.len())
     }

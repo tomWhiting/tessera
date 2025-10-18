@@ -1,7 +1,7 @@
 //! Model loading and configuration utilities.
 //!
 //! This module provides utilities for loading BERT-based models from
-//! HuggingFace Hub and configuring them for ColBERT-style encoding.
+//! `HuggingFace` Hub and configuring them for ColBERT-style encoding.
 
 pub mod config;
 pub mod loader;

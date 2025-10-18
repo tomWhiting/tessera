@@ -27,10 +27,10 @@ use ndarray::{Array1, Array2};
 /// Token-level embeddings representing a sequence of tokens.
 ///
 /// Each row represents a single token's embedding vector.
-/// Shape: (num_tokens, embedding_dim)
+/// Shape: (`num_tokens`, `embedding_dim`)
 #[derive(Debug, Clone)]
 pub struct TokenEmbeddings {
-    /// The embedding matrix (num_tokens x embedding_dim)
+    /// The embedding matrix (`num_tokens` x `embedding_dim`)
     pub embeddings: Array2<f32>,
     /// The original input text
     pub text: String,
@@ -41,14 +41,14 @@ pub struct TokenEmbeddings {
 }
 
 impl TokenEmbeddings {
-    /// Creates a new TokenEmbeddings instance.
+    /// Creates a new `TokenEmbeddings` instance.
     ///
     /// # Arguments
-    /// * `embeddings` - The embedding matrix (num_tokens x embedding_dim)
+    /// * `embeddings` - The embedding matrix (`num_tokens` x `embedding_dim`)
     /// * `text` - The original input text
     ///
     /// # Returns
-    /// A new TokenEmbeddings instance with validated dimensions
+    /// A new `TokenEmbeddings` instance with validated dimensions
     pub fn new(embeddings: Array2<f32>, text: String) -> Result<Self> {
         let shape = embeddings.shape();
         let num_tokens = shape[0];
@@ -71,8 +71,8 @@ impl TokenEmbeddings {
         })
     }
 
-    /// Returns the shape of the embedding matrix as (num_tokens, embedding_dim)
-    pub fn shape(&self) -> (usize, usize) {
+    /// Returns the shape of the embedding matrix as (`num_tokens`, `embedding_dim`)
+    #[must_use] pub const fn shape(&self) -> (usize, usize) {
         (self.num_tokens, self.embedding_dim)
     }
 }
@@ -158,7 +158,7 @@ pub trait Encoder {
 /// Multi-vector encoder producing token-level embeddings (ColBERT-style).
 ///
 /// Each input produces multiple vectors (one per token), enabling
-/// fine-grained late-interaction matching via MaxSim.
+/// fine-grained late-interaction matching via `MaxSim`.
 ///
 /// # Characteristics
 /// - Variable-length output (depends on tokenization)
@@ -167,9 +167,9 @@ pub trait Encoder {
 /// - Typically 64-128 dimensions per token
 ///
 /// # Example Models
-/// - ColBERT v2 (colbert-ir/colbertv2.0)
-/// - Jina ColBERT (jinaai/jina-colbert-v2)
-/// - AnswerAI ColBERT Small (answerdotai/answerai-colbert-small-v1)
+/// - `ColBERT` v2 (colbert-ir/colbertv2.0)
+/// - Jina `ColBERT` (jinaai/jina-colbert-v2)
+/// - `AnswerAI` `ColBERT` Small (answerdotai/answerai-colbert-small-v1)
 pub trait MultiVectorEncoder: Encoder<Output = TokenEmbeddings> {
     /// Get the number of vectors that would be produced for a given text.
     ///
@@ -188,7 +188,7 @@ pub trait MultiVectorEncoder: Encoder<Output = TokenEmbeddings> {
     /// Get the embedding dimension per token vector.
     ///
     /// # Returns
-    /// Dimensionality of each token embedding (e.g., 128 for ColBERT v2)
+    /// Dimensionality of each token embedding (e.g., 128 for `ColBERT` v2)
     fn embedding_dim(&self) -> usize;
 }
 
@@ -212,13 +212,13 @@ impl DenseEmbedding {
     /// * `text` - The original input text
     ///
     /// # Returns
-    /// A new DenseEmbedding instance
-    pub fn new(embedding: Array1<f32>, text: String) -> Self {
+    /// A new `DenseEmbedding` instance
+    #[must_use] pub const fn new(embedding: Array1<f32>, text: String) -> Self {
         Self { embedding, text }
     }
 
     /// Get the embedding dimension.
-    pub fn dim(&self) -> usize {
+    #[must_use] pub fn dim(&self) -> usize {
         self.embedding.len()
     }
 }
@@ -303,8 +303,8 @@ impl SparseEmbedding {
     /// * `text` - Original input text
     ///
     /// # Returns
-    /// A new SparseEmbedding instance
-    pub fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Self {
+    /// A new `SparseEmbedding` instance
+    #[must_use] pub const fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Self {
         Self {
             weights,
             vocab_size,
@@ -313,12 +313,12 @@ impl SparseEmbedding {
     }
 
     /// Get the number of non-zero dimensions.
-    pub fn nnz(&self) -> usize {
+    #[must_use] pub fn nnz(&self) -> usize {
         self.weights.len()
     }
 
     /// Calculate the sparsity level (0.0 = dense, 1.0 = all zeros).
-    pub fn sparsity(&self) -> f32 {
+    #[must_use] pub fn sparsity(&self) -> f32 {
         1.0 - (self.nnz() as f32 / self.vocab_size as f32)
     }
 }
@@ -336,8 +336,8 @@ impl SparseEmbedding {
 ///
 /// # Example Models
 /// - naver/splade-cocondenser-ensembledistil
-/// - naver/splade_v2_max
-/// - naver/splade_v2_distil
+/// - `naver/splade_v2_max`
+/// - `naver/splade_v2_distil`
 pub trait SparseEncoder: Encoder<Output = SparseEmbedding> {
     /// Get the vocabulary size (dimension of full dense vector).
     ///
@@ -357,19 +357,19 @@ pub trait SparseEncoder: Encoder<Output = SparseEmbedding> {
 /// Vision embedding representation for ColPali-style vision-language models.
 ///
 /// Represents an image as a collection of patch embeddings, similar to how
-/// TokenEmbeddings represents text as token embeddings. Each patch corresponds
+/// `TokenEmbeddings` represents text as token embeddings. Each patch corresponds
 /// to a spatial region of the input image (e.g., 448×448 → 32×32 patches = 1024 total).
 ///
 /// Used for vision-language retrieval where queries are text and documents
 /// are page images (PDFs, scans, screenshots). Compatible with late interaction
-/// scoring (MaxSim) similar to ColBERT.
+/// scoring (`MaxSim`) similar to `ColBERT`.
 ///
 /// # Example Models
 /// - wanghaofan/colpali-v1.2
 /// - vidore/colpali-v1
 #[derive(Debug, Clone)]
 pub struct VisionEmbedding {
-    /// Patch embeddings: shape [num_patches, embedding_dim]
+    /// Patch embeddings: shape [`num_patches`, `embedding_dim`]
     ///
     /// Typically 1024 patches for 448×448 images (32×32 grid).
     /// Each patch embedding is a vector of dimension `embedding_dim`.
@@ -377,12 +377,12 @@ pub struct VisionEmbedding {
 
     /// Number of patches in the image grid.
     ///
-    /// For ColPali with 448×448 input, this is 32×32 = 1024 patches.
+    /// For `ColPali` with 448×448 input, this is 32×32 = 1024 patches.
     pub num_patches: usize,
 
     /// Embedding dimension per patch.
     ///
-    /// Typically 128 for ColPali (matches ColBERT dimension for compatibility).
+    /// Typically 128 for `ColPali` (matches `ColBERT` dimension for compatibility).
     pub embedding_dim: usize,
 
     /// Optional: Source image path or identifier.
@@ -395,14 +395,14 @@ impl VisionEmbedding {
     /// Create a new vision embedding.
     ///
     /// # Arguments
-    /// * `embeddings` - The patch embeddings (shape [num_patches, embedding_dim])
-    /// * `num_patches` - Number of patches (typically 1024 for ColPali)
-    /// * `embedding_dim` - Dimension per patch (typically 128 for ColPali)
+    /// * `embeddings` - The patch embeddings (shape [`num_patches`, `embedding_dim`])
+    /// * `num_patches` - Number of patches (typically 1024 for `ColPali`)
+    /// * `embedding_dim` - Dimension per patch (typically 128 for `ColPali`)
     /// * `source` - Optional source image path/identifier
     ///
     /// # Returns
-    /// A new VisionEmbedding instance
-    pub fn new(
+    /// A new `VisionEmbedding` instance
+    #[must_use] pub const fn new(
         embeddings: Vec<Vec<f32>>,
         num_patches: usize,
         embedding_dim: usize,
@@ -420,7 +420,7 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Number of patches in this image embedding
-    pub fn num_patches(&self) -> usize {
+    #[must_use] pub const fn num_patches(&self) -> usize {
         self.num_patches
     }
 
@@ -428,7 +428,7 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Dimensionality of each patch embedding vector
-    pub fn embedding_dim(&self) -> usize {
+    #[must_use] pub const fn embedding_dim(&self) -> usize {
         self.embedding_dim
     }
 
@@ -436,15 +436,15 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Optional reference to the source identifier
-    pub fn source(&self) -> Option<&str> {
+    #[must_use] pub fn source(&self) -> Option<&str> {
         self.source.as_deref()
     }
 
-    /// Get the shape of the embedding matrix as (num_patches, embedding_dim).
+    /// Get the shape of the embedding matrix as (`num_patches`, `embedding_dim`).
     ///
     /// # Returns
     /// Tuple of (number of patches, embedding dimension)
-    pub fn shape(&self) -> (usize, usize) {
+    #[must_use] pub const fn shape(&self) -> (usize, usize) {
         (self.num_patches, self.embedding_dim)
     }
 }
@@ -453,7 +453,7 @@ impl VisionEmbedding {
 ///
 /// Encodes images into multi-vector representations where each vector
 /// corresponds to a spatial patch. This enables late interaction scoring
-/// with text queries for vision-language retrieval, similar to ColBERT's
+/// with text queries for vision-language retrieval, similar to `ColBERT`'s
 /// token-level interactions.
 ///
 /// # Characteristics
@@ -461,7 +461,7 @@ impl VisionEmbedding {
 /// - Patch-level granularity (typically 32×32 = 1024 patches per image)
 /// - Designed for late interaction scoring with text queries
 /// - Typically 128-384 dimensions per patch
-/// - Compatible with MaxSim scoring used in ColBERT
+/// - Compatible with `MaxSim` scoring used in `ColBERT`
 ///
 /// # Example Models
 /// - wanghaofan/colpali-v1.2
@@ -471,21 +471,21 @@ pub trait VisionEncoder: Encoder<Output = VisionEmbedding> {
     ///
     /// # Returns
     /// Number of patches the encoder produces per image.
-    /// Typically 1024 for ColPali (32×32 grid of 14×14 pixel patches from 448×448 images).
+    /// Typically 1024 for `ColPali` (32×32 grid of 14×14 pixel patches from 448×448 images).
     fn num_patches(&self) -> usize;
 
     /// Get the embedding dimension per patch.
     ///
     /// # Returns
     /// Dimensionality of each patch embedding vector.
-    /// Typically 128 for ColPali (matches ColBERT dimension for compatibility).
+    /// Typically 128 for `ColPali` (matches `ColBERT` dimension for compatibility).
     fn embedding_dim(&self) -> usize;
 
     /// Get the input image resolution.
     ///
     /// # Returns
     /// Tuple of (width, height) in pixels that the encoder expects.
-    /// Typically (448, 448) for ColPali.
+    /// Typically (448, 448) for `ColPali`.
     fn image_resolution(&self) -> (u32, u32);
 }
 
@@ -501,7 +501,7 @@ pub trait VisionEncoder: Encoder<Output = VisionEmbedding> {
 /// - google/timesfm-1.0-200m
 #[derive(Debug, Clone)]
 pub struct TimeSeriesEmbedding {
-    /// Embedding vectors: [num_series, embedding_dim]
+    /// Embedding vectors: [`num_series`, `embedding_dim`]
     ///
     /// For batch processing, this contains embeddings for multiple time series.
     /// Each row represents the embedding for one time series.
@@ -526,15 +526,15 @@ impl TimeSeriesEmbedding {
     /// Create a new time series embedding.
     ///
     /// # Arguments
-    /// * `embeddings` - The embedding vectors [num_series, embedding_dim]
+    /// * `embeddings` - The embedding vectors [`num_series`, `embedding_dim`]
     /// * `num_series` - Number of time series in the batch
     /// * `embedding_dim` - Dimension of each embedding vector
     /// * `original_lengths` - Optional original lengths before preprocessing
     /// * `source` - Optional source identifier
     ///
     /// # Returns
-    /// A new TimeSeriesEmbedding instance
-    pub fn new(
+    /// A new `TimeSeriesEmbedding` instance
+    #[must_use] pub const fn new(
         embeddings: Vec<Vec<f32>>,
         num_series: usize,
         embedding_dim: usize,
@@ -551,22 +551,22 @@ impl TimeSeriesEmbedding {
     }
 
     /// Get the number of time series in this embedding.
-    pub fn num_series(&self) -> usize {
+    #[must_use] pub const fn num_series(&self) -> usize {
         self.num_series
     }
 
     /// Get the embedding dimension.
-    pub fn embedding_dim(&self) -> usize {
+    #[must_use] pub const fn embedding_dim(&self) -> usize {
         self.embedding_dim
     }
 
-    /// Get the shape of the embedding matrix as (num_series, embedding_dim).
-    pub fn shape(&self) -> (usize, usize) {
+    /// Get the shape of the embedding matrix as (`num_series`, `embedding_dim`).
+    #[must_use] pub const fn shape(&self) -> (usize, usize) {
         (self.num_series, self.embedding_dim)
     }
 
     /// Get the source identifier if available.
-    pub fn source(&self) -> Option<&str> {
+    #[must_use] pub fn source(&self) -> Option<&str> {
         self.source.as_deref()
     }
 }
@@ -612,7 +612,7 @@ pub trait TimeSeriesEncoder: Encoder<Output = TimeSeriesEmbedding> {
     /// * `input` - Historical time series data [batch, channels, timesteps]
     ///
     /// # Returns
-    /// Predicted future values [batch, channels, prediction_length]
+    /// Predicted future values [batch, channels, `prediction_length`]
     ///
     /// # Errors
     /// Returns error if forecasting fails or is not supported
@@ -624,7 +624,7 @@ pub trait TimeSeriesEncoder: Encoder<Output = TimeSeriesEmbedding> {
     /// * `input` - Time series data [batch, channels, timesteps]
     ///
     /// # Returns
-    /// Fixed-size embeddings [batch, embedding_dim]
+    /// Fixed-size embeddings [batch, `embedding_dim`]
     ///
     /// # Errors
     /// Returns error if embedding extraction fails

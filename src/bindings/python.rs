@@ -1,7 +1,32 @@
-//! Python bindings for Tessera using PyO3.
+#![allow(
+    clippy::doc_markdown,
+    clippy::redundant_closure_for_method_calls,
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::doc_link_with_quotes,
+    clippy::too_many_lines,
+    clippy::uninlined_format_args,
+    clippy::wildcard_imports,
+    clippy::useless_conversion,
+    clippy::type_complexity,
+    clippy::collection_is_never_read,
+    clippy::missing_errors_doc,
+    clippy::must_use_candidate,
+    clippy::cast_precision_loss,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unused_self,
+    clippy::if_same_then_else,
+    clippy::derive_partial_eq_without_eq,
+    clippy::match_wildcard_for_single_variants,
+    clippy::no_effect_underscore_binding,
+    missing_docs
+)]
+//! Python bindings for Tessera using `PyO3`.
 //!
 //! Provides a Pythonic interface to Tessera's embedding capabilities.
-//! Integrates with NumPy for efficient array handling and follows
+//! Integrates with `NumPy` for efficient array handling and follows
 //! Python conventions for error handling and API design.
 //!
 //! # Installation
@@ -39,9 +64,11 @@ use crate::error::TesseraError;
 #[cfg(feature = "python")]
 use numpy::{PyArray1, PyArray2, PyArray3, PyArrayMethods, PyUntypedArrayMethods};
 #[cfg(feature = "python")]
-use pyo3::exceptions::*;
+use pyo3::exceptions::{PyIOError, PyRuntimeError, PyValueError};
 #[cfg(feature = "python")]
-use pyo3::prelude::*;
+use pyo3::prelude::{pyclass, pymethods, pymodule, PyErr, Python, PyResult, Py, PyModule, Bound};
+#[cfg(feature = "python")]
+use pyo3::types::PyModuleMethods;
 
 // ============================================================================
 // Error Conversion
@@ -51,44 +78,42 @@ use pyo3::prelude::*;
 fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
     match err {
         TesseraError::ModelNotFound { model_id } => {
-            PyRuntimeError::new_err(format!("Model '{}' not found in registry", model_id))
+            PyRuntimeError::new_err(format!("Model '{model_id}' not found in registry"))
         }
         TesseraError::ModelLoadError { model_id, source } => {
-            PyRuntimeError::new_err(format!("Failed to load model '{}': {}", model_id, source))
+            PyRuntimeError::new_err(format!("Failed to load model '{model_id}': {source}"))
         }
         TesseraError::EncodingError { context, source } => {
-            PyRuntimeError::new_err(format!("Encoding failed: {} - {}", context, source))
+            PyRuntimeError::new_err(format!("Encoding failed: {context} - {source}"))
         }
         TesseraError::UnsupportedDimension {
             model_id,
             requested,
             supported,
         } => PyValueError::new_err(format!(
-            "Unsupported dimension {} for model '{}'. Supported: {:?}",
-            requested, model_id, supported
+            "Unsupported dimension {requested} for model '{model_id}'. Supported: {supported:?}"
         )),
-        TesseraError::DeviceError(msg) => PyRuntimeError::new_err(format!("Device error: {}", msg)),
+        TesseraError::DeviceError(msg) => PyRuntimeError::new_err(format!("Device error: {msg}")),
         TesseraError::QuantizationError(msg) => {
-            PyValueError::new_err(format!("Quantization error: {}", msg))
+            PyValueError::new_err(format!("Quantization error: {msg}"))
         }
         TesseraError::DimensionMismatch { expected, actual } => PyValueError::new_err(format!(
-            "Dimension mismatch: expected {}, got {}",
-            expected, actual
+            "Dimension mismatch: expected {expected}, got {actual}"
         )),
         TesseraError::TokenizationError(e) => {
-            PyRuntimeError::new_err(format!("Tokenization error: {}", e))
+            PyRuntimeError::new_err(format!("Tokenization error: {e}"))
         }
         TesseraError::ConfigError(msg) => {
-            PyValueError::new_err(format!("Configuration error: {}", msg))
+            PyValueError::new_err(format!("Configuration error: {msg}"))
         }
         TesseraError::MatryoshkaError(msg) => {
-            PyValueError::new_err(format!("Matryoshka truncation error: {}", msg))
+            PyValueError::new_err(format!("Matryoshka truncation error: {msg}"))
         }
-        TesseraError::IoError(e) => PyIOError::new_err(format!("IO error: {}", e)),
+        TesseraError::IoError(e) => PyIOError::new_err(format!("IO error: {e}")),
         TesseraError::TensorError(e) => {
-            PyRuntimeError::new_err(format!("Tensor operation error: {}", e))
+            PyRuntimeError::new_err(format!("Tensor operation error: {e}"))
         }
-        TesseraError::Other(e) => PyRuntimeError::new_err(format!("Error: {}", e)),
+        TesseraError::Other(e) => PyRuntimeError::new_err(format!("Error: {e}")),
     }
 }
 
@@ -122,8 +147,9 @@ fn token_embeddings_to_pyarray(
     Ok(array_bound.unbind())
 }
 
-/// Convert a DenseEmbedding (Vec<f32>) to PyArray1<f32>.
+/// Convert a `DenseEmbedding` (Vec<f32>) to `PyArray1`<f32>.
 #[cfg(feature = "python")]
+#[allow(clippy::unnecessary_wraps)]
 fn dense_embedding_to_pyarray(
     py: Python<'_>,
     embedding: &DenseEmbedding,
@@ -138,13 +164,15 @@ fn dense_embedding_to_pyarray(
     Ok(array_bound.unbind())
 }
 
-/// Convert a SparseEmbedding to (indices, values) tuple.
+/// Convert a `SparseEmbedding` to (indices, values) tuple.
 #[cfg(feature = "python")]
+#[allow(clippy::unnecessary_wraps, clippy::type_complexity)]
 fn sparse_embedding_to_pyarrays(
     py: Python<'_>,
     embedding: &SparseEmbedding,
 ) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
     // Extract indices and values separately
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     let indices: Vec<i32> = embedding
         .weights
         .iter()
@@ -631,6 +659,7 @@ impl PyTesseraSparse {
     /// Example:
     ///     >>> indices, values = embedder.encode("machine learning")
     ///     >>> print(f"Non-zero dims: {len(indices)}")
+    #[allow(clippy::elidable_lifetime_names)]
     fn encode<'py>(
         &self,
         py: Python<'py>,
@@ -656,6 +685,7 @@ impl PyTesseraSparse {
     ///     >>> batch_embs = embedder.encode_batch(texts)
     ///     >>> len(batch_embs)
     ///     2
+    #[allow(clippy::elidable_lifetime_names)]
     fn encode_batch<'py>(
         &self,
         py: Python<'py>,
@@ -772,6 +802,7 @@ impl PyTesseraVision {
     ///     >>> doc_emb = embedder.encode_document("invoice.jpg")
     ///     >>> print(doc_emb.shape)
     ///     (1024, 128)
+    #[allow(clippy::elidable_lifetime_names)]
     fn encode_document<'py>(&self, py: Python<'py>, path: &str) -> PyResult<Py<PyArray2<f32>>> {
         let embedding = self
             .inner
@@ -795,6 +826,7 @@ impl PyTesseraVision {
     ///     >>> query_emb = embedder.encode_query("What is the total amount?")
     ///     >>> print(query_emb.shape)
     ///     (8, 128)
+    #[allow(clippy::elidable_lifetime_names)]
     fn encode_query<'py>(&self, py: Python<'py>, text: &str) -> PyResult<Py<PyArray2<f32>>> {
         let embedding = self
             .inner
@@ -976,6 +1008,7 @@ impl PyTesseraTimeSeries {
     ///     >>> forecast = forecaster.forecast(data)
     ///     >>> print(forecast.shape)
     ///     (1, 64)
+    #[allow(clippy::elidable_lifetime_names)]
     fn forecast<'py>(
         &mut self,
         py: Python<'py>,
@@ -1010,6 +1043,7 @@ impl PyTesseraTimeSeries {
     ///     >>> quantiles = forecaster.forecast_quantiles(data)
     ///     >>> print(quantiles.shape)
     ///     (1, 64, 9)
+    #[allow(clippy::elidable_lifetime_names)]
     fn forecast_quantiles<'py>(
         &mut self,
         py: Python<'py>,

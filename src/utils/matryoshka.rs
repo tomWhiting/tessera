@@ -8,17 +8,17 @@
 //!
 //! Different models require truncation at different points in the pipeline:
 //!
-//! - **TruncateHidden**: Truncate BERT hidden states BEFORE projection layer
-//!   (for ColBERT v2 models with projection)
-//! - **TruncateOutput**: Truncate final output embeddings AFTER projection
+//! - **`TruncateHidden`**: Truncate BERT hidden states BEFORE projection layer
+//!   (for `ColBERT` v2 models with projection)
+//! - **`TruncateOutput`**: Truncate final output embeddings AFTER projection
 //!   (for models without projection like Jina-ColBERT)
-//! - **TruncatePooled**: Truncate after pooling for dense models
+//! - **`TruncatePooled`**: Truncate after pooling for dense models
 //!   (for BERT-style dense encoders like BGE, Nomic)
 //!
 //! # References
 //!
 //! - "Matryoshka Representation Learning" (Kusupati et al., 2022)
-//! - Jina AI ColBERT v2 documentation
+//! - Jina AI `ColBERT` v2 documentation
 
 use crate::error::{Result, TesseraError};
 use candle_core::Tensor;
@@ -31,7 +31,7 @@ use candle_core::Tensor;
 pub enum MatryoshkaStrategy {
     /// Truncate BERT hidden states before projection layer.
     ///
-    /// Used for models with projection layers (e.g., ColBERT v2)
+    /// Used for models with projection layers (e.g., `ColBERT` v2)
     /// where the hidden states are projected to a lower dimension.
     /// Truncation happens before the projection.
     TruncateHidden,
@@ -51,21 +51,21 @@ pub enum MatryoshkaStrategy {
 
 impl MatryoshkaStrategy {
     /// Parse strategy from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    #[must_use] pub fn from_str(s: &str) -> Option<Self> {
         match s {
-            "truncate_hidden" => Some(MatryoshkaStrategy::TruncateHidden),
-            "truncate_output" => Some(MatryoshkaStrategy::TruncateOutput),
-            "truncate_pooled" => Some(MatryoshkaStrategy::TruncatePooled),
+            "truncate_hidden" => Some(Self::TruncateHidden),
+            "truncate_output" => Some(Self::TruncateOutput),
+            "truncate_pooled" => Some(Self::TruncatePooled),
             _ => None,
         }
     }
 
     /// Convert strategy to string.
-    pub fn as_str(&self) -> &'static str {
+    #[must_use] pub const fn as_str(&self) -> &'static str {
         match self {
-            MatryoshkaStrategy::TruncateHidden => "truncate_hidden",
-            MatryoshkaStrategy::TruncateOutput => "truncate_output",
-            MatryoshkaStrategy::TruncatePooled => "truncate_pooled",
+            Self::TruncateHidden => "truncate_hidden",
+            Self::TruncateOutput => "truncate_output",
+            Self::TruncatePooled => "truncate_pooled",
         }
     }
 }
@@ -115,8 +115,7 @@ pub fn apply_matryoshka(
 
     if target_dim > current_dim {
         return Err(TesseraError::MatryoshkaError(format!(
-            "Target dimension {} exceeds current dimension {}",
-            target_dim, current_dim
+            "Target dimension {target_dim} exceeds current dimension {current_dim}"
         )));
     }
 
@@ -128,7 +127,7 @@ pub fn apply_matryoshka(
     // Truncate last dimension: narrow(dim, start, len)
     tensor
         .narrow(shape.len() - 1, 0, target_dim)
-        .map_err(|e| TesseraError::MatryoshkaError(format!("Failed to truncate tensor: {}", e)))
+        .map_err(|e| TesseraError::MatryoshkaError(format!("Failed to truncate tensor: {e}")))
 }
 
 #[cfg(test)]

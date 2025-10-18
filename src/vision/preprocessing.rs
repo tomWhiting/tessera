@@ -1,7 +1,7 @@
 //! Image preprocessing for vision-language models.
 //!
 //! Handles image loading, resizing, and normalization to match
-//! PaliGemma model expectations.
+//! `PaliGemma` model expectations.
 
 use crate::error::{Result, TesseraError};
 use candle_core::{Device, Tensor};
@@ -26,19 +26,19 @@ pub struct ImageProcessor {
 }
 
 impl ImageProcessor {
-    /// Create new image processor with PaliGemma defaults.
+    /// Create new image processor with `PaliGemma` defaults.
     ///
-    /// Uses 448×448 target size and SigLIP normalization parameters.
-    pub fn new() -> Self {
+    /// Uses 448×448 target size and `SigLIP` normalization parameters.
+    #[must_use] pub const fn new() -> Self {
         Self {
             target_size: (448, 448),
-            mean: [0.48145466, 0.4578275, 0.40821073],
-            std: [0.26862954, 0.26130258, 0.27577711],
+            mean: [0.481_454_66, 0.457_827_5, 0.408_210_73],
+            std: [0.268_629_54, 0.261_302_6, 0.275_777_1],
         }
     }
 
     /// Create processor with custom parameters.
-    pub fn with_config(target_size: (u32, u32), mean: [f32; 3], std: [f32; 3]) -> Self {
+    #[must_use] pub const fn with_config(target_size: (u32, u32), mean: [f32; 3], std: [f32; 3]) -> Self {
         Self {
             target_size,
             mean,
@@ -66,12 +66,12 @@ impl ImageProcessor {
     pub fn preprocess_from_path(&self, image_path: &Path, device: &Device) -> Result<Tensor> {
         // Load image
         let img = image::open(image_path)
-            .map_err(|e| TesseraError::ConfigError(format!("Failed to load image: {}", e)))?;
+            .map_err(|e| TesseraError::ConfigError(format!("Failed to load image: {e}")))?;
 
         self.preprocess_image(&img, device)
     }
 
-    /// Preprocess a DynamicImage.
+    /// Preprocess a `DynamicImage`.
     ///
     /// # Arguments
     ///
@@ -132,7 +132,7 @@ impl ImageProcessor {
         for channel in 0..3 {
             for pixel in img.pixels() {
                 // Convert to [0, 1]
-                let value = pixel[channel] as f32 / 255.0;
+                let value = f32::from(pixel[channel]) / 255.0;
 
                 // Apply normalization
                 let normed = (value - self.mean[channel]) / self.std[channel];

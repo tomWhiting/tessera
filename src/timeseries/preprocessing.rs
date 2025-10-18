@@ -15,7 +15,7 @@ use candle_core::{DType, Result, Tensor};
 /// * `input` - Time series tensor of shape [batch, length]
 ///
 /// # Returns
-/// Tuple of (scaled_tensor, scale_factors) where:
+/// Tuple of (`scaled_tensor`, `scale_factors`) where:
 /// * `scaled_tensor` - Normalized time series [batch, length]
 /// * `scale_factors` - Absolute mean of each series [batch, 1]
 ///
@@ -55,11 +55,11 @@ pub fn scale_by_mean(input: &Tensor) -> Result<(Tensor, Tensor)> {
 /// * `patch_size` - Number of timesteps per patch (typically 16)
 ///
 /// # Returns
-/// Patched tensor of shape [batch, num_patches, patch_size]
-/// where num_patches = length / patch_size
+/// Patched tensor of shape [batch, `num_patches`, `patch_size`]
+/// where `num_patches` = length / `patch_size`
 ///
 /// # Errors
-/// Returns error if length is not divisible by patch_size
+/// Returns error if length is not divisible by `patch_size`
 ///
 /// # Example
 /// ```ignore
@@ -92,11 +92,11 @@ pub fn create_patches(input: &Tensor, patch_size: usize) -> Result<Tensor> {
 /// for the T5 vocabulary. Uses uniform binning from -10 to 10.
 ///
 /// # Arguments
-/// * `input` - Time series tensor of shape [batch, num_patches, patch_size]
+/// * `input` - Time series tensor of shape [batch, `num_patches`, `patch_size`]
 /// * `num_bins` - Number of discrete bins (typically 4096 for Chronos)
 ///
 /// # Returns
-/// Quantized tensor of shape [batch, num_patches, patch_size] with i64 dtype
+/// Quantized tensor of shape [batch, `num_patches`, `patch_size`] with i64 dtype
 /// containing bin indices in range [0, num_bins-1]
 ///
 /// # Errors
@@ -117,10 +117,10 @@ pub fn quantize_to_bins(input: &Tensor, num_bins: usize) -> Result<Tensor> {
     let bin_width = (max_val - min_val) / (num_bins as f32);
 
     // Clip to range
-    let clipped = input.clamp(min_val as f64, max_val as f64)?;
+    let clipped = input.clamp(f64::from(min_val), f64::from(max_val))?;
 
     // Compute bin indices
-    let shifted = ((clipped - min_val as f64)? / bin_width as f64)?;
+    let shifted = ((clipped - f64::from(min_val))? / f64::from(bin_width))?;
     let bins = shifted.floor()?.to_dtype(DType::I64)?;
 
     // Clamp to [0, num_bins-1] to ensure valid indices
@@ -161,7 +161,7 @@ pub fn dequantize_from_bins(bins: &Tensor, num_bins: usize) -> Result<Tensor> {
     // Convert to f32 and compute bin centers
     let bins_f32 = bins.to_dtype(DType::F32)?;
     let bin_center_offset = min_val + bin_width / 2.0;
-    let values = ((bins_f32 * bin_width as f64)? + bin_center_offset as f64)?;
+    let values = ((bins_f32 * f64::from(bin_width))? + f64::from(bin_center_offset))?;
 
     Ok(values)
 }

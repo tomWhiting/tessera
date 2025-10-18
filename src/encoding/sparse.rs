@@ -64,10 +64,10 @@ enum BertVariant {
 impl BertVariant {
     fn forward(&self, token_ids: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
         match self {
-            BertVariant::Bert(model) => model
+            Self::Bert(model) => model
                 .forward(token_ids, attention_mask, None)
                 .context("BERT forward pass"),
-            BertVariant::DistilBert(model) => model
+            Self::DistilBert(model) => model
                 .forward(token_ids, attention_mask)
                 .context("DistilBERT forward pass"),
         }
@@ -97,7 +97,7 @@ struct MlmHead {
     transform_dense: Linear,
     /// Layer normalization
     transform_layer_norm: LayerNorm,
-    /// Final projection: hidden → vocab_size
+    /// Final projection: hidden → `vocab_size`
     decoder: Linear,
 }
 
@@ -137,13 +137,13 @@ impl MlmHead {
         })
     }
 
-    /// Forward pass: hidden_states → vocab_logits
+    /// Forward pass: `hidden_states` → `vocab_logits`
     ///
     /// # Arguments
-    /// * `hidden_states` - Token representations from BERT [seq_len, hidden_size]
+    /// * `hidden_states` - Token representations from BERT [`seq_len`, `hidden_size`]
     ///
     /// # Returns
-    /// Vocabulary logits [seq_len, vocab_size]
+    /// Vocabulary logits [`seq_len`, `vocab_size`]
     fn forward(&self, hidden_states: &Tensor) -> Result<Tensor> {
         // Transform: linear + GELU
         let transformed = self
@@ -208,7 +208,7 @@ impl CandleSparseEncoder {
         // Load config to get vocab size and architecture
         let config_path = repo
             .get("config.json")
-            .with_context(|| format!("Downloading config for {}", model_name))?;
+            .with_context(|| format!("Downloading config for {model_name}"))?;
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
@@ -223,7 +223,7 @@ impl CandleSparseEncoder {
 
         // Detect model type
         let model_type = Self::detect_model_type(&detector)
-            .with_context(|| format!("Detecting model type for {}", model_name))?;
+            .with_context(|| format!("Detecting model type for {model_name}"))?;
 
         // Get hidden size
         let hidden_size = detector
@@ -235,7 +235,7 @@ impl CandleSparseEncoder {
         let weights_path = repo
             .get("model.safetensors")
             .or_else(|_| repo.get("pytorch_model.bin"))
-            .with_context(|| format!("Downloading model weights for {}", model_name))?;
+            .with_context(|| format!("Downloading model weights for {model_name}"))?;
 
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
@@ -250,7 +250,7 @@ impl CandleSparseEncoder {
 
         // Detect model prefix by checking actual tensor names
         let has_prefix = Self::detect_model_prefix(&weights_path)
-            .with_context(|| format!("Detecting model prefix for {}", model_name))?;
+            .with_context(|| format!("Detecting model prefix for {model_name}"))?;
 
         // Create the appropriate model variant with correct prefix
         let model_vb = match (has_prefix, model_type.as_str()) {
@@ -260,7 +260,7 @@ impl CandleSparseEncoder {
         };
 
         let model = Self::load_model(&config_str, model_vb, &model_type)
-            .with_context(|| format!("Loading {} model", model_type))?;
+            .with_context(|| format!("Loading {model_type} model"))?;
 
         // Load MLM head (always from root vb, regardless of model prefix)
         let mlm_head = MlmHead::load(vb, hidden_size, vocab_size)
@@ -268,7 +268,7 @@ impl CandleSparseEncoder {
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_pretrained(model_name)
-            .with_context(|| format!("Loading tokenizer for {}", model_name))?;
+            .with_context(|| format!("Loading tokenizer for {model_name}"))?;
 
         Ok(Self {
             model,
@@ -351,22 +351,19 @@ impl CandleSparseEncoder {
 
     /// Loads the appropriate model variant
     fn load_model(config_str: &str, vb: VarBuilder, model_type: &str) -> Result<BertVariant> {
-        match model_type {
-            "distilbert" => {
-                let config: candle_transformers::models::distilbert::Config =
-                    serde_json::from_str(config_str).context("Parsing DistilBERT config")?;
-                let model =
-                    candle_transformers::models::distilbert::DistilBertModel::load(vb, &config)
-                        .context("Loading DistilBERT model")?;
-                Ok(BertVariant::DistilBert(model))
-            }
-            _ => {
-                let config: candle_transformers::models::bert::Config =
-                    serde_json::from_str(config_str).context("Parsing BERT config")?;
-                let model = candle_transformers::models::bert::BertModel::load(vb, &config)
-                    .context("Loading BERT model")?;
-                Ok(BertVariant::Bert(model))
-            }
+        if model_type == "distilbert" {
+            let config: candle_transformers::models::distilbert::Config =
+                serde_json::from_str(config_str).context("Parsing DistilBERT config")?;
+            let model =
+                candle_transformers::models::distilbert::DistilBertModel::load(vb, &config)
+                    .context("Loading DistilBERT model")?;
+            Ok(BertVariant::DistilBert(model))
+        } else {
+            let config: candle_transformers::models::bert::Config =
+                serde_json::from_str(config_str).context("Parsing BERT config")?;
+            let model = candle_transformers::models::bert::BertModel::load(vb, &config)
+                .context("Loading BERT model")?;
+            Ok(BertVariant::Bert(model))
         }
     }
 
@@ -399,17 +396,16 @@ impl CandleSparseEncoder {
     /// This aggregates token-level predictions into a document-level sparse vector.
     ///
     /// # Arguments
-    /// * `tensor` - Token-level vocabulary scores [seq_len, vocab_size]
+    /// * `tensor` - Token-level vocabulary scores [`seq_len`, `vocab_size`]
     /// * `attention_mask` - Attention mask (1=valid, 0=padding)
     ///
     /// # Returns
-    /// Max-pooled sparse vector [vocab_size]
+    /// Max-pooled sparse vector [`vocab_size`]
     fn max_pool_tokens(&self, tensor: &Tensor, attention_mask: &[u32]) -> Result<Tensor> {
         let dims = tensor.dims();
         anyhow::ensure!(
             dims.len() == 2,
-            "Expected 2D tensor [seq_len, vocab_size], got shape {:?}",
-            dims
+            "Expected 2D tensor [seq_len, vocab_size], got shape {dims:?}"
         );
 
         let vocab_size = dims[1];
@@ -468,7 +464,7 @@ impl CandleSparseEncoder {
     /// Filters out near-zero values to produce a sparse embedding.
     ///
     /// # Arguments
-    /// * `tensor` - Dense vocabulary vector [vocab_size]
+    /// * `tensor` - Dense vocabulary vector [`vocab_size`]
     /// * `text` - Original input text
     ///
     /// # Returns
@@ -506,10 +502,10 @@ impl Encoder for CandleSparseEncoder {
         let (token_ids, attention_mask) = self
             .tokenizer
             .encode(input, true)
-            .with_context(|| format!("Tokenizing input: {}", input))?;
+            .with_context(|| format!("Tokenizing input: {input}"))?;
 
         // Convert to tensors
-        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| x as i64).collect();
+        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();
         let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
             .context("Creating token IDs tensor")?;
 
@@ -519,12 +515,12 @@ impl Encoder for CandleSparseEncoder {
                 // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
                 attention_mask
                     .iter()
-                    .map(|&x| if x == 1 { 0i64 } else { 1i64 })
+                    .map(|&x| i64::from(x != 1))
                     .collect()
             }
             _ => {
                 // Standard BERT convention
-                attention_mask.iter().map(|&x| x as i64).collect()
+                attention_mask.iter().map(|&x| i64::from(x)).collect()
             }
         };
 

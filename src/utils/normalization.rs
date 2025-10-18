@@ -32,7 +32,7 @@ use ndarray::Array1;
 /// let norm = l2_norm(&v);
 /// assert!((norm - 5.0).abs() < 1e-6);  // √(3² + 4²) = 5
 /// ```
-pub fn l2_norm(vec: &Array1<f32>) -> f32 {
+#[must_use] pub fn l2_norm(vec: &Array1<f32>) -> f32 {
     vec.dot(vec).sqrt()
 }
 
@@ -70,7 +70,7 @@ pub fn l2_norm(vec: &Array1<f32>) -> f32 {
 /// assert!((normalized[0] - 0.6).abs() < 1e-6);  // 3/5
 /// assert!((normalized[1] - 0.8).abs() < 1e-6);  // 4/5
 /// ```
-pub fn l2_normalize(vec: &Array1<f32>) -> Array1<f32> {
+#[must_use] pub fn l2_normalize(vec: &Array1<f32>) -> Array1<f32> {
     let norm = l2_norm(vec);
     if norm > 0.0 {
         vec / norm

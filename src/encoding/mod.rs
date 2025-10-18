@@ -6,7 +6,7 @@
 //!
 //! - [`dense`]: Single-vector embeddings via pooling strategies (BERT, BGE, Nomic, GTE)
 //! - [`sparse`]: Sparse vocabulary-space embeddings for interpretable search (SPLADE)
-//! - [`vision`]: Image and visual document encoding (ColPali)
+//! - [`vision`]: Image and visual document encoding (`ColPali`)
 //!
 //! The encoding layer sits between the Candle backend and the high-level API,
 //! implementing paradigm-specific logic.

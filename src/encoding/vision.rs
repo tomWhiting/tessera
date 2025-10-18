@@ -1,27 +1,27 @@
-//! Vision-language embedding encoder (ColPali).
+//! Vision-language embedding encoder (`ColPali`).
 //!
 //! Implements vision-language retrieval using multi-vector patch embeddings
-//! and late interaction scoring with the ColPali architecture.
+//! and late interaction scoring with the `ColPali` architecture.
 //!
-//! ColPali extends ColBERT's late interaction approach to visual documents:
+//! `ColPali` extends `ColBERT`'s late interaction approach to visual documents:
 //! - Images are divided into patches (typically 32×32 grid from 448×448 images)
 //! - Each patch gets embedded into a vector (multi-vector representation)
 //! - Text queries use token-level embeddings
-//! - MaxSim is computed between query tokens and image patches
+//! - `MaxSim` is computed between query tokens and image patches
 //! - Enables fine-grained visual question answering and document retrieval
 //!
 //! # Supported Models
 //!
-//! Currently supports PaliGemma-based ColPali models:
+//! Currently supports PaliGemma-based `ColPali` models:
 //! - vidore/colpali-v1.2-hf (recommended)
 //! - vidore/colpali-v1.3-hf
 //!
 //! # Architecture
 //!
-//! ColPali uses PaliGemma which combines:
+//! `ColPali` uses `PaliGemma` which combines:
 //! - **Vision Encoder**: SigLIP-So400m for image understanding
 //! - **Language Model**: Gemma-2B for text processing
-//! - **Late Interaction**: MaxSim scoring for retrieval
+//! - **Late Interaction**: `MaxSim` scoring for retrieval
 //!
 //! # Example
 //!
@@ -52,12 +52,12 @@ use candle_transformers::models::paligemma::{Config as PaliGemmaConfig, Model as
 use std::cell::RefCell;
 use std::path::{Path, PathBuf};
 
-/// Vision-language encoder using ColPali architecture (PaliGemma-based).
+/// Vision-language encoder using `ColPali` architecture (PaliGemma-based).
 ///
 /// This encoder supports image-to-embedding and text-to-embedding operations
-/// for vision-language retrieval using late interaction (MaxSim scoring).
+/// for vision-language retrieval using late interaction (`MaxSim` scoring).
 pub struct ColPaliEncoder {
-    /// PaliGemma model for vision-language processing (wrapped in RefCell for interior mutability)
+    /// `PaliGemma` model for vision-language processing (wrapped in `RefCell` for interior mutability)
     model: RefCell<PaliGemmaModel>,
 
     /// Tokenizer for text encoding
@@ -79,12 +79,12 @@ pub struct ColPaliEncoder {
     image_resolution: (u32, u32),
 
     /// Custom text projection layer (2048 -> 128)
-    /// Projects text embeddings from PaliGemma's hidden size to ColPali's embedding dimension
+    /// Projects text embeddings from `PaliGemma`'s hidden size to `ColPali`'s embedding dimension
     custom_text_projection: Linear,
 }
 
 impl ColPaliEncoder {
-    /// Create new ColPali encoder.
+    /// Create new `ColPali` encoder.
     ///
     /// # Arguments
     ///
@@ -98,7 +98,7 @@ impl ColPaliEncoder {
     /// # Errors
     ///
     /// Returns error if:
-    /// - Model cannot be downloaded from HuggingFace Hub
+    /// - Model cannot be downloaded from `HuggingFace` Hub
     /// - Model weights cannot be loaded
     /// - Model configuration is invalid
     ///
@@ -139,7 +139,7 @@ impl ColPaliEncoder {
                 let mut files: Vec<String> = weight_map
                     .values()
                     .filter_map(|v| v.as_str())
-                    .map(|s| s.to_string())
+                    .map(std::string::ToString::to_string)
                     .collect();
                 files.sort();
                 files.dedup();
@@ -195,8 +195,8 @@ impl ColPaliEncoder {
         // 9. Create image processor with appropriate resolution
         let image_processor = ImageProcessor::with_config(
             (image_size as u32, image_size as u32),
-            [0.48145466, 0.4578275, 0.40821073],  // SigLIP mean
-            [0.26862954, 0.26130258, 0.27577711], // SigLIP std
+            [0.481_454_66, 0.457_827_5, 0.408_210_73],  // SigLIP mean
+            [0.268_629_54, 0.261_302_6, 0.275_777_1], // SigLIP std
         );
 
         Ok(Self {
@@ -219,7 +219,7 @@ impl ColPaliEncoder {
     ///
     /// # Returns
     ///
-    /// VisionEmbedding with patch-level embeddings
+    /// `VisionEmbedding` with patch-level embeddings
     ///
     /// # Errors
     ///
@@ -305,8 +305,8 @@ impl ColPaliEncoder {
 
     /// Encode text query into token embeddings.
     ///
-    /// Uses the language model component of PaliGemma to encode text
-    /// for retrieval against image embeddings using MaxSim.
+    /// Uses the language model component of `PaliGemma` to encode text
+    /// for retrieval against image embeddings using `MaxSim`.
     ///
     /// # Arguments
     ///
@@ -314,7 +314,7 @@ impl ColPaliEncoder {
     ///
     /// # Returns
     ///
-    /// TokenEmbeddings compatible with MaxSim scoring
+    /// `TokenEmbeddings` compatible with `MaxSim` scoring
     ///
     /// # Errors
     ///
@@ -326,10 +326,10 @@ impl ColPaliEncoder {
         let (token_ids, _attention_mask) = self
             .tokenizer
             .encode(text, true)
-            .with_context(|| format!("Failed to tokenize text: {}", text))?;
+            .with_context(|| format!("Failed to tokenize text: {text}"))?;
 
         // 2. Convert token IDs to tensor [1, seq_len]
-        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&id| id as i64).collect();
+        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&id| i64::from(id)).collect();
         let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
             .context("Failed to create token IDs tensor")?;
 
@@ -384,7 +384,7 @@ impl ColPaliEncoder {
 
         let shape = tensor_cpu.dims();
         if shape.len() != 2 {
-            anyhow::bail!("Expected 2D tensor, got shape {:?}", shape);
+            anyhow::bail!("Expected 2D tensor, got shape {shape:?}");
         }
 
         let num_rows = shape[0];
@@ -408,7 +408,7 @@ impl ColPaliEncoder {
         Ok(result)
     }
 
-    /// Helper: Convert Candle Tensor to ndarray::Array2<f32>
+    /// Helper: Convert Candle Tensor to `ndarray::Array2`<f32>
     fn tensor_to_array2(&self, tensor: &Tensor) -> Result<ndarray::Array2<f32>> {
         // Ensure tensor is on CPU and F32
         let tensor_cpu = tensor
@@ -419,7 +419,7 @@ impl ColPaliEncoder {
 
         let shape = tensor_cpu.dims();
         if shape.len() != 2 {
-            anyhow::bail!("Expected 2D tensor, got shape {:?}", shape);
+            anyhow::bail!("Expected 2D tensor, got shape {shape:?}");
         }
 
         let num_rows = shape[0];
@@ -444,7 +444,7 @@ impl ColPaliEncoder {
     /// * `page_index` - Zero-based page index
     ///
     /// # Returns
-    /// VisionEmbedding for the specified PDF page
+    /// `VisionEmbedding` for the specified PDF page
     ///
     /// # Errors
     /// Returns error if:
@@ -458,10 +458,10 @@ impl ColPaliEncoder {
         let renderer = PdfRenderer::new().context("Failed to create PDF renderer")?;
         let image = renderer
             .render_page(pdf_path, page_index, 200)
-            .with_context(|| format!("Failed to render page {} from PDF", page_index))?;
+            .with_context(|| format!("Failed to render page {page_index} from PDF"))?;
 
         // Save to temp file and encode
-        let temp_path = std::env::temp_dir().join(format!("colpali_page_{}.png", page_index));
+        let temp_path = std::env::temp_dir().join(format!("colpali_page_{page_index}.png"));
         image
             .save(&temp_path)
             .context("Failed to save rendered page")?;
@@ -482,7 +482,7 @@ impl ColPaliEncoder {
     /// * `pdf_path` - Path to PDF file
     ///
     /// # Returns
-    /// Vector of VisionEmbeddings, one per page
+    /// Vector of `VisionEmbeddings`, one per page
     ///
     /// # Errors
     /// Returns error if:
@@ -495,7 +495,7 @@ impl ColPaliEncoder {
         let renderer = PdfRenderer::new().context("Failed to create PDF renderer")?;
         let page_count = renderer.page_count(pdf_path)?;
 
-        println!("Encoding {} pages from PDF...", page_count);
+        println!("Encoding {page_count} pages from PDF...");
 
         (0..page_count)
             .map(|i| {
@@ -505,11 +505,11 @@ impl ColPaliEncoder {
             .collect()
     }
 
-    /// Create a ColPali encoder from a specific PaliGemma variant.
+    /// Create a `ColPali` encoder from a specific `PaliGemma` variant.
     ///
     /// # Arguments
     ///
-    /// * `variant` - PaliGemma config variant (224 or 448 resolution)
+    /// * `variant` - `PaliGemma` config variant (224 or 448 resolution)
     /// * `device` - Device for inference
     ///
     /// # Returns
@@ -534,10 +534,7 @@ impl ColPaliEncoder {
         // This is a helper method - in practice, use new() with full config
         anyhow::bail!(
             "Use ColPaliEncoder::new() with a complete ModelConfig instead. \
-            Variant: {:?}, Resolution: {}x{}",
-            variant,
-            width,
-            height
+            Variant: {variant:?}, Resolution: {width}x{height}"
         )
     }
 }
@@ -571,7 +568,7 @@ impl VisionEncoder for ColPaliEncoder {
     }
 }
 
-/// PaliGemma model variants with different image resolutions.
+/// `PaliGemma` model variants with different image resolutions.
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
 enum PaliGemmaVariant {
@@ -583,28 +580,29 @@ enum PaliGemmaVariant {
 
 impl PaliGemmaVariant {
     /// Get the image resolution for this variant.
-    fn resolution(&self) -> (u32, u32) {
+    const fn resolution(&self) -> (u32, u32) {
         match self {
-            PaliGemmaVariant::Res224 => (224, 224),
-            PaliGemmaVariant::Res448 => (448, 448),
+            Self::Res224 => (224, 224),
+            Self::Res448 => (448, 448),
         }
     }
 
     /// Get the number of patches for this variant.
-    fn num_patches(&self) -> usize {
+    #[allow(dead_code)]
+    const fn num_patches(&self) -> usize {
         match self {
             // 224÷14 = 16, so 16×16 = 256 patches
-            PaliGemmaVariant::Res224 => 256,
+            Self::Res224 => 256,
             // 448÷14 = 32, so 32×32 = 1024 patches
-            PaliGemmaVariant::Res448 => 1024,
+            Self::Res448 => 1024,
         }
     }
 
-    /// Get the PaliGemma config for this variant.
+    /// Get the `PaliGemma` config for this variant.
     fn to_config(&self) -> PaliGemmaConfig {
         match self {
-            PaliGemmaVariant::Res224 => PaliGemmaConfig::paligemma_3b_224(),
-            PaliGemmaVariant::Res448 => PaliGemmaConfig::paligemma_3b_448(),
+            Self::Res224 => PaliGemmaConfig::paligemma_3b_224(),
+            Self::Res448 => PaliGemmaConfig::paligemma_3b_448(),
         }
     }
 }

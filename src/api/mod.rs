@@ -38,7 +38,7 @@
 //!
 //! # Features
 //!
-//! - Automatic model downloading from HuggingFace Hub
+//! - Automatic model downloading from `HuggingFace` Hub
 //! - Device detection (CPU, Metal, CUDA)
 //! - Built-in quantization support
 //! - Batch encoding for efficiency

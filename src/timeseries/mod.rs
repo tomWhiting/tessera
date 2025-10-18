@@ -5,7 +5,7 @@
 //!
 //! # Models
 //!
-//! - **ChronosBolt**: Amazon's T5-based time series foundation model
+//! - **`ChronosBolt`**: Amazon's T5-based time series foundation model
 //!   - T5 encoder-decoder architecture
 //!   - Quantile-based probabilistic forecasting
 //!   - Pre-trained on diverse time series datasets

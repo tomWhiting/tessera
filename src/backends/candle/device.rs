@@ -10,6 +10,10 @@ use candle_core::Device;
 ///
 /// # Returns
 /// The selected device
+///
+/// # Errors
+///
+/// This function currently does not return errors, but returns a Result for API consistency.
 pub fn get_device() -> Result<Device> {
     #[cfg(target_os = "macos")]
     {
@@ -30,7 +34,11 @@ pub fn get_device() -> Result<Device> {
 }
 
 /// Creates a CPU device explicitly.
-pub fn cpu_device() -> Result<Device> {
+///
+/// # Errors
+///
+/// This function never returns errors.
+pub const fn cpu_device() -> Result<Device> {
     Ok(Device::Cpu)
 }
 
@@ -38,13 +46,17 @@ pub fn cpu_device() -> Result<Device> {
 ///
 /// # Returns
 /// Metal device if available, otherwise returns an error
+///
+/// # Errors
+///
+/// Returns an error if Metal device creation fails.
 #[cfg(target_os = "macos")]
 pub fn metal_device() -> Result<Device> {
     Device::new_metal(0).context("Failed to create Metal device")
 }
 
 /// Returns a string describing the device.
-pub fn device_description(device: &Device) -> String {
+#[must_use] pub fn device_description(device: &Device) -> String {
     match device {
         Device::Cpu => "CPU".to_string(),
         #[cfg(feature = "metal")]

@@ -1,4 +1,4 @@
-//! CLI demo for Tessera ColBERT inference.
+//! CLI demo for Tessera `ColBERT` inference.
 //!
 //! This demonstrates Candle backend for computing similarity between
 //! query and document text using multi-vector embeddings.
@@ -50,7 +50,7 @@ fn main() -> Result<()> {
 
         // Custom model path
         other => {
-            println!("Using custom model: {}", other);
+            println!("Using custom model: {other}");
             ModelConfig::custom(other, 768, 512)
         }
     };
@@ -96,7 +96,7 @@ fn run_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
     println!("Computing MaxSim similarity...");
     let score = max_sim(&query_emb, &doc_emb).context("Computing similarity")?;
 
-    println!("\nSimilarity Score: {:.4}", score);
+    println!("\nSimilarity Score: {score:.4}");
 
     Ok(())
 }

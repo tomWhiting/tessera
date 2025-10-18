@@ -19,14 +19,14 @@ use ndarray::{Array1, Array2};
 /// token's embedding.
 ///
 /// # Arguments
-/// * `token_embeddings` - Token embedding matrix (num_tokens × embedding_dim)
+/// * `token_embeddings` - Token embedding matrix (`num_tokens` × `embedding_dim`)
 /// * `_attention_mask` - Attention mask (unused for CLS pooling, but kept for interface consistency)
 ///
 /// # Returns
 /// The first token's embedding vector
 ///
 /// # Panics
-/// Panics if the token_embeddings matrix is empty (no tokens)
+/// Panics if the `token_embeddings` matrix is empty (no tokens)
 ///
 /// # Example
 /// ```
@@ -45,18 +45,18 @@ use ndarray::{Array1, Array2};
 /// assert_eq!(pooled[1], 2.0);
 /// assert_eq!(pooled[2], 3.0);
 /// ```
-pub fn cls_pooling(token_embeddings: &Array2<f32>, _attention_mask: &[i64]) -> Array1<f32> {
+#[must_use] pub fn cls_pooling(token_embeddings: &Array2<f32>, _attention_mask: &[i64]) -> Array1<f32> {
     token_embeddings.row(0).to_owned()
 }
 
 /// Mean pooling weighted by attention mask.
 ///
-/// Averages token embeddings, considering only tokens where attention_mask is 1
+/// Averages token embeddings, considering only tokens where `attention_mask` is 1
 /// (ignoring padding tokens where mask is 0). This produces a centroid
 /// representation of all meaningful tokens.
 ///
 /// # Arguments
-/// * `token_embeddings` - Token embedding matrix (num_tokens × embedding_dim)
+/// * `token_embeddings` - Token embedding matrix (`num_tokens` × `embedding_dim`)
 /// * `attention_mask` - Binary mask indicating valid tokens (1 = valid, 0 = padding)
 ///
 /// # Returns
@@ -79,13 +79,13 @@ pub fn cls_pooling(token_embeddings: &Array2<f32>, _attention_mask: &[i64]) -> A
 /// assert!((pooled[0] - 2.0).abs() < 1e-6);
 /// assert!((pooled[1] - 3.0).abs() < 1e-6);
 /// ```
-pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
+#[must_use] pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
     let mut sum = Array1::zeros(token_embeddings.ncols());
     let mut count = 0;
 
     for (i, &mask) in attention_mask.iter().enumerate() {
         if mask == 1 && i < token_embeddings.nrows() {
-            sum = sum + &token_embeddings.row(i);
+            sum = sum + token_embeddings.row(i);
             count += 1;
         }
     }
@@ -100,11 +100,11 @@ pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> A
 /// Element-wise max pooling across tokens.
 ///
 /// For each dimension, takes the maximum value across all valid tokens
-/// (where attention_mask is 1). This captures the most salient features
+/// (where `attention_mask` is 1). This captures the most salient features
 /// from any token position.
 ///
 /// # Arguments
-/// * `token_embeddings` - Token embedding matrix (num_tokens × embedding_dim)
+/// * `token_embeddings` - Token embedding matrix (`num_tokens` × `embedding_dim`)
 /// * `attention_mask` - Binary mask indicating valid tokens (1 = valid, 0 = padding)
 ///
 /// # Returns
@@ -127,7 +127,7 @@ pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> A
 /// assert!((pooled[0] - 3.0).abs() < 1e-6);
 /// assert!((pooled[1] - 5.0).abs() < 1e-6);
 /// ```
-pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
+#[must_use] pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
     let embedding_dim = token_embeddings.ncols();
     let mut result = Array1::from_elem(embedding_dim, f32::NEG_INFINITY);
 
@@ -141,7 +141,7 @@ pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Ar
     }
 
     // Replace -inf with 0.0 if no valid tokens were found
-    for val in result.iter_mut() {
+    for val in &mut result {
         if val.is_infinite() && *val < 0.0 {
             *val = 0.0;
         }

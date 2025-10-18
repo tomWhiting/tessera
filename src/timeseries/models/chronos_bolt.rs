@@ -1,13 +1,13 @@
 //! Chronos Bolt: Time series foundation model using T5 architecture.
 //!
 //! Chronos Bolt is Amazon's production time series forecasting model that uses
-//! a T5 encoder-decoder architecture with ResidualMLP patch embeddings.
+//! a T5 encoder-decoder architecture with `ResidualMLP` patch embeddings.
 //!
 //! # Architecture
 //! - T5 encoder-decoder backbone (from candle-transformers)
-//! - ResidualMLP input patch embeddings (patch_size=32 -> hidden=2048 -> d_model=512)
-//! - ResidualMLP output patch embeddings (d_model=512 -> hidden=2048 -> pred_len×quantiles=576)
-//! - Continuous embeddings fed directly to T5Stack (NO quantization/tokenization)
+//! - `ResidualMLP` input patch embeddings (`patch_size=32` -> hidden=2048 -> `d_model=512`)
+//! - `ResidualMLP` output patch embeddings (`d_model=512` -> hidden=2048 -> `pred_len×quantiles=576`)
+//! - Continuous embeddings fed directly to `T5Stack` (NO quantization/tokenization)
 //! - Decoder uses single aggregated position to produce forecast
 //! - Custom preprocessing: scaling by absolute mean, patching
 //! - Quantile predictions: 9 quantiles per prediction step (0.1, 0.2, ..., 0.9)
@@ -15,12 +15,12 @@
 //!
 //! # Current Implementation Status
 //!
-//! Full implementation with exposed T5Stack components:
-//! - input_patch_embedding: ResidualMLP (32 -> 2048 -> 512)
-//! - output_patch_embedding: ResidualMLP (512 -> 2048 -> 576)
-//! - Quantile output: [batch, pred_len=64, num_quantiles=9]
+//! Full implementation with exposed `T5Stack` components:
+//! - `input_patch_embedding`: `ResidualMLP` (32 -> 2048 -> 512)
+//! - `output_patch_embedding`: `ResidualMLP` (512 -> 2048 -> 576)
+//! - Quantile output: [batch, `pred_len=64`, `num_quantiles=9`]
 //! - T5 encoder and decoder stacks
-//! - shared embedding (vocab_size=2)
+//! - shared embedding (`vocab_size=2`)
 //!
 //! # Example
 //! ```ignore
@@ -52,10 +52,10 @@ use crate::timeseries::preprocessing::{create_patches, scale_by_mean};
 /// Residual MLP for patch embedding.
 ///
 /// This is a 3-layer MLP with a residual connection:
-/// - hidden_layer: input_dim -> hidden_dim (+ ReLU)
-/// - output_layer: hidden_dim -> output_dim
-/// - residual_layer: input_dim -> output_dim
-/// - output = output_layer(ReLU(hidden_layer(x))) + residual_layer(x)
+/// - `hidden_layer`: `input_dim` -> `hidden_dim` (+ `ReLU`)
+/// - `output_layer`: `hidden_dim` -> `output_dim`
+/// - `residual_layer`: `input_dim` -> `output_dim`
+/// - output = `output_layer(ReLU(hidden_layer(x)))` + `residual_layer(x)`
 ///
 /// Used by Chronos Bolt for both input and output patch embeddings.
 pub struct ResidualMLP {
@@ -69,12 +69,12 @@ impl ResidualMLP {
     ///
     /// # Arguments
     /// * `input_dim` - Input dimension
-    /// * `hidden_dim` - Hidden dimension (typically 4x d_model)
+    /// * `hidden_dim` - Hidden dimension (typically 4x `d_model`)
     /// * `output_dim` - Output dimension
     /// * `vb` - Variable builder for loading weights
     ///
     /// # Returns
-    /// Initialized ResidualMLP
+    /// Initialized `ResidualMLP`
     ///
     /// # Errors
     /// Returns error if weight loading fails
@@ -126,16 +126,17 @@ impl ResidualMLP {
 
 /// Chronos Bolt time series foundation model.
 ///
-/// This model uses a T5 encoder-decoder architecture with ResidualMLP
+/// This model uses a T5 encoder-decoder architecture with `ResidualMLP`
 /// patch embeddings for continuous time series processing.
 pub struct ChronosBolt {
-    /// Input patch embedding (patch_size -> d_model)
+    /// Input patch embedding (`patch_size` -> `d_model`)
     input_patch_embedding: ResidualMLP,
 
-    /// Output patch embedding (d_model -> prediction_length)
+    /// Output patch embedding (`d_model` -> `prediction_length`)
     output_patch_embedding: ResidualMLP,
 
-    /// Shared embedding table (vocab_size=2)
+    /// Shared embedding table (`vocab_size=2`)
+    #[allow(dead_code)]
     shared: Arc<Embedding>,
 
     /// T5 encoder stack
@@ -155,7 +156,7 @@ pub struct ChronosBolt {
 }
 
 impl ChronosBolt {
-    /// Create ChronosBolt model from configuration with weights from VarBuilder.
+    /// Create `ChronosBolt` model from configuration with weights from `VarBuilder`.
     ///
     /// # Arguments
     /// * `config` - Model configuration
@@ -163,7 +164,7 @@ impl ChronosBolt {
     /// * `device` - Device for tensor operations
     ///
     /// # Returns
-    /// Initialized ChronosBolt model
+    /// Initialized `ChronosBolt` model
     ///
     /// # Errors
     /// Returns error if model construction fails
@@ -207,7 +208,7 @@ impl ChronosBolt {
             num_heads: config.num_heads,
             num_layers: config.num_encoder_layers,
             num_decoder_layers: Some(config.num_decoder_layers),
-            dropout_rate: config.dropout as f64,
+            dropout_rate: f64::from(config.dropout),
             is_encoder_decoder: true,
             ..Default::default()
         };
@@ -221,7 +222,7 @@ impl ChronosBolt {
             .context("Failed to load T5 encoder")?;
 
         // Load T5 decoder
-        let mut decoder_cfg = t5_config.clone();
+        let mut decoder_cfg = t5_config;
         decoder_cfg.is_decoder = true;
         decoder_cfg.is_encoder_decoder = false;
         decoder_cfg.num_layers = config.num_decoder_layers;
@@ -240,14 +241,14 @@ impl ChronosBolt {
         })
     }
 
-    /// Load ChronosBolt model from HuggingFace pre-trained weights.
+    /// Load `ChronosBolt` model from `HuggingFace` pre-trained weights.
     ///
     /// # Arguments
-    /// * `model_id` - HuggingFace model ID (e.g., "amazon/chronos-bolt-small")
+    /// * `model_id` - `HuggingFace` model ID (e.g., "amazon/chronos-bolt-small")
     /// * `device` - Device for tensor operations
     ///
     /// # Returns
-    /// Loaded ChronosBolt model with pre-trained weights
+    /// Loaded `ChronosBolt` model with pre-trained weights
     ///
     /// # Errors
     /// Returns error if model download or loading fails
@@ -263,7 +264,7 @@ impl ChronosBolt {
         let repo = api.model(model_id.to_string());
         let weights_path = repo
             .get("model.safetensors")
-            .with_context(|| format!("Failed to download weights for {}", model_id))?;
+            .with_context(|| format!("Failed to download weights for {model_id}"))?;
 
         // Determine config based on model ID
         let config = if model_id.contains("base") {
@@ -284,10 +285,10 @@ impl ChronosBolt {
     /// Forward pass through the model returning all quantile predictions.
     ///
     /// # Arguments
-    /// * `input` - Time series tensor [batch, context_length]
+    /// * `input` - Time series tensor [batch, `context_length`]
     ///
     /// # Returns
-    /// Quantile predictions [batch, prediction_length, num_quantiles]
+    /// Quantile predictions [batch, `prediction_length`, `num_quantiles`]
     ///
     /// # Errors
     /// Returns error if forward pass fails
@@ -388,10 +389,10 @@ impl ChronosBolt {
     /// allowing uncertainty quantification and probabilistic forecasting.
     ///
     /// # Arguments
-    /// * `input` - Time series tensor [batch, context_length]
+    /// * `input` - Time series tensor [batch, `context_length`]
     ///
     /// # Returns
-    /// Quantile predictions [batch, prediction_length, num_quantiles]
+    /// Quantile predictions [batch, `prediction_length`, `num_quantiles`]
     /// where quantiles are ordered as specified in config.quantiles
     /// (typically [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9])
     ///
@@ -415,10 +416,10 @@ impl ChronosBolt {
     /// providing a single point forecast for each prediction step.
     ///
     /// # Arguments
-    /// * `input` - Time series tensor [batch, context_length]
+    /// * `input` - Time series tensor [batch, `context_length`]
     ///
     /// # Returns
-    /// Median forecast predictions [batch, prediction_length]
+    /// Median forecast predictions [batch, `prediction_length`]
     ///
     /// # Errors
     /// Returns error if forecasting fails

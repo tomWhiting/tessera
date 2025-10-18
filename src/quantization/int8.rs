@@ -60,7 +60,7 @@ pub struct Int8Quantization {
 
 impl Int8Quantization {
     /// Create a new int8 quantization instance.
-    pub fn new() -> Self {
+    #[must_use] pub fn new() -> Self {
         todo!("Implement int8 quantization initialization")
     }
 

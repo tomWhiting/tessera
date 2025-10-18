@@ -1,8 +1,8 @@
-//! MaxSim similarity scoring for ColBERT-style late interaction.
+//! `MaxSim` similarity scoring for ColBERT-style late interaction.
 //!
 //! This module is maintained for backward compatibility. New code should use
 //! `crate::utils::similarity` instead, which provides a comprehensive set of
-//! similarity functions including MaxSim.
+//! similarity functions including `MaxSim`.
 //!
 //! # Deprecation Notice
 //!
@@ -15,9 +15,9 @@ use anyhow::Result;
 
 use super::embeddings::TokenEmbeddings;
 
-/// Computes MaxSim similarity between query and document embeddings.
+/// Computes `MaxSim` similarity between query and document embeddings.
 ///
-/// MaxSim algorithm:
+/// `MaxSim` algorithm:
 /// For each query token vector qi:
 ///   1. Compute dot product with all document token vectors dj
 ///   2. Take the maximum score across all document tokens
@@ -30,7 +30,7 @@ use super::embeddings::TokenEmbeddings;
 /// * `document` - Document token embeddings
 ///
 /// # Returns
-/// The MaxSim similarity score (higher is more similar)
+/// The `MaxSim` similarity score (higher is more similar)
 ///
 /// # Errors
 /// Returns an error if the embedding dimensions don't match

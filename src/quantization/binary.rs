@@ -42,8 +42,8 @@ use super::Quantization;
 /// Binary quantized vector representation.
 ///
 /// Stores a vector as packed bits with 8 dimensions per byte.
-/// Bit ordering: within each byte, bit i represents dimension (byte_idx * 8 + i).
-#[derive(Debug, Clone, PartialEq)]
+/// Bit ordering: within each byte, bit i represents dimension (`byte_idx` * 8 + i).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BinaryVector {
     /// Packed bits (8 dimensions per byte)
     pub data: Vec<u8>,
@@ -60,7 +60,7 @@ impl BinaryVector {
     /// # Returns
     ///
     /// Bytes consumed by the packed bit data.
-    pub fn memory_bytes(&self) -> usize {
+    #[must_use] pub fn memory_bytes(&self) -> usize {
         // Only count the actual packed bit data for fair compression comparison
         // Struct overhead (Vec header + dim field) is constant and amortized
         self.data.len()
@@ -75,7 +75,7 @@ pub struct BinaryQuantization;
 
 impl BinaryQuantization {
     /// Create a new binary quantization instance.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self
     }
 }
@@ -91,7 +91,7 @@ impl Quantization for BinaryQuantization {
 
     fn quantize_vector(&self, vector: &[f32]) -> BinaryVector {
         let dim = vector.len();
-        let num_bytes = (dim + 7) / 8; // Round up to nearest byte
+        let num_bytes = dim.div_ceil(8); // Round up to nearest byte
         let mut data = vec![0u8; num_bytes];
 
         for (i, &val) in vector.iter().enumerate() {

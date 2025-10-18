@@ -60,8 +60,8 @@ impl QuantizedEmbeddings {
     /// Memory usage in bytes.
     ///
     /// Returns the total memory footprint including vector data and overhead.
-    pub fn memory_bytes(&self) -> usize {
-        self.quantized.iter().map(|v| v.memory_bytes()).sum()
+    #[must_use] pub fn memory_bytes(&self) -> usize {
+        self.quantized.iter().map(super::super::quantization::binary::BinaryVector::memory_bytes).sum()
     }
 
     /// Compression ratio compared to float32.
@@ -75,6 +75,8 @@ impl QuantizedEmbeddings {
     /// let ratio = quantized.compression_ratio();
     /// println!("Compressed {:.1}x smaller", ratio);  // ~32.0x
     /// ```
+    #[must_use]
+    #[allow(clippy::cast_precision_loss)]
     pub fn compression_ratio(&self) -> f32 {
         let float_bytes = self.num_tokens * self.original_dim * 4;
         let quantized_bytes = self.memory_bytes();
@@ -88,7 +90,7 @@ impl QuantizedEmbeddings {
 /// Multi-vector embedder for ColBERT-style token-level embeddings.
 ///
 /// Produces token-level embeddings suitable for late interaction scoring
-/// via MaxSim. Each input text generates multiple vectors (one per token).
+/// via `MaxSim`. Each input text generates multiple vectors (one per token).
 ///
 /// Thread-safe and can be shared across threads.
 pub struct TesseraMultiVector {
@@ -106,7 +108,7 @@ impl TesseraMultiVector {
     /// This is the simplest way to create an embedder - it automatically:
     /// - Looks up the model in the registry
     /// - Selects the best available device (Metal > CUDA > CPU)
-    /// - Downloads the model from HuggingFace if needed
+    /// - Downloads the model from `HuggingFace` if needed
     /// - Initializes the encoder
     ///
     /// # Arguments
@@ -155,12 +157,12 @@ impl TesseraMultiVector {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    pub fn builder() -> TesseraMultiVectorBuilder {
+    #[must_use] pub const fn builder() -> TesseraMultiVectorBuilder {
         TesseraMultiVectorBuilder::new()
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(
+    pub(crate) const fn from_encoder(
         encoder: CandleBertEncoder,
         model_id: String,
         quantizer: Option<BinaryQuantization>,
@@ -183,7 +185,7 @@ impl TesseraMultiVector {
     ///
     /// # Returns
     ///
-    /// TokenEmbeddings containing the embedding matrix and metadata.
+    /// `TokenEmbeddings` containing the embedding matrix and metadata.
     ///
     /// # Errors
     ///
@@ -201,7 +203,7 @@ impl TesseraMultiVector {
     /// ```
     pub fn encode(&self, text: &str) -> Result<TokenEmbeddings> {
         TokenEmbedder::encode(&self.encoder, text).map_err(|e| TesseraError::EncodingError {
-            context: format!("Failed to encode text: '{}'", text),
+            context: format!("Failed to encode text: '{text}'"),
             source: e,
         })
     }
@@ -217,7 +219,7 @@ impl TesseraMultiVector {
     ///
     /// # Returns
     ///
-    /// Vector of TokenEmbeddings, one per input text.
+    /// Vector of `TokenEmbeddings`, one per input text.
     ///
     /// # Errors
     ///
@@ -240,8 +242,8 @@ impl TesseraMultiVector {
 
     /// Compute similarity between two texts.
     ///
-    /// Convenience method that encodes both texts and computes MaxSim similarity.
-    /// MaxSim is the standard similarity metric for ColBERT multi-vector embeddings.
+    /// Convenience method that encodes both texts and computes `MaxSim` similarity.
+    /// `MaxSim` is the standard similarity metric for `ColBERT` multi-vector embeddings.
     ///
     /// # Arguments
     ///
@@ -337,6 +339,7 @@ impl TesseraMultiVector {
     /// println!("Compression: {:.1}x", quantized.compression_ratio());
     /// ```
     pub fn quantize(&self, embeddings: &TokenEmbeddings) -> Result<QuantizedEmbeddings> {
+        #[allow(clippy::option_if_let_else)]
         match &self.quantizer {
             Some(q) => {
                 // Convert Array2 to Vec<Vec<f32>> for quantization
@@ -389,12 +392,12 @@ impl TesseraMultiVector {
 
     /// Compute similarity between quantized embeddings using Hamming distance.
     ///
-    /// Uses the MaxSim algorithm adapted for binary embeddings:
+    /// Uses the `MaxSim` algorithm adapted for binary embeddings:
     /// - Distance computed via XOR + popcount (Hamming distance)
     /// - For each query vector, find max similarity with document vectors
     /// - Sum across all query vectors
     ///
-    /// This is significantly faster than float32 MaxSim while maintaining
+    /// This is significantly faster than float32 `MaxSim` while maintaining
     /// 95%+ accuracy.
     ///
     /// # Arguments
@@ -405,7 +408,7 @@ impl TesseraMultiVector {
     /// # Returns
     ///
     /// Similarity score (higher = more similar). Scale is different from
-    /// float32 MaxSim but ranking is preserved.
+    /// float32 `MaxSim` but ranking is preserved.
     ///
     /// # Errors
     ///
@@ -424,6 +427,7 @@ impl TesseraMultiVector {
         query: &QuantizedEmbeddings,
         document: &QuantizedEmbeddings,
     ) -> Result<f32> {
+        #[allow(clippy::option_if_let_else)]
         match &self.quantizer {
             Some(q) => {
                 let score = multi_vector_distance(q, &query.quantized, &document.quantized);
@@ -461,7 +465,7 @@ impl TesseraDense {
     /// This is the simplest way to create a dense embedder - it automatically:
     /// - Looks up the model in the registry
     /// - Selects the best available device (Metal > CUDA > CPU)
-    /// - Downloads the model from HuggingFace if needed
+    /// - Downloads the model from `HuggingFace` if needed
     /// - Initializes the encoder with appropriate pooling strategy
     ///
     /// # Arguments
@@ -511,12 +515,12 @@ impl TesseraDense {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    pub fn builder() -> TesseraDenseBuilder {
+    #[must_use] pub const fn builder() -> TesseraDenseBuilder {
         TesseraDenseBuilder::new()
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
+    pub(crate) const fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
         Self { encoder, model_id }
     }
 
@@ -530,7 +534,7 @@ impl TesseraDense {
     ///
     /// # Returns
     ///
-    /// DenseEmbedding containing the pooled embedding vector.
+    /// `DenseEmbedding` containing the pooled embedding vector.
     ///
     /// # Errors
     ///
@@ -547,7 +551,7 @@ impl TesseraDense {
     pub fn encode(&self, text: &str) -> Result<DenseEmbedding> {
         <CandleDenseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
             TesseraError::EncodingError {
-                context: format!("Failed to encode text: '{}'", text),
+                context: format!("Failed to encode text: '{text}'"),
                 source: e,
             }
         })
@@ -564,7 +568,7 @@ impl TesseraDense {
     ///
     /// # Returns
     ///
-    /// Vector of DenseEmbedding, one per input text.
+    /// Vector of `DenseEmbedding`, one per input text.
     ///
     /// # Errors
     ///
@@ -680,7 +684,7 @@ impl TesseraSparse {
     /// This is the simplest way to create a sparse embedder - it automatically:
     /// - Looks up the model in the registry
     /// - Selects the best available device (Metal > CUDA > CPU)
-    /// - Downloads the model from HuggingFace if needed
+    /// - Downloads the model from `HuggingFace` if needed
     /// - Initializes the encoder with MLM head
     ///
     /// # Arguments
@@ -728,12 +732,12 @@ impl TesseraSparse {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    pub fn builder() -> TesseraSparseBuilder {
+    #[must_use] pub const fn builder() -> TesseraSparseBuilder {
         TesseraSparseBuilder::new()
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(encoder: CandleSparseEncoder, model_id: String) -> Self {
+    pub(crate) const fn from_encoder(encoder: CandleSparseEncoder, model_id: String) -> Self {
         Self { encoder, model_id }
     }
 
@@ -748,7 +752,7 @@ impl TesseraSparse {
     ///
     /// # Returns
     ///
-    /// SparseEmbedding containing sparse vector representation.
+    /// `SparseEmbedding` containing sparse vector representation.
     ///
     /// # Errors
     ///
@@ -766,7 +770,7 @@ impl TesseraSparse {
     pub fn encode(&self, text: &str) -> Result<SparseEmbedding> {
         <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
             TesseraError::EncodingError {
-                context: format!("Failed to encode text: '{}'", text),
+                context: format!("Failed to encode text: '{text}'"),
                 source: e,
             }
         })
@@ -782,7 +786,7 @@ impl TesseraSparse {
     ///
     /// # Returns
     ///
-    /// Vector of SparseEmbedding, one per input text.
+    /// Vector of `SparseEmbedding`, one per input text.
     ///
     /// # Errors
     ///
@@ -879,7 +883,7 @@ impl TesseraSparse {
 // Vision-Language Encoder (ColPali)
 // ============================================================================
 
-/// Vision-language embedder for ColPali document retrieval.
+/// Vision-language embedder for `ColPali` document retrieval.
 ///
 /// Encodes document page images as multi-vector patch embeddings and enables
 /// text queries to search visually through documents without OCR.
@@ -887,7 +891,7 @@ impl TesseraSparse {
 /// Thread-safe and can be shared across threads (except for encoding operations
 /// which require exclusive access due to interior mutability).
 pub struct TesseraVision {
-    /// Backend encoder (ColPali encoder)
+    /// Backend encoder (`ColPali` encoder)
     encoder: ColPaliEncoder,
     /// Model identifier from registry
     model_id: String,
@@ -899,8 +903,8 @@ impl TesseraVision {
     /// This is the simplest way to create a vision embedder - it automatically:
     /// - Looks up the model in the registry
     /// - Selects the best available device (Metal > CUDA > CPU)
-    /// - Downloads the model from HuggingFace if needed (3B params, ~5.88 GB)
-    /// - Initializes the PaliGemma vision-language model
+    /// - Downloads the model from `HuggingFace` if needed (3B params, ~5.88 GB)
+    /// - Initializes the `PaliGemma` vision-language model
     ///
     /// # Arguments
     ///
@@ -933,12 +937,12 @@ impl TesseraVision {
     }
 
     /// Create a builder for advanced configuration.
-    pub fn builder() -> TesseraVisionBuilder {
+    #[must_use] pub const fn builder() -> TesseraVisionBuilder {
         TesseraVisionBuilder::new()
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(encoder: ColPaliEncoder, model_id: String) -> Self {
+    pub(crate) const fn from_encoder(encoder: ColPaliEncoder, model_id: String) -> Self {
         Self { encoder, model_id }
     }
 
@@ -954,7 +958,7 @@ impl TesseraVision {
     ///
     /// # Returns
     ///
-    /// VisionEmbedding containing patch embeddings (shape: [1024, 128]).
+    /// `VisionEmbedding` containing patch embeddings (shape: [1024, 128]).
     ///
     /// # Errors
     ///
@@ -974,15 +978,15 @@ impl TesseraVision {
         self.encoder
             .encode_image(path)
             .map_err(|e| TesseraError::EncodingError {
-                context: format!("Failed to encode document image: '{}'", image_path),
-                source: e.into(),
+                context: format!("Failed to encode document image: '{image_path}'"),
+                source: e,
             })
     }
 
     /// Encode a text query into token embeddings.
     ///
     /// Returns multi-vector representation where each vector corresponds to
-    /// a query token. Compatible with late interaction (MaxSim) scoring
+    /// a query token. Compatible with late interaction (`MaxSim`) scoring
     /// against document patch embeddings.
     ///
     /// # Arguments
@@ -991,7 +995,7 @@ impl TesseraVision {
     ///
     /// # Returns
     ///
-    /// TokenEmbeddings containing query token embeddings.
+    /// `TokenEmbeddings` containing query token embeddings.
     ///
     /// # Errors
     ///
@@ -1009,14 +1013,14 @@ impl TesseraVision {
         self.encoder
             .encode_text(text)
             .map_err(|e| TesseraError::EncodingError {
-                context: format!("Failed to encode query text: '{}'", text),
-                source: e.into(),
+                context: format!("Failed to encode query text: '{text}'"),
+                source: e,
             })
     }
 
     /// Compute late interaction score between query and document.
     ///
-    /// Uses MaxSim scoring: for each query token, find maximum similarity
+    /// Uses `MaxSim` scoring: for each query token, find maximum similarity
     /// across all document patches, then sum across query tokens.
     ///
     /// # Arguments
@@ -1035,6 +1039,10 @@ impl TesseraVision {
     /// let doc_emb = embedder.encode_document("invoice.jpg")?;
     /// let score = embedder.search(&query_emb, &doc_emb)?;
     /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the embeddings cannot be processed or if dimensions are mismatched.
     pub fn search(&self, query: &TokenEmbeddings, document: &VisionEmbedding) -> Result<f32> {
         // Convert VisionEmbedding to format compatible with max_sim
         // max_sim expects (&TokenEmbeddings, &TokenEmbeddings) but we can adapt it
@@ -1059,13 +1067,17 @@ impl TesseraVision {
 
         max_sim(query, &doc_embeddings).map_err(|e| TesseraError::EncodingError {
             context: "Failed to compute MaxSim score".to_string(),
-            source: e.into(),
+            source: e,
         })
     }
 
     /// Convenience method: search with text query and image path.
     ///
     /// Encodes both query and document, then computes similarity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if encoding fails or the image cannot be read.
     pub fn search_document(&self, query_text: &str, image_path: &str) -> Result<f32> {
         let query_emb = self.encode_query(query_text)?;
         let doc_emb = self.encode_document(image_path)?;
@@ -1102,7 +1114,7 @@ impl TesseraVision {
 ///
 /// Thread-safe and can be shared across threads.
 pub struct TesseraTimeSeries {
-    /// Backend encoder (ChronosBolt model)
+    /// Backend encoder (`ChronosBolt` model)
     encoder: ChronosBolt,
     /// Model identifier from registry
     model_id: String,
@@ -1114,7 +1126,7 @@ impl TesseraTimeSeries {
     /// This is the simplest way to create a forecaster - it automatically:
     /// - Looks up the model in the registry
     /// - Selects the best available device (Metal > CUDA > CPU)
-    /// - Downloads the model from HuggingFace if needed
+    /// - Downloads the model from `HuggingFace` if needed
     /// - Initializes the T5-based forecasting model
     ///
     /// # Arguments
@@ -1164,12 +1176,12 @@ impl TesseraTimeSeries {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    pub fn builder() -> TesseraTimeSeriesBuilder {
+    #[must_use] pub const fn builder() -> TesseraTimeSeriesBuilder {
         TesseraTimeSeriesBuilder::new()
     }
 
     /// Internal constructor used by builder.
-    pub(crate) fn from_encoder(encoder: ChronosBolt, model_id: String) -> Self {
+    pub(crate) const fn from_encoder(encoder: ChronosBolt, model_id: String) -> Self {
         Self { encoder, model_id }
     }
 
@@ -1180,11 +1192,11 @@ impl TesseraTimeSeries {
     ///
     /// # Arguments
     ///
-    /// * `context` - Historical time series data [batch, context_length]
+    /// * `context` - Historical time series data [batch, `context_length`]
     ///
     /// # Returns
     ///
-    /// Tensor of forecasted values [batch, prediction_length]
+    /// Tensor of forecasted values [batch, `prediction_length`]
     ///
     /// # Errors
     ///
@@ -1204,7 +1216,7 @@ impl TesseraTimeSeries {
             .forecast(context)
             .map_err(|e| TesseraError::EncodingError {
                 context: "Failed to generate forecast".to_string(),
-                source: e.into(),
+                source: e,
             })
     }
 
@@ -1215,11 +1227,11 @@ impl TesseraTimeSeries {
     ///
     /// # Arguments
     ///
-    /// * `context` - Historical time series data [batch, context_length]
+    /// * `context` - Historical time series data [batch, `context_length`]
     ///
     /// # Returns
     ///
-    /// Tensor of quantile predictions [batch, prediction_length, num_quantiles]
+    /// Tensor of quantile predictions [batch, `prediction_length`, `num_quantiles`]
     ///
     /// # Errors
     ///
@@ -1239,7 +1251,7 @@ impl TesseraTimeSeries {
             .predict_quantiles(context)
             .map_err(|e| TesseraError::EncodingError {
                 context: "Failed to generate quantile predictions".to_string(),
-                source: e.into(),
+                source: e,
             })
     }
 
@@ -1252,7 +1264,7 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Prediction length: {}", forecaster.prediction_length());
     /// ```
-    pub fn prediction_length(&self) -> usize {
+    #[must_use] pub const fn prediction_length(&self) -> usize {
         self.encoder.config.prediction_length
     }
 
@@ -1265,7 +1277,7 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Context length: {}", forecaster.context_length());
     /// ```
-    pub fn context_length(&self) -> usize {
+    #[must_use] pub const fn context_length(&self) -> usize {
         self.encoder.config.context_length
     }
 
@@ -1278,7 +1290,7 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Quantiles: {:?}", forecaster.quantiles());
     /// ```
-    pub fn quantiles(&self) -> &[f32] {
+    #[must_use] pub fn quantiles(&self) -> &[f32] {
         &self.encoder.config.quantiles
     }
 
@@ -1291,7 +1303,7 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Using model: {}", forecaster.model());
     /// ```
-    pub fn model(&self) -> &str {
+    #[must_use] pub fn model(&self) -> &str {
         &self.model_id
     }
 }
@@ -1303,7 +1315,7 @@ impl TesseraTimeSeries {
 /// Unified embedder that auto-detects model type.
 ///
 /// This enum provides a smart factory pattern that automatically creates
-/// the appropriate embedder variant (Dense, MultiVector, or Sparse) based on
+/// the appropriate embedder variant (Dense, `MultiVector`, or Sparse) based on
 /// the model type in the registry.
 ///
 /// # Example
@@ -1371,7 +1383,7 @@ impl Tessera {
     /// - Dense models -> `Tessera::Dense(TesseraDense)`
     /// - MultiVector/Colbert models -> `Tessera::MultiVector(TesseraMultiVector)`
     /// - Sparse models -> `Tessera::Sparse(TesseraSparse)`
-    /// - VisionLanguage models -> `Tessera::Vision(TesseraVision)`
+    /// - `VisionLanguage` models -> `Tessera::Vision(TesseraVision)`
     /// - Timeseries models -> `Tessera::TimeSeries(TesseraTimeSeries)`
     ///
     /// # Arguments
@@ -1408,28 +1420,27 @@ impl Tessera {
         match model_info.model_type {
             ModelType::Dense => {
                 let dense = TesseraDense::new(model_id)?;
-                Ok(Tessera::Dense(dense))
+                Ok(Self::Dense(dense))
             }
             ModelType::Colbert => {
                 let mv = TesseraMultiVector::new(model_id)?;
-                Ok(Tessera::MultiVector(mv))
+                Ok(Self::MultiVector(mv))
             }
             ModelType::Sparse => {
                 let sparse = TesseraSparse::new(model_id)?;
-                Ok(Tessera::Sparse(sparse))
+                Ok(Self::Sparse(sparse))
             }
             ModelType::VisionLanguage => {
                 let vision = TesseraVision::new(model_id)?;
-                Ok(Tessera::Vision(vision))
+                Ok(Self::Vision(vision))
             }
             ModelType::Timeseries => {
                 let timeseries = TesseraTimeSeries::new(model_id)?;
-                Ok(Tessera::TimeSeries(timeseries))
+                Ok(Self::TimeSeries(timeseries))
             }
-            _ => Err(TesseraError::ConfigError(format!(
-                "Model type '{:?}' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage, Timeseries",
-                model_info.model_type
-            ))),
+            ModelType::Unified => Err(TesseraError::ConfigError(
+                "Model type 'Unified' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage, Timeseries".to_string()
+            )),
         }
     }
 }

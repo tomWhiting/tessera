@@ -2,7 +2,7 @@
 //!
 //! Provides per-vector quantization that works with:
 //! - Single vectors (dense embeddings)
-//! - Multi-vector (ColBERT token embeddings)
+//! - Multi-vector (`ColBERT` token embeddings)
 //! - Patch embeddings (vision, time series)
 //!
 //! The design quantizes individual vectors, enabling composition
@@ -77,7 +77,7 @@ pub use int8::Int8Quantization;
 ///
 /// The per-vector approach enables:
 /// - Single-vector embeddings (dense models)
-/// - Multi-vector embeddings (ColBERT)
+/// - Multi-vector embeddings (`ColBERT`)
 /// - Variable-length sequences (time series patches)
 /// - Consistent interface across paradigms
 ///
@@ -136,7 +136,7 @@ pub trait Quantization {
     /// Compute distance between two quantized vectors.
     ///
     /// Returns higher values for more similar vectors to maintain
-    /// consistency with MaxSim and other similarity metrics.
+    /// consistency with `MaxSim` and other similarity metrics.
     ///
     /// # Arguments
     ///
@@ -161,7 +161,7 @@ pub trait Quantization {
 /// Helper function for multi-vector quantization.
 ///
 /// Applies quantization to each vector in a multi-vector embedding
-/// independently, enabling use with ColBERT and other multi-vector
+/// independently, enabling use with `ColBERT` and other multi-vector
 /// paradigms.
 ///
 /// # Arguments
@@ -194,9 +194,9 @@ pub fn quantize_multi<Q: Quantization>(quantizer: &Q, vectors: &[Vec<f32>]) -> V
         .collect()
 }
 
-/// Helper function for multi-vector distance computation (MaxSim).
+/// Helper function for multi-vector distance computation (`MaxSim`).
 ///
-/// Computes the MaxSim distance over quantized multi-vector embeddings.
+/// Computes the `MaxSim` distance over quantized multi-vector embeddings.
 /// For each query vector, finds the maximum similarity with document
 /// vectors, then sums across all query vectors.
 ///
@@ -208,9 +208,9 @@ pub fn quantize_multi<Q: Quantization>(quantizer: &Q, vectors: &[Vec<f32>]) -> V
 ///
 /// # Returns
 ///
-/// MaxSim score (sum of max similarities)
+/// `MaxSim` score (sum of max similarities)
 ///
-/// # MaxSim Algorithm
+/// # `MaxSim` Algorithm
 ///
 /// ```text
 /// MaxSim(Q, D) = Σ max(sim(q_i, d_j))
@@ -220,7 +220,7 @@ pub fn quantize_multi<Q: Quantization>(quantizer: &Q, vectors: &[Vec<f32>]) -> V
 /// Where:
 /// - Q = query vectors (variable length)
 /// - D = document vectors (variable length)
-/// - For each query vector q_i, find max similarity with any doc vector d_j
+/// - For each query vector `q_i`, find max similarity with any doc vector `d_j`
 ///
 /// # Example
 ///

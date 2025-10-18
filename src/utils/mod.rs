@@ -4,7 +4,7 @@
 //!
 //! - [`matryoshka`]: Matryoshka representation learning (dimension truncation)
 //! - [`pooling`]: Pooling strategies (CLS, mean, max) for dense embeddings
-//! - [`similarity`]: Similarity/distance functions (cosine, dot, Euclidean, MaxSim)
+//! - [`similarity`]: Similarity/distance functions (cosine, dot, Euclidean, `MaxSim`)
 //! - [`normalization`]: Vector normalization (L2 norm, standardization)
 //! - [`batching`]: Batching utilities (padding, masking)
 //!

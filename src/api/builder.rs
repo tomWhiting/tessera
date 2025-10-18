@@ -83,7 +83,7 @@ impl TesseraMultiVectorBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -106,7 +106,7 @@ impl TesseraMultiVectorBuilder {
     /// let builder = TesseraBuilder::new()
     ///     .model("colbert-v2");
     /// ```
-    pub fn model(mut self, model_id: &str) -> Self {
+    #[must_use] pub fn model(mut self, model_id: &str) -> Self {
         self.model_id = Some(model_id.to_string());
         self
     }
@@ -131,7 +131,7 @@ impl TesseraMultiVectorBuilder {
     ///     .model("colbert-v2")
     ///     .device(Device::Cpu);
     /// ```
-    pub fn device(mut self, device: Device) -> Self {
+    #[must_use] pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -153,7 +153,7 @@ impl TesseraMultiVectorBuilder {
     ///     .model("jina-colbert-v2")
     ///     .dimension(128);  // Use 128 instead of default 768
     /// ```
-    pub fn dimension(mut self, dimension: usize) -> Self {
+    #[must_use] pub const fn dimension(mut self, dimension: usize) -> Self {
         self.dimension = Some(dimension);
         self
     }
@@ -177,7 +177,7 @@ impl TesseraMultiVectorBuilder {
     ///     .model("colbert-v2")
     ///     .quantization(QuantizationConfig::Binary);
     /// ```
-    pub fn quantization(mut self, quant: QuantizationConfig) -> Self {
+    #[must_use] pub const fn quantization(mut self, quant: QuantizationConfig) -> Self {
         self.quantization = Some(quant);
         self
     }
@@ -189,7 +189,7 @@ impl TesseraMultiVectorBuilder {
     /// 2. Looks up the model in the registry
     /// 3. Validates the dimension (if specified) against model's supported dimensions
     /// 4. Auto-selects device if not specified
-    /// 5. Creates a ModelConfig from the registry information
+    /// 5. Creates a `ModelConfig` from the registry information
     /// 6. Initializes the backend encoder
     /// 7. Wraps it in a Tessera instance
     ///
@@ -243,7 +243,7 @@ impl TesseraMultiVectorBuilder {
             dev
         } else {
             crate::backends::candle::get_device().map_err(|e| {
-                TesseraError::DeviceError(format!("Failed to auto-select device: {}", e))
+                TesseraError::DeviceError(format!("Failed to auto-select device: {e}"))
             })?
         };
 
@@ -252,16 +252,14 @@ impl TesseraMultiVectorBuilder {
             // Use specific dimension (Matryoshka)
             ModelConfig::from_registry_with_dimension(&model_id, dim).map_err(|e| {
                 TesseraError::ConfigError(format!(
-                    "Failed to create config for model '{}' with dimension {}: {}",
-                    model_id, dim, e
+                    "Failed to create config for model '{model_id}' with dimension {dim}: {e}"
                 ))
             })?
         } else {
             // Use default dimension
             ModelConfig::from_registry(&model_id).map_err(|e| {
                 TesseraError::ConfigError(format!(
-                    "Failed to create config for model '{}': {}",
-                    model_id, e
+                    "Failed to create config for model '{model_id}': {e}"
                 ))
             })?
         };
@@ -319,7 +317,7 @@ impl TesseraDenseBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -342,7 +340,7 @@ impl TesseraDenseBuilder {
     /// let builder = TesseraDenseBuilder::new()
     ///     .model("bge-base-en-v1.5");
     /// ```
-    pub fn model(mut self, model_id: &str) -> Self {
+    #[must_use] pub fn model(mut self, model_id: &str) -> Self {
         self.model_id = Some(model_id.to_string());
         self
     }
@@ -367,7 +365,7 @@ impl TesseraDenseBuilder {
     ///     .model("bge-base-en-v1.5")
     ///     .device(Device::Cpu);
     /// ```
-    pub fn device(mut self, device: Device) -> Self {
+    #[must_use] pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -389,7 +387,7 @@ impl TesseraDenseBuilder {
     ///     .model("nomic-embed-text-v1.5")
     ///     .dimension(256);  // Use 256 instead of default 768
     /// ```
-    pub fn dimension(mut self, dimension: usize) -> Self {
+    #[must_use] pub const fn dimension(mut self, dimension: usize) -> Self {
         self.dimension = Some(dimension);
         self
     }
@@ -402,13 +400,13 @@ impl TesseraDenseBuilder {
     /// 3. Validates the model is a dense type
     /// 4. Validates the dimension (if specified) against model's supported dimensions
     /// 5. Auto-selects device if not specified
-    /// 6. Creates a ModelConfig from the registry information
+    /// 6. Creates a `ModelConfig` from the registry information
     /// 7. Initializes the dense encoder
-    /// 8. Wraps it in a TesseraDense instance
+    /// 8. Wraps it in a `TesseraDense` instance
     ///
     /// # Returns
     ///
-    /// Initialized TesseraDense instance ready for encoding.
+    /// Initialized `TesseraDense` instance ready for encoding.
     ///
     /// # Errors
     ///
@@ -465,7 +463,7 @@ impl TesseraDenseBuilder {
             dev
         } else {
             crate::backends::candle::get_device().map_err(|e| {
-                TesseraError::DeviceError(format!("Failed to auto-select device: {}", e))
+                TesseraError::DeviceError(format!("Failed to auto-select device: {e}"))
             })?
         };
 
@@ -474,16 +472,14 @@ impl TesseraDenseBuilder {
             // Use specific dimension (Matryoshka)
             ModelConfig::from_registry_with_dimension(&model_id, dim).map_err(|e| {
                 TesseraError::ConfigError(format!(
-                    "Failed to create config for model '{}' with dimension {}: {}",
-                    model_id, dim, e
+                    "Failed to create config for model '{model_id}' with dimension {dim}: {e}"
                 ))
             })?
         } else {
             // Use default dimension
             ModelConfig::from_registry(&model_id).map_err(|e| {
                 TesseraError::ConfigError(format!(
-                    "Failed to create config for model '{}': {}",
-                    model_id, e
+                    "Failed to create config for model '{model_id}': {e}"
                 ))
             })?
         };
@@ -526,7 +522,7 @@ impl TesseraSparseBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -548,6 +544,7 @@ impl TesseraSparseBuilder {
     /// let builder = TesseraSparseBuilder::new()
     ///     .model("splade-cocondenser");
     /// ```
+    #[must_use]
     pub fn model(mut self, model_id: impl Into<String>) -> Self {
         self.model_id = Some(model_id.into());
         self
@@ -573,7 +570,7 @@ impl TesseraSparseBuilder {
     ///     .model("splade-cocondenser")
     ///     .device(Device::Cpu);
     /// ```
-    pub fn device(mut self, device: Device) -> Self {
+    #[must_use] pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -585,13 +582,13 @@ impl TesseraSparseBuilder {
     /// 2. Looks up the model in the registry
     /// 3. Validates the model is a sparse type
     /// 4. Auto-selects device if not specified
-    /// 5. Creates a ModelConfig from the registry information
+    /// 5. Creates a `ModelConfig` from the registry information
     /// 6. Initializes the sparse encoder (BERT + MLM head)
-    /// 7. Wraps it in a TesseraSparse instance
+    /// 7. Wraps it in a `TesseraSparse` instance
     ///
     /// # Returns
     ///
-    /// Initialized TesseraSparse instance ready for encoding.
+    /// Initialized `TesseraSparse` instance ready for encoding.
     ///
     /// # Errors
     ///
@@ -636,15 +633,14 @@ impl TesseraSparseBuilder {
             dev
         } else {
             crate::backends::candle::get_device().map_err(|e| {
-                TesseraError::DeviceError(format!("Failed to auto-select device: {}", e))
+                TesseraError::DeviceError(format!("Failed to auto-select device: {e}"))
             })?
         };
 
         // Create ModelConfig
         let config = ModelConfig::from_registry(&model_id).map_err(|e| {
             TesseraError::ConfigError(format!(
-                "Failed to create config for model '{}': {}",
-                model_id, e
+                "Failed to create config for model '{model_id}': {e}"
             ))
         })?;
 
@@ -678,7 +674,7 @@ pub struct TesseraVisionBuilder {
 
 impl TesseraVisionBuilder {
     /// Create new vision embedder builder.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -688,6 +684,7 @@ impl TesseraVisionBuilder {
     /// Set the model identifier.
     ///
     /// Must be a vision-language model from the registry (e.g., "colpali-v1.3-hf").
+    #[must_use]
     pub fn model(mut self, id: impl Into<String>) -> Self {
         self.model_id = Some(id.into());
         self
@@ -696,7 +693,7 @@ impl TesseraVisionBuilder {
     /// Set explicit device.
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
-    pub fn device(mut self, device: Device) -> Self {
+    #[must_use] pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -764,7 +761,7 @@ pub struct TesseraTimeSeriesBuilder {
 
 impl TesseraTimeSeriesBuilder {
     /// Create new time series builder.
-    pub fn new() -> Self {
+    #[must_use] pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -774,6 +771,7 @@ impl TesseraTimeSeriesBuilder {
     /// Set the model identifier.
     ///
     /// Must be a time series model from the registry (e.g., "chronos-bolt-small").
+    #[must_use]
     pub fn model(mut self, id: impl Into<String>) -> Self {
         self.model_id = Some(id.into());
         self
@@ -782,7 +780,7 @@ impl TesseraTimeSeriesBuilder {
     /// Set explicit device.
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
-    pub fn device(mut self, device: Device) -> Self {
+    #[must_use] pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -823,7 +821,7 @@ impl TesseraTimeSeriesBuilder {
         };
 
         // Create encoder using from_pretrained
-        let encoder = ChronosBolt::from_pretrained(&model_info.huggingface_id, &device)?;
+        let encoder = ChronosBolt::from_pretrained(model_info.huggingface_id, &device)?;
 
         Ok(TesseraTimeSeries::from_encoder(encoder, model_id))
     }

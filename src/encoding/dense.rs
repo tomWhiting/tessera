@@ -8,7 +8,7 @@
 //! - **Max pooling**: Take element-wise maximum across tokens
 //!
 //! Dense encodings are memory-efficient (one vector per text) but lose
-//! fine-grained token-level information compared to ColBERT.
+//! fine-grained token-level information compared to `ColBERT`.
 //!
 //! # Use Cases
 //!
@@ -57,13 +57,13 @@ enum BertVariant {
 impl BertVariant {
     fn forward(&self, token_ids: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
         match self {
-            BertVariant::Bert(model) => model
+            Self::Bert(model) => model
                 .forward(token_ids, attention_mask, None)
                 .context("BERT forward pass"),
-            BertVariant::DistilBert(model) => model
+            Self::DistilBert(model) => model
                 .forward(token_ids, attention_mask)
                 .context("DistilBERT forward pass"),
-            BertVariant::JinaBert(model) => {
+            Self::JinaBert(model) => {
                 model.forward(token_ids).context("JinaBERT forward pass")
             }
         }
@@ -97,15 +97,15 @@ pub struct CandleDenseEncoder {
 impl CandleDenseEncoder {
     /// Creates a new Candle-based dense encoder.
     ///
-    /// Automatically detects the model type (BERT, DistilBERT, JinaBERT) from config.json
+    /// Automatically detects the model type (BERT, `DistilBERT`, `JinaBERT`) from config.json
     /// and loads the appropriate model variant.
     ///
     /// # Arguments
-    /// * `model_config` - Configuration for the model (must have pooling_strategy set)
+    /// * `model_config` - Configuration for the model (must have `pooling_strategy` set)
     /// * `device` - Device to run the model on (CPU or Metal)
     ///
     /// # Returns
-    /// A new CandleDenseEncoder instance with the loaded model
+    /// A new `CandleDenseEncoder` instance with the loaded model
     ///
     /// # Errors
     /// Returns an error if:
@@ -118,8 +118,7 @@ impl CandleDenseEncoder {
         // Validate that pooling strategy is configured
         let registry_pooling = model_config.pooling_strategy.ok_or_else(|| {
             TesseraError::ConfigError(format!(
-                "Dense encoder requires pooling_strategy to be configured for model '{}'",
-                model_name
+                "Dense encoder requires pooling_strategy to be configured for model '{model_name}'"
             ))
         })?;
 
@@ -132,7 +131,7 @@ impl CandleDenseEncoder {
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_pretrained(model_name)
-            .with_context(|| format!("Loading tokenizer for {}", model_name))?;
+            .with_context(|| format!("Loading tokenizer for {model_name}"))?;
 
         // Download model files from HuggingFace Hub
         let api =
@@ -142,7 +141,7 @@ impl CandleDenseEncoder {
         // Load config to detect model type
         let config_path = repo
             .get("config.json")
-            .with_context(|| format!("Downloading config for {}", model_name))?;
+            .with_context(|| format!("Downloading config for {model_name}"))?;
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
@@ -152,13 +151,13 @@ impl CandleDenseEncoder {
             serde_json::from_str(&config_str).context("Parsing config to detect model type")?;
 
         let model_type = Self::detect_model_type(&detector)
-            .with_context(|| format!("Detecting model type for {}", model_name))?;
+            .with_context(|| format!("Detecting model type for {model_name}"))?;
 
         // Try to load safetensors first, fall back to pytorch_model.bin
         let weights_path = repo
             .get("model.safetensors")
             .or_else(|_| repo.get("pytorch_model.bin"))
-            .with_context(|| format!("Downloading model weights for {}", model_name))?;
+            .with_context(|| format!("Downloading model weights for {model_name}"))?;
 
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
@@ -173,7 +172,7 @@ impl CandleDenseEncoder {
 
         // Detect model prefix by checking actual tensor names
         let has_prefix = Self::detect_model_prefix(&weights_path)
-            .with_context(|| format!("Detecting model prefix for {}", model_name))?;
+            .with_context(|| format!("Detecting model prefix for {model_name}"))?;
 
         // Create the appropriate model variant with correct prefix
         let model_vb = match (has_prefix, model_type.as_str()) {
@@ -183,7 +182,7 @@ impl CandleDenseEncoder {
         };
 
         let model = Self::load_model(&config_str, model_vb, &model_type)
-            .with_context(|| format!("Loading {} model", model_type))?;
+            .with_context(|| format!("Loading {model_type} model"))?;
 
         let normalize = model_config.normalize_embeddings;
 
@@ -223,7 +222,7 @@ impl CandleDenseEncoder {
 
     /// Detects whether the model weights use a prefix (e.g., "bert.", "distilbert.")
     ///
-    /// Some models like ColBERT use "bert." prefix, while others like BGE don't.
+    /// Some models like `ColBERT` use "bert." prefix, while others like BGE don't.
     /// We detect this by checking the actual tensor names in the weights file.
     fn detect_model_prefix(weights_path: &std::path::Path) -> Result<bool> {
         let extension = weights_path.extension().and_then(|s| s.to_str());
@@ -306,7 +305,7 @@ impl CandleDenseEncoder {
 
     /// Converts token IDs to a Candle tensor.
     fn tokens_to_tensor(&self, token_ids: &[u32], batch_size: usize) -> Result<Tensor> {
-        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| x as i64).collect();
+        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();
         let seq_len = token_ids.len() / batch_size;
 
         Tensor::from_vec(token_ids_i64, (batch_size, seq_len), &self.device)
@@ -316,11 +315,11 @@ impl CandleDenseEncoder {
     /// Applies pooling strategy to token embeddings.
     ///
     /// # Arguments
-    /// * `token_embeddings` - Token embedding matrix (seq_len × hidden_dim)
+    /// * `token_embeddings` - Token embedding matrix (`seq_len` × `hidden_dim`)
     /// * `attention_mask` - Attention mask (1 = valid token, 0 = padding)
     ///
     /// # Returns
-    /// Pooled embedding vector (hidden_dim)
+    /// Pooled embedding vector (`hidden_dim`)
     ///
     /// # Errors
     /// Returns an error if the token embeddings cannot be reshaped (shape mismatch)
@@ -337,10 +336,8 @@ impl CandleDenseEncoder {
         let total_elements = token_embeddings.len();
         anyhow::ensure!(
             total_elements % seq_len == 0,
-            "Token embeddings length ({}) must be divisible by sequence length ({}). \
-             This indicates a shape mismatch between model output and attention mask.",
-            total_elements,
-            seq_len
+            "Token embeddings length ({total_elements}) must be divisible by sequence length ({seq_len}). \
+             This indicates a shape mismatch between model output and attention mask."
         );
 
         let hidden_dim = total_elements / seq_len;
@@ -378,8 +375,7 @@ impl CandleDenseEncoder {
         if let Some(target_dim) = self.config.target_dimension {
             anyhow::ensure!(
                 target_dim > 0,
-                "Target dimension must be greater than 0, got {}",
-                target_dim
+                "Target dimension must be greater than 0, got {target_dim}"
             );
             anyhow::ensure!(
                 target_dim <= embedding.len(),
@@ -411,7 +407,7 @@ impl CandleDenseEncoder {
         let (token_ids, attention_mask) = self
             .tokenizer
             .encode(text, true)
-            .with_context(|| format!("Tokenizing text: {}", text))?;
+            .with_context(|| format!("Tokenizing text: {text}"))?;
 
         // Convert to tensors
         let token_ids_tensor = self.tokens_to_tensor(&token_ids, 1)?;
@@ -425,12 +421,12 @@ impl CandleDenseEncoder {
                 // Invert mask for DistilBERT
                 attention_mask
                     .iter()
-                    .map(|&x| if x == 1 { 0i64 } else { 1i64 })
+                    .map(|&x| i64::from(x != 1))
                     .collect()
             }
             _ => {
                 // Standard BERT convention (no inversion needed)
-                attention_mask.iter().map(|&x| x as i64).collect()
+                attention_mask.iter().map(|&x| i64::from(x)).collect()
             }
         };
 
@@ -505,7 +501,7 @@ impl CandleDenseEncoder {
         let mut all_token_ids = Vec::with_capacity(batch_size * max_seq_len);
         for (token_ids, _) in &batch_tokenized {
             for &token_id in token_ids {
-                all_token_ids.push(token_id as i64);
+                all_token_ids.push(i64::from(token_id));
             }
         }
 
@@ -528,21 +524,17 @@ impl CandleDenseEncoder {
                 let processed_val = match &self.model {
                     BertVariant::DistilBert(_) => {
                         // DistilBERT expects: 0=attend, 1=pad
-                        if mask_val == 1 {
-                            0i64
-                        } else {
-                            1i64
-                        }
+                        i64::from(mask_val != 1)
                     }
                     _ => {
                         // Standard BERT: 1=attend, 0=pad
-                        mask_val as i64
+                        i64::from(mask_val)
                     }
                 };
                 all_attention_masks.push(processed_val);
 
                 // For pooling, we always use standard convention (1=valid, 0=padding)
-                mask_for_pooling.push(mask_val as i64);
+                mask_for_pooling.push(i64::from(mask_val));
             }
 
             attention_masks_for_pooling.push(mask_for_pooling);
@@ -599,11 +591,11 @@ impl Encoder for CandleDenseEncoder {
     type Output = DenseEmbedding;
 
     fn encode(&self, input: &str) -> Result<Self::Output> {
-        CandleDenseEncoder::encode(self, input)
+        Self::encode(self, input)
     }
 
     fn encode_batch(&self, inputs: &[&str]) -> Result<Vec<Self::Output>> {
-        CandleDenseEncoder::encode_batch(self, inputs)
+        Self::encode_batch(self, inputs)
     }
 }
 
