@@ -32,10 +32,20 @@ jobs:
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     
-    - name: Build
+    - name: Build (Linux - skip pdf)
+      if: runner.os == 'Linux'
+      run: cargo build --no-default-features --features metal,cuda --verbose
+
+    - name: Build (macOS - with pdf)
+      if: runner.os == 'macOS'
       run: cargo build --verbose
-    
-    - name: Run tests
+
+    - name: Run tests (Linux - skip pdf)
+      if: runner.os == 'Linux'
+      run: cargo test --no-default-features --features metal,cuda --verbose
+
+    - name: Run tests (macOS - with pdf)
+      if: runner.os == 'macOS'
       run: cargo test --verbose
     
     - name: Run tests (with Metal on macOS)
@@ -58,4 +68,4 @@ jobs:
       run: cargo fmt -- --check
     
     - name: Run clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      run: cargo clippy --all-targets --no-default-features --features metal,cuda,python -- -D warnings  # Skip pdf feature (macOS-only)
