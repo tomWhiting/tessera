@@ -51,7 +51,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Run clippy
-        run: cargo clippy --no-default-features --features python -- -D warnings  # Core + Python bindings only
+        run: cargo clippy --no-default-features --features python -- -D warnings  # Core + Python bindings only (lib code, not tests)
 
   fmt:
     name: Rustfmt

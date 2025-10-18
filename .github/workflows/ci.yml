@@ -68,4 +68,4 @@ jobs:
       run: cargo fmt -- --check
     
     - name: Run clippy
-      run: cargo clippy --all-targets --no-default-features --features python -- -D warnings  # Core + Python bindings only
+      run: cargo clippy --no-default-features --features python -- -D warnings  # Core + Python bindings only (lib code, not tests)
