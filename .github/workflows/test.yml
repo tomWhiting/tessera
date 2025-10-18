@@ -18,7 +18,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --all-features
+        run: cargo test --features metal,cuda,python  # Skip pdf feature (macOS-only)
 
   python-bindings:
     name: Python Bindings Tests
@@ -33,7 +33,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --features python --out dist
+          args: --release --no-default-features --features python --out dist
       - name: Install wheel
         run: pip install dist/*.whl
       - name: Install test dependencies
@@ -51,7 +51,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Run clippy
-        run: cargo clippy --all-features -- -D warnings
+        run: cargo clippy --features metal,cuda,python -- -D warnings  # Skip pdf feature (macOS-only)
 
   fmt:
     name: Rustfmt
