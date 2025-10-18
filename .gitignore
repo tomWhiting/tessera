@@ -20,3 +20,17 @@ Thumbs.db
 
 # Auto-generated files
 src/models/generated.rs
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg-info/
+dist/
+build/
+
+# Marimo
+__marimo__/
