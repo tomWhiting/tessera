@@ -3,6 +3,8 @@
 //! This script runs at compile time and generates type-safe Rust code
 //! containing all model metadata from the JSON registry.
 
+#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
