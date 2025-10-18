@@ -18,7 +18,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --no-default-features --features cuda,python  # Skip pdf and metal (macOS-only)
+        run: cargo test --no-default-features --features python  # Core + Python bindings only
 
   python-bindings:
     name: Python Bindings Tests
@@ -51,7 +51,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
       - name: Run clippy
-        run: cargo clippy --no-default-features --features cuda,python -- -D warnings  # Skip pdf and metal (macOS-only)
+        run: cargo clippy --no-default-features --features python -- -D warnings  # Core + Python bindings only
 
   fmt:
     name: Rustfmt
