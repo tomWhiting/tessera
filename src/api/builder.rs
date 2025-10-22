@@ -134,7 +134,7 @@ impl TesseraMultiVectorBuilder {
     ///     .device(Device::Cpu);
     /// ```
     #[must_use]
-    pub const fn device(mut self, device: Device) -> Self {
+    pub fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -373,7 +373,7 @@ impl TesseraDenseBuilder {
     ///     .device(Device::Cpu);
     /// ```
     #[must_use]
-    pub const fn device(mut self, device: Device) -> Self {
+    pub fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -581,7 +581,7 @@ impl TesseraSparseBuilder {
     ///     .device(Device::Cpu);
     /// ```
     #[must_use]
-    pub const fn device(mut self, device: Device) -> Self {
+    pub fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -706,7 +706,7 @@ impl TesseraVisionBuilder {
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
     #[must_use]
-    pub const fn device(mut self, device: Device) -> Self {
+    pub fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -795,7 +795,7 @@ impl TesseraTimeSeriesBuilder {
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
     #[must_use]
-    pub const fn device(mut self, device: Device) -> Self {
+    pub fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
