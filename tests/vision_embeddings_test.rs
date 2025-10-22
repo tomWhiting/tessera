@@ -19,7 +19,8 @@ use tessera::{Tessera, TesseraVision, TesseraVisionBuilder};
 #[test]
 #[ignore] // Requires model download (~5.88 GB)
 fn test_vision_encode_document() {
-    let _embedder = TesseraVision::new("colpali-v1.3-hf").expect("Failed to create vision embedder");
+    let _embedder =
+        TesseraVision::new("colpali-v1.3-hf").expect("Failed to create vision embedder");
 
     // TODO: Encode a test document image
     // let embedding = embedder.encode_document("test_data/sample_document.png")
@@ -109,7 +110,8 @@ fn test_vision_search() {
 #[test]
 #[ignore] // Requires model download and test images
 fn test_vision_search_document_convenience() {
-    let _embedder = TesseraVision::new("colpali-v1.3-hf").expect("Failed to create vision embedder");
+    let _embedder =
+        TesseraVision::new("colpali-v1.3-hf").expect("Failed to create vision embedder");
 
     // TODO: Test convenience method
     // let score = embedder.search_document(

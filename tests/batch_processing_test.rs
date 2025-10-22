@@ -126,9 +126,7 @@ fn test_batch_similarity_consistency() {
                 .similarity(texts[0], texts[1])
                 .expect("Failed to compute similarity");
 
-            let batch_embeddings = mv
-                .encode_batch(&texts)
-                .expect("Failed to encode batch");
+            let batch_embeddings = mv.encode_batch(&texts).expect("Failed to encode batch");
 
             use tessera::utils::max_sim;
             let batch_sim = max_sim(&batch_embeddings[0], &batch_embeddings[1])
