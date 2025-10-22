@@ -64,7 +64,7 @@ fn main() -> Result<()> {
                 std::process::exit(1);
             }
         } else {
-            println!("Test PDF not found at {:?}", pdf_path);
+            println!("Test PDF not found at {:?}", _pdf_path);
             println!("Please ensure the PDF exists to run this test.");
         }
     }
