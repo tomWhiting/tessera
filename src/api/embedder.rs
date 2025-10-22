@@ -60,8 +60,12 @@ impl QuantizedEmbeddings {
     /// Memory usage in bytes.
     ///
     /// Returns the total memory footprint including vector data and overhead.
-    #[must_use] pub fn memory_bytes(&self) -> usize {
-        self.quantized.iter().map(super::super::quantization::binary::BinaryVector::memory_bytes).sum()
+    #[must_use]
+    pub fn memory_bytes(&self) -> usize {
+        self.quantized
+            .iter()
+            .map(super::super::quantization::binary::BinaryVector::memory_bytes)
+            .sum()
     }
 
     /// Compression ratio compared to float32.
@@ -157,7 +161,8 @@ impl TesseraMultiVector {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    #[must_use] pub const fn builder() -> TesseraMultiVectorBuilder {
+    #[must_use]
+    pub const fn builder() -> TesseraMultiVectorBuilder {
         TesseraMultiVectorBuilder::new()
     }
 
@@ -515,7 +520,8 @@ impl TesseraDense {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    #[must_use] pub const fn builder() -> TesseraDenseBuilder {
+    #[must_use]
+    pub const fn builder() -> TesseraDenseBuilder {
         TesseraDenseBuilder::new()
     }
 
@@ -732,7 +738,8 @@ impl TesseraSparse {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    #[must_use] pub const fn builder() -> TesseraSparseBuilder {
+    #[must_use]
+    pub const fn builder() -> TesseraSparseBuilder {
         TesseraSparseBuilder::new()
     }
 
@@ -937,7 +944,8 @@ impl TesseraVision {
     }
 
     /// Create a builder for advanced configuration.
-    #[must_use] pub const fn builder() -> TesseraVisionBuilder {
+    #[must_use]
+    pub const fn builder() -> TesseraVisionBuilder {
         TesseraVisionBuilder::new()
     }
 
@@ -1176,7 +1184,8 @@ impl TesseraTimeSeries {
     ///     .device(Device::Cpu)
     ///     .build()?;
     /// ```
-    #[must_use] pub const fn builder() -> TesseraTimeSeriesBuilder {
+    #[must_use]
+    pub const fn builder() -> TesseraTimeSeriesBuilder {
         TesseraTimeSeriesBuilder::new()
     }
 
@@ -1264,7 +1273,8 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Prediction length: {}", forecaster.prediction_length());
     /// ```
-    #[must_use] pub const fn prediction_length(&self) -> usize {
+    #[must_use]
+    pub const fn prediction_length(&self) -> usize {
         self.encoder.config.prediction_length
     }
 
@@ -1277,7 +1287,8 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Context length: {}", forecaster.context_length());
     /// ```
-    #[must_use] pub const fn context_length(&self) -> usize {
+    #[must_use]
+    pub const fn context_length(&self) -> usize {
         self.encoder.config.context_length
     }
 
@@ -1290,7 +1301,8 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Quantiles: {:?}", forecaster.quantiles());
     /// ```
-    #[must_use] pub fn quantiles(&self) -> &[f32] {
+    #[must_use]
+    pub fn quantiles(&self) -> &[f32] {
         &self.encoder.config.quantiles
     }
 
@@ -1303,7 +1315,8 @@ impl TesseraTimeSeries {
     /// ```ignore
     /// println!("Using model: {}", forecaster.model());
     /// ```
-    #[must_use] pub fn model(&self) -> &str {
+    #[must_use]
+    pub fn model(&self) -> &str {
         &self.model_id
     }
 }

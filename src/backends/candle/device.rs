@@ -56,7 +56,8 @@ pub fn metal_device() -> Result<Device> {
 }
 
 /// Returns a string describing the device.
-#[must_use] pub fn device_description(device: &Device) -> String {
+#[must_use]
+pub fn device_description(device: &Device) -> String {
     match device {
         Device::Cpu => "CPU".to_string(),
         #[cfg(feature = "metal")]

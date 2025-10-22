@@ -60,7 +60,8 @@ impl BinaryVector {
     /// # Returns
     ///
     /// Bytes consumed by the packed bit data.
-    #[must_use] pub fn memory_bytes(&self) -> usize {
+    #[must_use]
+    pub fn memory_bytes(&self) -> usize {
         // Only count the actual packed bit data for fair compression comparison
         // Struct overhead (Vec header + dim field) is constant and amortized
         self.data.len()
@@ -75,7 +76,8 @@ pub struct BinaryQuantization;
 
 impl BinaryQuantization {
     /// Create a new binary quantization instance.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }

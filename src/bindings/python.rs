@@ -66,7 +66,7 @@ use numpy::{PyArray1, PyArray2, PyArray3, PyArrayMethods, PyUntypedArrayMethods}
 #[cfg(feature = "python")]
 use pyo3::exceptions::{PyIOError, PyRuntimeError, PyValueError};
 #[cfg(feature = "python")]
-use pyo3::prelude::{pyclass, pymethods, pymodule, PyErr, Python, PyResult, Py, PyModule, Bound};
+use pyo3::prelude::{pyclass, pymethods, pymodule, Bound, Py, PyErr, PyModule, PyResult, Python};
 #[cfg(feature = "python")]
 use pyo3::types::PyModuleMethods;
 

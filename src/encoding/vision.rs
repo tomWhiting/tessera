@@ -195,8 +195,8 @@ impl ColPaliEncoder {
         // 9. Create image processor with appropriate resolution
         let image_processor = ImageProcessor::with_config(
             (image_size as u32, image_size as u32),
-            [0.481_454_66, 0.457_827_5, 0.408_210_73],  // SigLIP mean
-            [0.268_629_54, 0.261_302_6, 0.275_777_1], // SigLIP std
+            [0.481_454_66, 0.457_827_5, 0.408_210_73], // SigLIP mean
+            [0.268_629_54, 0.261_302_6, 0.275_777_1],  // SigLIP std
         );
 
         Ok(Self {

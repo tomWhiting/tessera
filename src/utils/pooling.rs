@@ -45,7 +45,8 @@ use ndarray::{Array1, Array2};
 /// assert_eq!(pooled[1], 2.0);
 /// assert_eq!(pooled[2], 3.0);
 /// ```
-#[must_use] pub fn cls_pooling(token_embeddings: &Array2<f32>, _attention_mask: &[i64]) -> Array1<f32> {
+#[must_use]
+pub fn cls_pooling(token_embeddings: &Array2<f32>, _attention_mask: &[i64]) -> Array1<f32> {
     token_embeddings.row(0).to_owned()
 }
 
@@ -79,7 +80,8 @@ use ndarray::{Array1, Array2};
 /// assert!((pooled[0] - 2.0).abs() < 1e-6);
 /// assert!((pooled[1] - 3.0).abs() < 1e-6);
 /// ```
-#[must_use] pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
+#[must_use]
+pub fn mean_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
     let mut sum = Array1::zeros(token_embeddings.ncols());
     let mut count = 0;
 
@@ -127,7 +129,8 @@ use ndarray::{Array1, Array2};
 /// assert!((pooled[0] - 3.0).abs() < 1e-6);
 /// assert!((pooled[1] - 5.0).abs() < 1e-6);
 /// ```
-#[must_use] pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
+#[must_use]
+pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
     let embedding_dim = token_embeddings.ncols();
     let mut result = Array1::from_elem(embedding_dim, f32::NEG_INFINITY);
 

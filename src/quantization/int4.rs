@@ -70,7 +70,8 @@ impl Int4Quantization {
     /// # Arguments
     ///
     /// * `group_size` - Number of dimensions per quantization group
-    #[must_use] pub fn new(_group_size: usize) -> Self {
+    #[must_use]
+    pub fn new(_group_size: usize) -> Self {
         todo!("Implement int4 quantization initialization")
     }
 }

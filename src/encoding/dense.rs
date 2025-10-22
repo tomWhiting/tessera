@@ -63,9 +63,7 @@ impl BertVariant {
             Self::DistilBert(model) => model
                 .forward(token_ids, attention_mask)
                 .context("DistilBERT forward pass"),
-            Self::JinaBert(model) => {
-                model.forward(token_ids).context("JinaBERT forward pass")
-            }
+            Self::JinaBert(model) => model.forward(token_ids).context("JinaBERT forward pass"),
         }
     }
 }
@@ -419,10 +417,7 @@ impl CandleDenseEncoder {
         let attention_mask_processed: Vec<i64> = match &self.model {
             BertVariant::DistilBert(_) => {
                 // Invert mask for DistilBERT
-                attention_mask
-                    .iter()
-                    .map(|&x| i64::from(x != 1))
-                    .collect()
+                attention_mask.iter().map(|&x| i64::from(x != 1)).collect()
             }
             _ => {
                 // Standard BERT convention (no inversion needed)

@@ -53,7 +53,8 @@ pub const DISTILBERT_BASE_UNCASED: &str = "distilbert-base-uncased";
 
 impl ModelConfig {
     /// Creates a new model configuration.
-    #[must_use] pub const fn new(model_name: String, embedding_dim: usize, max_seq_length: usize) -> Self {
+    #[must_use]
+    pub const fn new(model_name: String, embedding_dim: usize, max_seq_length: usize) -> Self {
         Self {
             model_name,
             embedding_dim,
@@ -78,7 +79,8 @@ impl ModelConfig {
     ///     .unwrap()
     ///     .with_target_dimension(128);
     /// ```
-    #[must_use] pub const fn with_target_dimension(mut self, dim: usize) -> Self {
+    #[must_use]
+    pub const fn with_target_dimension(mut self, dim: usize) -> Self {
         self.target_dimension = Some(dim);
         self
     }
@@ -101,7 +103,8 @@ impl ModelConfig {
     ///     .unwrap()
     ///     .with_pooling(PoolingStrategy::Mean, true);
     /// ```
-    #[must_use] pub const fn with_pooling(mut self, strategy: PoolingStrategy, normalize: bool) -> Self {
+    #[must_use]
+    pub const fn with_pooling(mut self, strategy: PoolingStrategy, normalize: bool) -> Self {
         self.pooling_strategy = Some(strategy);
         self.normalize_embeddings = normalize;
         self
@@ -182,7 +185,8 @@ impl ModelConfig {
     ///
     /// Note: This is a multi-vector model without pooling. For dense embeddings with pooling,
     /// use models from the registry like "bge-base-en-v1.5" or "nomic-embed-v1.5".
-    #[must_use] pub fn distilbert_base_uncased() -> Self {
+    #[must_use]
+    pub fn distilbert_base_uncased() -> Self {
         Self {
             model_name: DISTILBERT_BASE_UNCASED.to_string(),
             embedding_dim: 768,
@@ -202,7 +206,8 @@ impl ModelConfig {
     /// Size: ~440MB (110M parameters)
     /// Embedding dim: 128 (after projection from 768-dim BERT)
     /// Max sequence length: 512 tokens
-    #[must_use] pub fn colbert_v2() -> Self {
+    #[must_use]
+    pub fn colbert_v2() -> Self {
         Self {
             model_name: COLBERT_V2.to_string(),
             embedding_dim: 128,
@@ -223,7 +228,8 @@ impl ModelConfig {
     /// Languages: 89 languages
     /// Embedding dim: 768
     /// Max sequence length: 8192 tokens
-    #[must_use] pub fn jina_colbert_v2() -> Self {
+    #[must_use]
+    pub fn jina_colbert_v2() -> Self {
         Self {
             model_name: JINA_COLBERT_V2.to_string(),
             embedding_dim: 768,
@@ -243,7 +249,8 @@ impl ModelConfig {
     /// Size: ~130MB (33M parameters)
     /// Embedding dim: 96 (after projection from 384-dim `DistilBERT`)
     /// Max sequence length: 512 tokens
-    #[must_use] pub fn colbert_small() -> Self {
+    #[must_use]
+    pub fn colbert_small() -> Self {
         Self {
             model_name: COLBERT_SMALL.to_string(),
             embedding_dim: 96,

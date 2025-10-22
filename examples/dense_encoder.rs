@@ -1,6 +1,6 @@
 //! Example: Dense single-vector embeddings with BGE models
 //!
-//! Demonstrates using CandleDenseEncoder for traditional sentence embeddings
+//! Demonstrates using `CandleDenseEncoder` for traditional sentence embeddings
 //! with pooling strategies (CLS, mean, max).
 //!
 //! Run with:

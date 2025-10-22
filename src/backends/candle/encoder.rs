@@ -286,10 +286,7 @@ impl TokenEmbedder for CandleBertEncoder {
         let attention_mask_processed = match &self.model {
             BertVariant::DistilBert(_) => {
                 // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
-                attention_mask
-                    .iter()
-                    .map(|&x| i64::from(x != 1))
-                    .collect()
+                attention_mask.iter().map(|&x| i64::from(x != 1)).collect()
             }
             _ => {
                 // BERT and JinaBERT use standard mask: 1=attend, 0=pad

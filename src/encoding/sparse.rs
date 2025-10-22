@@ -354,9 +354,8 @@ impl CandleSparseEncoder {
         if model_type == "distilbert" {
             let config: candle_transformers::models::distilbert::Config =
                 serde_json::from_str(config_str).context("Parsing DistilBERT config")?;
-            let model =
-                candle_transformers::models::distilbert::DistilBertModel::load(vb, &config)
-                    .context("Loading DistilBERT model")?;
+            let model = candle_transformers::models::distilbert::DistilBertModel::load(vb, &config)
+                .context("Loading DistilBERT model")?;
             Ok(BertVariant::DistilBert(model))
         } else {
             let config: candle_transformers::models::bert::Config =
@@ -513,10 +512,7 @@ impl Encoder for CandleSparseEncoder {
         let attention_mask_processed: Vec<i64> = match &self.model {
             BertVariant::DistilBert(_) => {
                 // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
-                attention_mask
-                    .iter()
-                    .map(|&x| i64::from(x != 1))
-                    .collect()
+                attention_mask.iter().map(|&x| i64::from(x != 1)).collect()
             }
             _ => {
                 // Standard BERT convention

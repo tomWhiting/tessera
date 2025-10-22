@@ -83,7 +83,8 @@ impl TesseraMultiVectorBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -106,7 +107,8 @@ impl TesseraMultiVectorBuilder {
     /// let builder = TesseraBuilder::new()
     ///     .model("colbert-v2");
     /// ```
-    #[must_use] pub fn model(mut self, model_id: &str) -> Self {
+    #[must_use]
+    pub fn model(mut self, model_id: &str) -> Self {
         self.model_id = Some(model_id.to_string());
         self
     }
@@ -131,7 +133,8 @@ impl TesseraMultiVectorBuilder {
     ///     .model("colbert-v2")
     ///     .device(Device::Cpu);
     /// ```
-    #[must_use] pub const fn device(mut self, device: Device) -> Self {
+    #[must_use]
+    pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -153,7 +156,8 @@ impl TesseraMultiVectorBuilder {
     ///     .model("jina-colbert-v2")
     ///     .dimension(128);  // Use 128 instead of default 768
     /// ```
-    #[must_use] pub const fn dimension(mut self, dimension: usize) -> Self {
+    #[must_use]
+    pub const fn dimension(mut self, dimension: usize) -> Self {
         self.dimension = Some(dimension);
         self
     }
@@ -177,7 +181,8 @@ impl TesseraMultiVectorBuilder {
     ///     .model("colbert-v2")
     ///     .quantization(QuantizationConfig::Binary);
     /// ```
-    #[must_use] pub const fn quantization(mut self, quant: QuantizationConfig) -> Self {
+    #[must_use]
+    pub const fn quantization(mut self, quant: QuantizationConfig) -> Self {
         self.quantization = Some(quant);
         self
     }
@@ -317,7 +322,8 @@ impl TesseraDenseBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -340,7 +346,8 @@ impl TesseraDenseBuilder {
     /// let builder = TesseraDenseBuilder::new()
     ///     .model("bge-base-en-v1.5");
     /// ```
-    #[must_use] pub fn model(mut self, model_id: &str) -> Self {
+    #[must_use]
+    pub fn model(mut self, model_id: &str) -> Self {
         self.model_id = Some(model_id.to_string());
         self
     }
@@ -365,7 +372,8 @@ impl TesseraDenseBuilder {
     ///     .model("bge-base-en-v1.5")
     ///     .device(Device::Cpu);
     /// ```
-    #[must_use] pub const fn device(mut self, device: Device) -> Self {
+    #[must_use]
+    pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -387,7 +395,8 @@ impl TesseraDenseBuilder {
     ///     .model("nomic-embed-text-v1.5")
     ///     .dimension(256);  // Use 256 instead of default 768
     /// ```
-    #[must_use] pub const fn dimension(mut self, dimension: usize) -> Self {
+    #[must_use]
+    pub const fn dimension(mut self, dimension: usize) -> Self {
         self.dimension = Some(dimension);
         self
     }
@@ -522,7 +531,8 @@ impl TesseraSparseBuilder {
     /// Create a new builder with default configuration.
     ///
     /// All fields are initially None, requiring at minimum a model to be set.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -570,7 +580,8 @@ impl TesseraSparseBuilder {
     ///     .model("splade-cocondenser")
     ///     .device(Device::Cpu);
     /// ```
-    #[must_use] pub const fn device(mut self, device: Device) -> Self {
+    #[must_use]
+    pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -674,7 +685,8 @@ pub struct TesseraVisionBuilder {
 
 impl TesseraVisionBuilder {
     /// Create new vision embedder builder.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -693,7 +705,8 @@ impl TesseraVisionBuilder {
     /// Set explicit device.
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
-    #[must_use] pub const fn device(mut self, device: Device) -> Self {
+    #[must_use]
+    pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }
@@ -761,7 +774,8 @@ pub struct TesseraTimeSeriesBuilder {
 
 impl TesseraTimeSeriesBuilder {
     /// Create new time series builder.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             model_id: None,
             device: None,
@@ -780,7 +794,8 @@ impl TesseraTimeSeriesBuilder {
     /// Set explicit device.
     ///
     /// If not set, auto-selects best available device (Metal > CUDA > CPU).
-    #[must_use] pub const fn device(mut self, device: Device) -> Self {
+    #[must_use]
+    pub const fn device(mut self, device: Device) -> Self {
         self.device = Some(device);
         self
     }

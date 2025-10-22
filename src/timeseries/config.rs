@@ -68,7 +68,8 @@ impl ChronosBoltConfig {
     ///
     /// # Returns
     /// Configuration for Chronos Bolt Small
-    #[must_use] pub fn chronos_bolt_small() -> Self {
+    #[must_use]
+    pub fn chronos_bolt_small() -> Self {
         Self {
             vocab_size: 2, // PAD and EOS only (Bolt uses continuous patches, not discrete tokens)
             d_model: 512,
@@ -92,7 +93,8 @@ impl ChronosBoltConfig {
     ///
     /// # Returns
     /// Configuration for Chronos Bolt Base
-    #[must_use] pub fn chronos_bolt_base() -> Self {
+    #[must_use]
+    pub fn chronos_bolt_base() -> Self {
         Self {
             vocab_size: 2, // PAD and EOS only
             d_model: 768,
@@ -118,7 +120,8 @@ impl ChronosBoltConfig {
     ///
     /// # Returns
     /// Customized Chronos Bolt configuration
-    #[must_use] pub fn custom(context_length: usize, prediction_length: usize) -> Self {
+    #[must_use]
+    pub fn custom(context_length: usize, prediction_length: usize) -> Self {
         Self {
             context_length,
             prediction_length,

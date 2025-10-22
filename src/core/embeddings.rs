@@ -72,7 +72,8 @@ impl TokenEmbeddings {
     }
 
     /// Returns the shape of the embedding matrix as (`num_tokens`, `embedding_dim`)
-    #[must_use] pub const fn shape(&self) -> (usize, usize) {
+    #[must_use]
+    pub const fn shape(&self) -> (usize, usize) {
         (self.num_tokens, self.embedding_dim)
     }
 }
@@ -213,12 +214,14 @@ impl DenseEmbedding {
     ///
     /// # Returns
     /// A new `DenseEmbedding` instance
-    #[must_use] pub const fn new(embedding: Array1<f32>, text: String) -> Self {
+    #[must_use]
+    pub const fn new(embedding: Array1<f32>, text: String) -> Self {
         Self { embedding, text }
     }
 
     /// Get the embedding dimension.
-    #[must_use] pub fn dim(&self) -> usize {
+    #[must_use]
+    pub fn dim(&self) -> usize {
         self.embedding.len()
     }
 }
@@ -304,7 +307,8 @@ impl SparseEmbedding {
     ///
     /// # Returns
     /// A new `SparseEmbedding` instance
-    #[must_use] pub const fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Self {
+    #[must_use]
+    pub const fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Self {
         Self {
             weights,
             vocab_size,
@@ -313,12 +317,14 @@ impl SparseEmbedding {
     }
 
     /// Get the number of non-zero dimensions.
-    #[must_use] pub fn nnz(&self) -> usize {
+    #[must_use]
+    pub fn nnz(&self) -> usize {
         self.weights.len()
     }
 
     /// Calculate the sparsity level (0.0 = dense, 1.0 = all zeros).
-    #[must_use] pub fn sparsity(&self) -> f32 {
+    #[must_use]
+    pub fn sparsity(&self) -> f32 {
         1.0 - (self.nnz() as f32 / self.vocab_size as f32)
     }
 }
@@ -402,7 +408,8 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// A new `VisionEmbedding` instance
-    #[must_use] pub const fn new(
+    #[must_use]
+    pub const fn new(
         embeddings: Vec<Vec<f32>>,
         num_patches: usize,
         embedding_dim: usize,
@@ -420,7 +427,8 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Number of patches in this image embedding
-    #[must_use] pub const fn num_patches(&self) -> usize {
+    #[must_use]
+    pub const fn num_patches(&self) -> usize {
         self.num_patches
     }
 
@@ -428,7 +436,8 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Dimensionality of each patch embedding vector
-    #[must_use] pub const fn embedding_dim(&self) -> usize {
+    #[must_use]
+    pub const fn embedding_dim(&self) -> usize {
         self.embedding_dim
     }
 
@@ -436,7 +445,8 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Optional reference to the source identifier
-    #[must_use] pub fn source(&self) -> Option<&str> {
+    #[must_use]
+    pub fn source(&self) -> Option<&str> {
         self.source.as_deref()
     }
 
@@ -444,7 +454,8 @@ impl VisionEmbedding {
     ///
     /// # Returns
     /// Tuple of (number of patches, embedding dimension)
-    #[must_use] pub const fn shape(&self) -> (usize, usize) {
+    #[must_use]
+    pub const fn shape(&self) -> (usize, usize) {
         (self.num_patches, self.embedding_dim)
     }
 }
@@ -534,7 +545,8 @@ impl TimeSeriesEmbedding {
     ///
     /// # Returns
     /// A new `TimeSeriesEmbedding` instance
-    #[must_use] pub const fn new(
+    #[must_use]
+    pub const fn new(
         embeddings: Vec<Vec<f32>>,
         num_series: usize,
         embedding_dim: usize,
@@ -551,22 +563,26 @@ impl TimeSeriesEmbedding {
     }
 
     /// Get the number of time series in this embedding.
-    #[must_use] pub const fn num_series(&self) -> usize {
+    #[must_use]
+    pub const fn num_series(&self) -> usize {
         self.num_series
     }
 
     /// Get the embedding dimension.
-    #[must_use] pub const fn embedding_dim(&self) -> usize {
+    #[must_use]
+    pub const fn embedding_dim(&self) -> usize {
         self.embedding_dim
     }
 
     /// Get the shape of the embedding matrix as (`num_series`, `embedding_dim`).
-    #[must_use] pub const fn shape(&self) -> (usize, usize) {
+    #[must_use]
+    pub const fn shape(&self) -> (usize, usize) {
         (self.num_series, self.embedding_dim)
     }
 
     /// Get the source identifier if available.
-    #[must_use] pub fn source(&self) -> Option<&str> {
+    #[must_use]
+    pub fn source(&self) -> Option<&str> {
         self.source.as_deref()
     }
 }

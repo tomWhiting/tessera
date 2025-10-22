@@ -51,7 +51,8 @@ pub enum MatryoshkaStrategy {
 
 impl MatryoshkaStrategy {
     /// Parse strategy from string.
-    #[must_use] pub fn from_str(s: &str) -> Option<Self> {
+    #[must_use]
+    pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "truncate_hidden" => Some(Self::TruncateHidden),
             "truncate_output" => Some(Self::TruncateOutput),
@@ -61,7 +62,8 @@ impl MatryoshkaStrategy {
     }
 
     /// Convert strategy to string.
-    #[must_use] pub const fn as_str(&self) -> &'static str {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::TruncateHidden => "truncate_hidden",
             Self::TruncateOutput => "truncate_output",

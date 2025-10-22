@@ -29,7 +29,8 @@ impl ImageProcessor {
     /// Create new image processor with `PaliGemma` defaults.
     ///
     /// Uses 448×448 target size and `SigLIP` normalization parameters.
-    #[must_use] pub const fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self {
             target_size: (448, 448),
             mean: [0.481_454_66, 0.457_827_5, 0.408_210_73],
@@ -38,7 +39,8 @@ impl ImageProcessor {
     }
 
     /// Create processor with custom parameters.
-    #[must_use] pub const fn with_config(target_size: (u32, u32), mean: [f32; 3], std: [f32; 3]) -> Self {
+    #[must_use]
+    pub const fn with_config(target_size: (u32, u32), mean: [f32; 3], std: [f32; 3]) -> Self {
         Self {
             target_size,
             mean,

@@ -37,7 +37,8 @@
 /// assert_eq!(padded[1], vec![4, 5, 0, 0]);
 /// assert_eq!(padded[2], vec![6, 7, 8, 9]);
 /// ```
-#[must_use] pub fn pad_sequences(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<u32>> {
+#[must_use]
+pub fn pad_sequences(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<u32>> {
     if sequences.is_empty() {
         return Vec::new();
     }
@@ -85,7 +86,8 @@
 /// assert_eq!(masks[1], vec![1, 1, 1, 1, 0]);
 /// assert_eq!(masks[2], vec![1, 1, 0, 0, 0]);
 /// ```
-#[must_use] pub fn create_attention_mask(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<i64>> {
+#[must_use]
+pub fn create_attention_mask(sequences: &[Vec<u32>], pad_token: u32) -> Vec<Vec<i64>> {
     sequences
         .iter()
         .map(|seq| {
