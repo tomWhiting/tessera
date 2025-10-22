@@ -1,6 +1,8 @@
 //! Device management for Candle backend (CPU/Metal).
 
-use anyhow::{Context, Result};
+#[cfg(target_os = "macos")]
+use anyhow::Context;
+use anyhow::Result;
 use candle_core::Device;
 
 /// Selects the best available device for computation.
