@@ -31,13 +31,13 @@ fn main() -> Result<()> {
 
     // Encode a test image
     println!("\nEncoding test image...");
-    let pdf_path = std::path::Path::new("examples/fixtures/attention_is_all_you_need.pdf");
+    let _pdf_path = std::path::Path::new("examples/fixtures/attention_is_all_you_need.pdf");
 
     #[cfg(feature = "pdf")]
     {
-        if pdf_path.exists() {
+        if _pdf_path.exists() {
             println!("Using first page of PDF as test image");
-            let image_emb = encoder.encode_pdf_page(pdf_path, 0)?;
+            let image_emb = encoder.encode_pdf_page(_pdf_path, 0)?;
             println!("Image embeddings shape: {:?}", image_emb.shape());
             println!("  num_patches: {}", image_emb.num_patches);
             println!("  embedding_dim: {}", image_emb.embedding_dim);

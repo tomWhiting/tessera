@@ -1,7 +1,11 @@
+//! Basic time series forecasting with Chronos Bolt.
+//!
+//! This example demonstrates creating synthetic time series data and running
+//! forecasts with pre-trained Chronos Bolt weights.
+
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use tessera::backends::candle::get_device;
-/// Basic time series forecasting with Chronos Bolt
 ///
 /// This example demonstrates:
 /// 1. Creating synthetic time series data

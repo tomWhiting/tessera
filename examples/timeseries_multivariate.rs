@@ -1,8 +1,11 @@
+//! Multivariate time series forecasting with Chronos Bolt.
+//!
+//! This example demonstrates forecasting multiple time series channels independently.
+
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use std::f32::consts::PI;
 use tessera::backends::candle::get_device;
-/// Multivariate time series forecasting with Chronos Bolt
 ///
 /// This example demonstrates:
 /// 1. Creating multivariate time series (3 channels: price, volume, sentiment)

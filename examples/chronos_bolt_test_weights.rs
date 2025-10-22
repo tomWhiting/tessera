@@ -1,7 +1,10 @@
+//! Test Chronos Bolt with real pre-trained weights from HuggingFace.
+//!
+//! This example downloads and tests pre-trained weights for time series forecasting.
+
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use tessera::backends::candle::get_device;
-/// Test Chronos Bolt with real pre-trained weights from HuggingFace
 ///
 /// This example:
 /// 1. Downloads pre-trained weights from amazon/chronos-bolt-small

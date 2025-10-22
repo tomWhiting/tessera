@@ -1,3 +1,8 @@
+//! Test ColPali embedding shapes.
+//!
+//! This example tests the ColPali encoder by encoding text queries
+//! and verifying the output shapes.
+
 use tessera::backends::candle::get_device;
 use tessera::encoding::vision::ColPaliEncoder;
 use tessera::models::ModelConfig;

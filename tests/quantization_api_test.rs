@@ -1,11 +1,11 @@
 //! Integration tests for quantization API.
 
-use tessera::{QuantizationConfig, Result, Tessera};
+use tessera::{QuantizationConfig, Result, TesseraMultiVectorBuilder};
 
 #[test]
 fn test_quantization_workflow() -> Result<()> {
     // Create embedder with binary quantization
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;
@@ -39,7 +39,7 @@ fn test_quantization_workflow() -> Result<()> {
 
 #[test]
 fn test_encode_quantized_convenience() -> Result<()> {
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;
@@ -56,7 +56,7 @@ fn test_encode_quantized_convenience() -> Result<()> {
 
 #[test]
 fn test_similarity_quantized() -> Result<()> {
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;
@@ -82,7 +82,9 @@ fn test_similarity_quantized() -> Result<()> {
 #[test]
 fn test_quantization_error_without_config() -> Result<()> {
     // Create embedder WITHOUT quantization
-    let embedder = Tessera::builder().model("colbert-v2").build()?;
+    let embedder = TesseraMultiVectorBuilder::new()
+        .model("colbert-v2")
+        .build()?;
 
     let embeddings = embedder.encode("Test")?;
 
@@ -98,7 +100,7 @@ fn test_quantization_error_without_config() -> Result<()> {
 
 #[test]
 fn test_quantization_memory_savings() -> Result<()> {
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;
@@ -123,7 +125,7 @@ fn test_quantization_memory_savings() -> Result<()> {
 
 #[test]
 fn test_ranking_preservation() -> Result<()> {
-    let embedder = Tessera::builder()
+    let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
         .quantization(QuantizationConfig::Binary)
         .build()?;
@@ -165,9 +167,13 @@ fn test_ranking_preservation() -> Result<()> {
     println!("Full ranking: {:?}", full_ranking);
 
     // Top 2 should be the same (high relevance docs)
+    let mut quant_top2 = quant_ranking[0..2].to_vec();
+    let mut full_top2 = full_ranking[0..2].to_vec();
+    quant_top2.sort();
+    full_top2.sort();
+
     assert_eq!(
-        quant_ranking[0..2].to_vec().sort(),
-        full_ranking[0..2].to_vec().sort(),
+        quant_top2, full_top2,
         "Top 2 rankings should match between quantized and full precision"
     );
 
@@ -177,7 +183,9 @@ fn test_ranking_preservation() -> Result<()> {
 #[test]
 fn test_no_quantization_config_default() -> Result<()> {
     // Default should be no quantization
-    let embedder = Tessera::builder().model("colbert-v2").build()?;
+    let embedder = TesseraMultiVectorBuilder::new()
+        .model("colbert-v2")
+        .build()?;
 
     let embeddings = embedder.encode("Test")?;
     let result = embedder.quantize(&embeddings);

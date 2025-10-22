@@ -1,8 +1,12 @@
+//! Time series similarity search using Chronos Bolt forecasts.
+//!
+//! This example demonstrates how to use forecasts as representations for similarity
+//! by comparing different time series patterns.
+
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use std::f32::consts::PI;
 use tessera::backends::candle::get_device;
-/// Time series similarity search using Chronos Bolt forecasts
 ///
 /// This example demonstrates:
 /// 1. Creating different time series patterns (trend, seasonal, random)

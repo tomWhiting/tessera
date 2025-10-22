@@ -48,6 +48,9 @@ fn main() -> tessera::Result<()> {
         Tessera::Vision(_) => {
             println!("   ✗ Error: Expected Dense but got Vision\n");
         }
+        Tessera::TimeSeries(_) => {
+            println!("   ✗ Error: Expected Dense but got TimeSeries\n");
+        }
     }
 
     // Example 2: Auto-detecting and using a multi-vector model
@@ -80,6 +83,9 @@ fn main() -> tessera::Result<()> {
         }
         Tessera::Vision(_) => {
             println!("   ✗ Error: Expected MultiVector but got Vision\n");
+        }
+        Tessera::TimeSeries(_) => {
+            println!("   ✗ Error: Expected MultiVector but got TimeSeries\n");
         }
     }
 
@@ -155,6 +161,13 @@ fn main() -> tessera::Result<()> {
                 println!("     - Similarity: MaxSim (late interaction)");
                 println!("     - Use case: OCR-free document search");
                 println!("     - Note: Requires image files, not text\n");
+            }
+            Tessera::TimeSeries(_) => {
+                println!("     Type: Time series forecasting");
+                println!("     - Suitable for: Probabilistic forecasting, trend analysis");
+                println!("     - Output: Quantile predictions for future timesteps");
+                println!("     - Use case: Demand forecasting, anomaly detection");
+                println!("     - Note: Not supported in this example\n");
             }
         }
     }
@@ -292,6 +305,10 @@ fn main() -> tessera::Result<()> {
         Tessera::Vision(_) => {
             // Would use vision-language similarity here
             println!("   Using Vision model for document image search");
+        }
+        Tessera::TimeSeries(_) => {
+            // Time series not applicable for text search
+            println!("   TimeSeries model not applicable for text search");
         }
     }
 

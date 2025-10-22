@@ -30,6 +30,9 @@ fn main() -> Result<()> {
         Tessera::Vision(_) => {
             println!("   ✗ Unexpected: Detected as Vision\n");
         }
+        Tessera::TimeSeries(_) => {
+            println!("   ✗ Unexpected: Detected as TimeSeries\n");
+        }
     }
 
     // Example 2: Show error for unsupported model types
@@ -70,6 +73,12 @@ fn main() -> Result<()> {
                 println!("     - Supports quantization: No");
                 println!("     - Output: Multi-vector patch embeddings");
                 println!("     - Similarity: MaxSim");
+            }
+            Tessera::TimeSeries(ts) => {
+                println!("   TimeSeries model: {}", ts.model());
+                println!("     - Supports quantization: No");
+                println!("     - Output: Probabilistic forecasts");
+                println!("     - Similarity: Not applicable");
             }
         }
     }

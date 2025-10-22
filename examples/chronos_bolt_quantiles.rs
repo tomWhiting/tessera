@@ -1,7 +1,10 @@
+//! Test Chronos Bolt quantile predictions with pre-trained weights.
+//!
+//! This example demonstrates full quantile predictions for uncertainty quantification.
+
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use tessera::backends::candle::get_device;
-/// Test Chronos Bolt quantile predictions with pre-trained weights
 ///
 /// This example demonstrates:
 /// 1. Loading pre-trained Chronos Bolt model

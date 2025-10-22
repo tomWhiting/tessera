@@ -6,9 +6,14 @@ use tessera::Tessera;
 fn test_batch_empty() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
     let empty_batch: Vec<&str> = vec![];
-    let results = embedder
-        .encode_batch(&empty_batch)
-        .expect("Failed to encode empty batch");
+
+    // Pattern match to call the correct method
+    let results = match &embedder {
+        Tessera::MultiVector(mv) => mv.encode_batch(&empty_batch),
+        _ => panic!("Expected MultiVector variant"),
+    }
+    .expect("Failed to encode empty batch");
+
     assert_eq!(results.len(), 0);
 }
 
@@ -17,10 +22,16 @@ fn test_batch_single() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
     let text = "Hello world";
-    let single = embedder.encode(text).expect("Failed to encode single");
-    let batch = embedder
-        .encode_batch(&[text])
-        .expect("Failed to encode batch");
+
+    // Pattern match to call the correct methods
+    let (single, batch) = match &embedder {
+        Tessera::MultiVector(mv) => {
+            let s = mv.encode(text).expect("Failed to encode single");
+            let b = mv.encode_batch(&[text]).expect("Failed to encode batch");
+            (s, b)
+        }
+        _ => panic!("Expected MultiVector variant"),
+    };
 
     assert_eq!(batch.len(), 1);
     assert_eq!(batch[0].num_tokens, single.num_tokens);
@@ -41,14 +52,17 @@ fn test_batch_same_length() {
     // Use texts that tokenize to the same length (no padding needed)
     let texts = ["Hello", "World", "Tests"];
 
-    let sequential: Vec<_> = texts
-        .iter()
-        .map(|&text| embedder.encode(text).expect("Failed to encode"))
-        .collect();
-
-    let batch = embedder
-        .encode_batch(&texts)
-        .expect("Failed to encode batch");
+    let (sequential, batch) = match &embedder {
+        Tessera::MultiVector(mv) => {
+            let seq: Vec<_> = texts
+                .iter()
+                .map(|&text| mv.encode(text).expect("Failed to encode"))
+                .collect();
+            let bat = mv.encode_batch(&texts).expect("Failed to encode batch");
+            (seq, bat)
+        }
+        _ => panic!("Expected MultiVector variant"),
+    };
 
     assert_eq!(batch.len(), texts.len());
 
@@ -76,9 +90,11 @@ fn test_batch_different_lengths() {
         "This is a much longer text with many more tokens",
     ];
 
-    let batch = embedder
-        .encode_batch(&texts)
-        .expect("Failed to encode batch");
+    let batch = match &embedder {
+        Tessera::MultiVector(mv) => mv.encode_batch(&texts),
+        _ => panic!("Expected MultiVector variant"),
+    }
+    .expect("Failed to encode batch");
 
     assert_eq!(batch.len(), texts.len());
 
@@ -103,19 +119,25 @@ fn test_batch_similarity_consistency() {
         "Deep neural networks",
     ];
 
-    // Compute similarities sequentially
-    let seq_sim_01 = embedder
-        .similarity(texts[0], texts[1])
-        .expect("Failed to compute similarity");
+    // Compute similarities sequentially and from batch
+    let (seq_sim_01, batch_sim_01) = match &embedder {
+        Tessera::MultiVector(mv) => {
+            let seq_sim = mv
+                .similarity(texts[0], texts[1])
+                .expect("Failed to compute similarity");
 
-    // Compute similarities from batch
-    let batch_embeddings = embedder
-        .encode_batch(&texts)
-        .expect("Failed to encode batch");
+            let batch_embeddings = mv
+                .encode_batch(&texts)
+                .expect("Failed to encode batch");
 
-    use tessera::utils::max_sim;
-    let batch_sim_01 = max_sim(&batch_embeddings[0], &batch_embeddings[1])
-        .expect("Failed to compute batch similarity");
+            use tessera::utils::max_sim;
+            let batch_sim = max_sim(&batch_embeddings[0], &batch_embeddings[1])
+                .expect("Failed to compute batch similarity");
+
+            (seq_sim, batch_sim)
+        }
+        _ => panic!("Expected MultiVector variant"),
+    };
 
     // Similarity scores should be reasonably close (within 10%)
     // Note: Some variation is expected due to padding effects in batch processing,
@@ -143,9 +165,11 @@ fn test_batch_preserves_order() {
         "Fourth document",
     ];
 
-    let batch = embedder
-        .encode_batch(&texts)
-        .expect("Failed to encode batch");
+    let batch = match &embedder {
+        Tessera::MultiVector(mv) => mv.encode_batch(&texts),
+        _ => panic!("Expected MultiVector variant"),
+    }
+    .expect("Failed to encode batch");
 
     // Verify order is preserved
     for (i, result) in batch.iter().enumerate() {

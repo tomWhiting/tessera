@@ -1,14 +1,14 @@
-/// Comprehensive Tessera TimeSeries Integration Demo
-///
-/// This example demonstrates the integrated Chronos Bolt time series forecasting
-/// through the main Tessera API, showcasing:
-/// 1. Factory pattern: Tessera::new() with automatic model detection
-/// 2. Builder pattern: TesseraTimeSeries::builder() for custom configuration
-/// 3. Point forecasting (median prediction)
-/// 4. Probabilistic forecasting (full quantile predictions)
-/// 5. Model introspection (context/prediction lengths, quantiles)
-///
-/// Run with: cargo run --example timeseries_integration
+//! Comprehensive Tessera TimeSeries Integration Demo.
+//!
+//! This example demonstrates the integrated Chronos Bolt time series forecasting
+//! through the main Tessera API, showcasing:
+//! 1. Factory pattern: Tessera::new() with automatic model detection
+//! 2. Builder pattern: TesseraTimeSeries::builder() for custom configuration
+//! 3. Point forecasting (median prediction)
+//! 4. Probabilistic forecasting (full quantile predictions)
+//! 5. Model introspection (context/prediction lengths, quantiles)
+//!
+//! Run with: cargo run --example timeseries_integration
 use anyhow::{Context, Result};
 use candle_core::{IndexOp, Tensor};
 use tessera::backends::candle::get_device;
