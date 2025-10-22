@@ -28,7 +28,7 @@
 //! ```no_run
 //! use tessera::encoding::ColPaliEncoder;
 //! use tessera::models::ModelConfig;
-//! use tessera::core::VisionEncoder;
+//! use tessera::core::{Encoder, VisionEncoder};
 //! use candle_core::Device;
 //!
 //! let config = ModelConfig::from_registry("colpali-v1.2").unwrap();
