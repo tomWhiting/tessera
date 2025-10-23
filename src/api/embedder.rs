@@ -20,11 +20,11 @@
 //! let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;
 //! ```
 
+#[cfg(feature = "timeseries")]
+use crate::api::TesseraTimeSeriesBuilder;
 use crate::api::{
     TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder,
 };
-#[cfg(feature = "timeseries")]
-use crate::api::TesseraTimeSeriesBuilder;
 use crate::backends::CandleBertEncoder;
 use crate::core::{
     DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings,

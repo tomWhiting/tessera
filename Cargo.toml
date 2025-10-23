@@ -69,3 +69,28 @@ nursery = "warn"
 candle-core = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }
 candle-nn = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }
 candle-transformers = { git = "https://github.com/tomWhiting/candle.git", rev = "f295c42c" }
+
+# Timeseries examples require the timeseries feature
+[[example]]
+name = "timeseries_basic_forecasting"
+required-features = ["timeseries"]
+
+[[example]]
+name = "timeseries_similarity_search"
+required-features = ["timeseries"]
+
+[[example]]
+name = "timeseries_integration"
+required-features = ["timeseries"]
+
+[[example]]
+name = "timeseries_multivariate"
+required-features = ["timeseries"]
+
+[[example]]
+name = "chronos_bolt_test_weights"
+required-features = ["timeseries"]
+
+[[example]]
+name = "chronos_bolt_quantiles"
+required-features = ["timeseries"]

@@ -404,7 +404,11 @@ fn test_factory_dense_model() {
         Tessera::Sparse(_) => {
             panic!("Factory should have returned Dense variant for dense model, got Sparse");
         }
-        Tessera::Vision(_) | Tessera::TimeSeries(_) => {
+        Tessera::Vision(_) => {
+            panic!("Factory should have returned Dense variant for dense model");
+        }
+        #[cfg(feature = "timeseries")]
+        Tessera::TimeSeries(_) => {
             panic!("Factory should have returned Dense variant for dense model");
         }
     }
@@ -435,7 +439,11 @@ fn test_factory_multivector_model() {
                 "Factory should have returned MultiVector variant for ColBERT model, got Sparse"
             );
         }
-        Tessera::Vision(_) | Tessera::TimeSeries(_) => {
+        Tessera::Vision(_) => {
+            panic!("Factory should have returned MultiVector variant for ColBERT model");
+        }
+        #[cfg(feature = "timeseries")]
+        Tessera::TimeSeries(_) => {
             panic!("Factory should have returned MultiVector variant for ColBERT model");
         }
     }

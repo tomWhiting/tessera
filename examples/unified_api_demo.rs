@@ -48,6 +48,7 @@ fn main() -> tessera::Result<()> {
         Tessera::Vision(_) => {
             println!("   ✗ Error: Expected Dense but got Vision\n");
         }
+        #[cfg(feature = "timeseries")]
         Tessera::TimeSeries(_) => {
             println!("   ✗ Error: Expected Dense but got TimeSeries\n");
         }
@@ -84,6 +85,7 @@ fn main() -> tessera::Result<()> {
         Tessera::Vision(_) => {
             println!("   ✗ Error: Expected MultiVector but got Vision\n");
         }
+        #[cfg(feature = "timeseries")]
         Tessera::TimeSeries(_) => {
             println!("   ✗ Error: Expected MultiVector but got TimeSeries\n");
         }
@@ -162,6 +164,7 @@ fn main() -> tessera::Result<()> {
                 println!("     - Use case: OCR-free document search");
                 println!("     - Note: Requires image files, not text\n");
             }
+            #[cfg(feature = "timeseries")]
             Tessera::TimeSeries(_) => {
                 println!("     Type: Time series forecasting");
                 println!("     - Suitable for: Probabilistic forecasting, trend analysis");
@@ -306,6 +309,7 @@ fn main() -> tessera::Result<()> {
             // Would use vision-language similarity here
             println!("   Using Vision model for document image search");
         }
+        #[cfg(feature = "timeseries")]
         Tessera::TimeSeries(_) => {
             // Time series not applicable for text search
             println!("   TimeSeries model not applicable for text search");

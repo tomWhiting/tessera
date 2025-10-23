@@ -28,9 +28,9 @@
 //!     .build()?;
 //! ```
 
-use crate::api::{TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision};
 #[cfg(feature = "timeseries")]
 use crate::api::TesseraTimeSeries;
+use crate::api::{TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision};
 use crate::backends::CandleBertEncoder;
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::encoding::sparse::CandleSparseEncoder;

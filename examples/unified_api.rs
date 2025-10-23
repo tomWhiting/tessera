@@ -30,6 +30,7 @@ fn main() -> Result<()> {
         Tessera::Vision(_) => {
             println!("   ✗ Unexpected: Detected as Vision\n");
         }
+        #[cfg(feature = "timeseries")]
         Tessera::TimeSeries(_) => {
             println!("   ✗ Unexpected: Detected as TimeSeries\n");
         }
@@ -74,6 +75,7 @@ fn main() -> Result<()> {
                 println!("     - Output: Multi-vector patch embeddings");
                 println!("     - Similarity: MaxSim");
             }
+            #[cfg(feature = "timeseries")]
             Tessera::TimeSeries(ts) => {
                 println!("   TimeSeries model: {}", ts.model());
                 println!("     - Supports quantization: No");
