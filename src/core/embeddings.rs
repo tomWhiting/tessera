@@ -260,9 +260,9 @@ pub trait DenseEncoder: Encoder<Output = DenseEmbedding> {
 /// Determines how token-level embeddings are aggregated into a single vector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PoolingStrategy {
-    /// Use the [CLS] token embedding (first token).
+    /// Use the `[CLS]` token embedding (first token).
     ///
-    /// Common in BERT-style models where [CLS] is trained to represent
+    /// Common in BERT-style models where `[CLS]` is trained to represent
     /// the entire sequence.
     Cls,
 

@@ -3,8 +3,8 @@
 //! Provides foreign function interfaces (FFI) and language-specific
 //! bindings for using Tessera from other programming languages:
 //!
-//! - [`python`]: PyO3-based Python bindings (`pip install tessera`)
-//! - [`wasm`]: wasm-bindgen for TypeScript/JavaScript (`npm install tessera-wasm`)
+//! - **Python** (requires `python` feature): PyO3-based Python bindings for `pip install tessera`
+//! - **WebAssembly** (requires `wasm` feature): wasm-bindgen for TypeScript/JavaScript (`npm install tessera-wasm`)
 //!
 //! Bindings expose the high-level API from [`crate::api`] with
 //! language-appropriate idioms and error handling.

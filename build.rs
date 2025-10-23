@@ -331,9 +331,9 @@ fn generate_pooling_types() -> String {
 /// Determines how token-level embeddings are aggregated into a single vector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PoolingStrategy {
-    /// Use the [CLS] token embedding (first token).
+    /// Use the `[CLS]` token embedding (first token).
     ///
-    /// Common in BERT-style models where [CLS] is trained to represent
+    /// Common in BERT-style models where `[CLS]` is trained to represent
     /// the entire sequence.
     Cls,
 
@@ -597,7 +597,7 @@ fn generate_model_constant(model: &ModelMetadata) -> String {
             let strategy_display = matryoshka
                 .strategy
                 .as_ref()
-                .map_or_else(String::new, |s| format!(" [{s}]"));
+                .map_or_else(String::new, |s| format!(" [\\{s}\\]"));
             (
                 format!(
                     "EmbeddingDimension::Matryoshka {{ default: {default}, min: {}, max: {}, supported: &[{supported}], strategy: {strategy_code} }}",

@@ -3,7 +3,7 @@
 //! Implements traditional sentence embedding approaches that pool
 //! token-level BERT representations into a single fixed-size vector:
 //!
-//! - **CLS pooling**: Use the [CLS] token representation
+//! - **CLS pooling**: Use the `[CLS]` token representation
 //! - **Mean pooling**: Average all token embeddings (attention-weighted)
 //! - **Max pooling**: Take element-wise maximum across tokens
 //!

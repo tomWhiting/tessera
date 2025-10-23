@@ -3,7 +3,7 @@
 //! Provides multiple pooling methods to convert token-level embeddings
 //! into single dense vectors:
 //!
-//! - CLS pooling: Extract [CLS] token (first token)
+//! - CLS pooling: Extract `[CLS]` token (first token)
 //! - Mean pooling: Average all tokens (weighted by attention mask)
 //! - Max pooling: Element-wise maximum across tokens
 //!
@@ -14,7 +14,7 @@ use ndarray::{Array1, Array2};
 
 /// Extract CLS token embedding (first token).
 ///
-/// The [CLS] token is typically trained to represent the entire sequence
+/// The `[CLS]` token is typically trained to represent the entire sequence
 /// in BERT-style models. This pooling strategy simply extracts the first
 /// token's embedding.
 ///

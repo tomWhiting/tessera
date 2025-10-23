@@ -6,7 +6,7 @@ A multi-paradigm embedding library that combines five distinct approaches to sem
 
 ## Overview
 
-Tessera provides state-of-the-art text and document embeddings through five complementary paradigms: dense single-vector embeddings for semantic similarity, multi-vector token embeddings for precise phrase matching, sparse learned representations for interpretable keyword search, vision-language embeddings for OCR-free document understanding, and probabilistic time series forecasting. The library supports 23 production models with native GPU acceleration on Metal and CUDA, comprehensive batch processing, and binary quantization for efficient storage and retrieval.
+Tessera provides state-of-the-art text and document embeddings through five complementary paradigms: dense single-vector embeddings for semantic similarity, multi-vector token embeddings for precise phrase matching, sparse learned representations for interpretable keyword search, vision-language embeddings for OCR-free document understanding, and probabilistic time series forecasting. The library supports 23+ production models with native GPU acceleration on Metal (Apple Silicon) and CUDA (NVIDIA GPUs), comprehensive batch processing, binary quantization for 32x compression, and seamless Rust + Python support via PyO3.
 
 ## Installation
 
@@ -19,13 +19,13 @@ cargo add tessera
 ### Python
 
 ```bash
-pip install tessera
+pip install tessera-embeddings
 ```
 
 Or with UV:
 
 ```bash
-uv add tessera
+uv add tessera-embeddings
 ```
 
 ## Quick Start
@@ -181,19 +181,68 @@ Binary quantization for multi-vector embeddings provides 32x compression with mi
 
 ### GPU Acceleration
 
-Tessera automatically selects the best available compute device with a fallback chain of Metal (Apple Silicon), CUDA (NVIDIA GPUs), and CPU. Models are loaded once and cached for efficient repeated encoding.
+Tessera automatically selects the best available compute device with intelligent fallback:
+
+- **Metal** - Native Apple Silicon acceleration (macOS M1/M2/M3 and later)
+- **CUDA** - NVIDIA GPU support for Linux and Windows
+- **CPU** - CPU-only inference (no acceleration needed)
+
+Models are loaded once and cached for efficient repeated encoding. Enable GPU support with Cargo features:
+
+```bash
+cargo add tessera --features metal    # Apple Silicon
+cargo add tessera --features cuda     # NVIDIA GPUs
+cargo add tessera                      # CPU only (default)
+```
 
 ### Batch Processing
 
-All embedders support batch operations that provide 5-10x throughput improvements over sequential encoding through efficient GPU utilization and memory management.
+All embedders support batch operations that provide 5-10x throughput improvements over sequential encoding:
+
+```rust
+let embedder = TesseraDense::new("bge-base-en-v1.5")?;
+let texts = vec!["text1", "text2", "text3"];
+let embeddings = embedder.encode_batch(&texts)?;  // Much faster than individual encodes
+```
 
 ### Matryoshka Dimensions
 
-Selected models support variable embedding dimensions, allowing trade-offs between quality and efficiency. Jina ColBERT v2 can operate at 96, 192, 384, or 768 dimensions from a single model.
+Selected models support variable embedding dimensions without model reloading, enabling trade-offs between quality and storage:
+
+- **Jina ColBERT v2** - 96, 192, 384, or 768 dimensions from single model
+- **Allows flexible deployment** - Use 96D for fast retrieval, 768D for maximum accuracy
+
+```rust
+let embedder = TesseraMultiVector::builder()
+    .model("jina-colbert-v2")
+    .dimension(96)  // Flexible dimension selection
+    .build()?;
+```
 
 ### Type-Safe API
 
-Tessera uses the factory pattern with an enum-based API that provides compile-time guarantees about embedding types and prevents mismatched operations through Rust's type system.
+Tessera uses the factory pattern with type-safe builders that prevent mismatched operations at compile time:
+
+```rust
+let dense_embedder = TesseraDense::new("bge-base-en-v1.5")?;      // Dense embeddings
+let multi_embedder = TesseraMultiVector::new("colbert-v2")?;     // Multi-vector embeddings
+let sparse_embedder = TesseraSparse::new("splade-cocondenser")?; // Sparse embeddings
+
+// Type system prevents accidental mixing of different embedding types
+```
+
+### Python Support via PyO3
+
+Seamless NumPy interoperability for Python users without loss of performance:
+
+```python
+from tessera import TesseraDense
+import numpy as np
+
+embedder = TesseraDense("bge-base-en-v1.5")
+embedding = embedder.encode("text")  # Returns NumPy array
+embeddings = embedder.encode_batch(["text1", "text2"])  # Batch processing
+```
 
 ## Interactive Demos
 
@@ -309,3 +358,21 @@ Contributions are welcome. Please open an issue to discuss proposed changes befo
 ## Acknowledgments
 
 Tessera builds on research and models from: ColBERT (Stanford NLP), BGE (BAAI), Nomic AI, Alibaba GTE, Qwen, Jina AI, SPLADE (Naver Labs), ColPali (Illuin/Vidore), and Chronos (Amazon Science).
+
+## Pre-Publication Checklist
+
+Before publishing to crates.io and PyPI, verify:
+
+- [x] Documentation: lib.rs crate-level docs with examples and feature flags
+- [x] README: Comprehensive guide with installation, quick start, and paradigm explanations
+- [x] Module docs: All 13 mod.rs files have clear purpose documentation
+- [x] API docs: 40+ public types and 100+ public functions documented
+- [x] Examples: Working examples for all 5 embedding paradigms
+- [x] Feature flags: metal, cuda, pdf, python, wasm all documented
+- [x] GPU support: Metal and CUDA options clearly explained
+- [x] Error handling: Result type and error propagation documented
+- [x] Benchmarks: Performance numbers and retrieval quality metrics included
+- [ ] PyPI metadata: python/__init__.py and setup.py configured
+- [ ] Binary wheels: Pre-built wheels for common platforms tested
+- [ ] License: Apache 2.0 properly included in all files
+- [ ] CI/CD: GitHub Actions workflows for testing and building

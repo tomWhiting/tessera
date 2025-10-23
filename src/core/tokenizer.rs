@@ -41,7 +41,7 @@ impl Tokenizer {
     ///
     /// # Arguments
     /// * `text` - The text to tokenize
-    /// * `add_special_tokens` - Whether to add [CLS], [SEP] tokens
+    /// * `add_special_tokens` - Whether to add special tokens like `[CLS]` and `[SEP]`
     ///
     /// # Returns
     /// A tuple of (`token_ids`, `attention_mask`)
@@ -62,7 +62,7 @@ impl Tokenizer {
     ///
     /// # Arguments
     /// * `token_ids` - The token IDs to decode
-    /// * `skip_special_tokens` - Whether to skip [CLS], [SEP], [PAD] tokens
+    /// * `skip_special_tokens` - Whether to skip special tokens like `[CLS]`, `[SEP]`, and `[PAD]`
     ///
     /// # Returns
     /// The decoded text
@@ -85,7 +85,7 @@ impl Tokenizer {
     ///
     /// # Arguments
     /// * `texts` - Slice of texts to tokenize
-    /// * `add_special_tokens` - Whether to add [CLS], [SEP] tokens
+    /// * `add_special_tokens` - Whether to add special tokens like `[CLS]` and `[SEP]`
     ///
     /// # Returns
     /// A vector of tuples (`token_ids`, `attention_mask`), one per input text.
