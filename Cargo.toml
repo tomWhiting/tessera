@@ -1,17 +1,17 @@
 [package]
-name = "tessera"
+name = "tessera-embeddings"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Multi-paradigm embedding library: ColBERT, dense, sparse, vision-language, and time series models"
 repository = "https://github.com/tomWhiting/tessera"
 homepage = "https://github.com/tomWhiting/tessera"
-documentation = "https://docs.rs/tessera"
+documentation = "https://docs.rs/tessera-embeddings"
 keywords = ["embeddings", "colbert", "semantic-search", "ml", "nlp"]
 categories = ["science", "text-processing"]
 
 [lib]
-name = "tessera"
+name = "tessera"  # Keep as "tessera" so users can `use tessera::...`
 crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
 
 [[bin]]
