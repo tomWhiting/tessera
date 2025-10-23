@@ -23,8 +23,9 @@ default = ["pdf"]  # PDF support enabled by default for ColPali document process
 metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
 pdf = ["pdf2image"]  # PDF rendering support for ColPali document processing
-python = ["dep:pyo3", "dep:numpy"]  # PyO3 bindings with NumPy support
+python = ["dep:pyo3", "dep:numpy", "timeseries"]  # PyO3 bindings with NumPy support (includes timeseries)
 wasm = []    # WebAssembly bindings (TODO: add wasm-bindgen when implementing)
+timeseries = []  # Time series forecasting with Chronos Bolt (requires candle fork with T5 hidden states)
 
 [dependencies]
 anyhow = "1.0.100"

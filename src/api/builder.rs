@@ -28,9 +28,9 @@
 //!     .build()?;
 //! ```
 
-use crate::api::{
-    TesseraDense, TesseraMultiVector, TesseraSparse, TesseraTimeSeries, TesseraVision,
-};
+use crate::api::{TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision};
+#[cfg(feature = "timeseries")]
+use crate::api::TesseraTimeSeries;
 use crate::backends::CandleBertEncoder;
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::encoding::sparse::CandleSparseEncoder;
@@ -38,6 +38,7 @@ use crate::encoding::vision::ColPaliEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::{registry, ModelConfig};
 use crate::quantization::BinaryQuantization;
+#[cfg(feature = "timeseries")]
 use crate::timeseries::models::ChronosBolt;
 use candle_core::Device;
 
@@ -767,11 +768,13 @@ impl Default for TesseraVisionBuilder {
 // ============================================================================
 
 /// Builder for time series forecasting embedders with advanced configuration.
+#[cfg(feature = "timeseries")]
 pub struct TesseraTimeSeriesBuilder {
     model_id: Option<String>,
     device: Option<Device>,
 }
 
+#[cfg(feature = "timeseries")]
 impl TesseraTimeSeriesBuilder {
     /// Create new time series builder.
     #[must_use]
@@ -842,6 +845,7 @@ impl TesseraTimeSeriesBuilder {
     }
 }
 
+#[cfg(feature = "timeseries")]
 impl Default for TesseraTimeSeriesBuilder {
     fn default() -> Self {
         Self::new()

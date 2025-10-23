@@ -510,6 +510,7 @@ pub trait VisionEncoder: Encoder<Output = VisionEmbedding> {
 /// # Example Models
 /// - amazon/chronos-bolt-small
 /// - google/timesfm-1.0-200m
+#[cfg(feature = "timeseries")]
 #[derive(Debug, Clone)]
 pub struct TimeSeriesEmbedding {
     /// Embedding vectors: [`num_series`, `embedding_dim`]
@@ -533,6 +534,7 @@ pub struct TimeSeriesEmbedding {
     pub source: Option<String>,
 }
 
+#[cfg(feature = "timeseries")]
 impl TimeSeriesEmbedding {
     /// Create a new time series embedding.
     ///
@@ -603,6 +605,7 @@ impl TimeSeriesEmbedding {
 /// # Example Models
 /// - amazon/chronos-bolt-small (512-dim)
 /// - google/timesfm-1.0-200m (1280-dim)
+#[cfg(feature = "timeseries")]
 pub trait TimeSeriesEncoder: Encoder<Output = TimeSeriesEmbedding> {
     /// Get the embedding dimension.
     ///

@@ -246,7 +246,8 @@
 //! - `metal` - Apple Silicon acceleration (macOS only)
 //! - `cuda` - NVIDIA GPU acceleration
 //! - `pdf` - PDF rendering for ColPali document processing (enabled by default)
-//! - `python` - PyO3 bindings for Python support
+//! - `python` - PyO3 bindings for Python support (includes timeseries)
+//! - `timeseries` - Time series forecasting with Chronos Bolt (requires candle fork)
 //! - `wasm` - WebAssembly bindings (experimental)
 //!
 //! # Architecture
@@ -297,7 +298,7 @@
 //! - [`TesseraMultiVector`] - Multi-vector ColBERT API
 //! - [`TesseraSparse`] - Sparse SPLADE API
 //! - [`TesseraVision`] - Vision-language ColPali API
-//! - [`TesseraTimeSeries`] - Time series forecasting API
+//! - [`TesseraTimeSeries`] - Time series forecasting API (requires `timeseries` feature)
 //! - [`ModelConfig`] - Model configuration and registry
 //! - [`QuantizationConfig`] - Quantization options
 
@@ -309,6 +310,7 @@ pub mod encoding;
 pub mod error;
 pub mod models;
 pub mod quantization;
+#[cfg(feature = "timeseries")]
 pub mod timeseries;
 pub mod utils;
 pub mod vision;
@@ -317,8 +319,10 @@ pub mod vision;
 pub use api::{
     QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
     TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
-    TesseraTimeSeries, TesseraTimeSeriesBuilder, TesseraVision, TesseraVisionBuilder,
+    TesseraVision, TesseraVisionBuilder,
 };
+#[cfg(feature = "timeseries")]
+pub use api::{TesseraTimeSeries, TesseraTimeSeriesBuilder};
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;

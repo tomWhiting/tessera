@@ -40,5 +40,7 @@ pub use tokenizer::Tokenizer;
 // Export new unified trait hierarchy
 pub use embeddings::{
     DenseEmbedding, DenseEncoder, Encoder, MultiVectorEncoder, PoolingStrategy, SparseEmbedding,
-    SparseEncoder, TimeSeriesEmbedding, TimeSeriesEncoder, VisionEmbedding, VisionEncoder,
+    SparseEncoder, VisionEmbedding, VisionEncoder,
 };
+#[cfg(feature = "timeseries")]
+pub use embeddings::{TimeSeriesEmbedding, TimeSeriesEncoder};

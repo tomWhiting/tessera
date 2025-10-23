@@ -49,9 +49,12 @@ pub mod embedder;
 
 pub use builder::{
     QuantizationConfig, TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder,
-    TesseraTimeSeriesBuilder, TesseraVisionBuilder,
+    TesseraVisionBuilder,
 };
+#[cfg(feature = "timeseries")]
+pub use builder::TesseraTimeSeriesBuilder;
 pub use embedder::{
-    QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector, TesseraSparse,
-    TesseraTimeSeries, TesseraVision,
+    QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision,
 };
+#[cfg(feature = "timeseries")]
+pub use embedder::TesseraTimeSeries;

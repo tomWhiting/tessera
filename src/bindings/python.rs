@@ -962,13 +962,13 @@ impl PyTesseraVision {
 // PyTesseraTimeSeries - Time Series Forecasting
 // ============================================================================
 
-#[cfg(feature = "python")]
+#[cfg(all(feature = "python", feature = "timeseries"))]
 #[pyclass(name = "TesseraTimeSeries")]
 pub struct PyTesseraTimeSeries {
     inner: crate::api::TesseraTimeSeries,
 }
 
-#[cfg(feature = "python")]
+#[cfg(all(feature = "python", feature = "timeseries"))]
 #[pymethods]
 impl PyTesseraTimeSeries {
     /// Create a new time series forecaster.
@@ -1120,9 +1120,11 @@ fn tessera(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyTesseraMultiVector>()?;
     m.add_class::<PyTesseraSparse>()?;
     m.add_class::<PyTesseraVision>()?;
+    #[cfg(feature = "timeseries")]
     m.add_class::<PyTesseraTimeSeries>()?;
 
     // Add module docstring
+    #[cfg(feature = "timeseries")]
     let doc = "Tessera: Multi-paradigm embedding library for Rust\n\n\
         Provides production-ready embeddings with GPU acceleration.\n\n\
         Supports:\n\
@@ -1146,6 +1148,31 @@ fn tessera(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         >>> indices, values = sparse.encode('machine learning')\n\
         >>> print(f'Non-zero dims: {len(indices)}')  # ~100-200\n\
     ";
+
+    #[cfg(not(feature = "timeseries"))]
+    let doc = "Tessera: Multi-paradigm embedding library for Rust\n\n\
+        Provides production-ready embeddings with GPU acceleration.\n\n\
+        Supports:\n\
+        - Dense embeddings (TesseraDense): Single-vector sentence embeddings\n\
+        - Multi-vector embeddings (TesseraMultiVector): ColBERT token-level embeddings\n\
+        - Sparse embeddings (TesseraSparse): SPLADE vocabulary-space embeddings\n\
+        - Vision-language (TesseraVision): ColPali document retrieval\n\n\
+        Examples:\n\
+        >>> from tessera import TesseraDense, TesseraMultiVector, TesseraSparse\n\
+        >>> # Dense embeddings\n\
+        >>> dense = TesseraDense('bge-base-en-v1.5')\n\
+        >>> emb = dense.encode('What is machine learning?')\n\
+        >>> print(emb.shape)  # (768,)\n\n\
+        >>> # Multi-vector embeddings\n\
+        >>> colbert = TesseraMultiVector('colbert-v2')\n\
+        >>> embs = colbert.encode('What is machine learning?')\n\
+        >>> print(embs.shape)  # (num_tokens, 128)\n\n\
+        >>> # Sparse embeddings\n\
+        >>> sparse = TesseraSparse('splade-cocondenser')\n\
+        >>> indices, values = sparse.encode('machine learning')\n\
+        >>> print(f'Non-zero dims: {len(indices)}')  # ~100-200\n\
+    ";
+
     m.add("__doc__", doc)?;
 
     // Add version

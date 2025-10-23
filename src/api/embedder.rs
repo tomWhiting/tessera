@@ -21,9 +21,10 @@
 //! ```
 
 use crate::api::{
-    TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraTimeSeriesBuilder,
-    TesseraVisionBuilder,
+    TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder, TesseraVisionBuilder,
 };
+#[cfg(feature = "timeseries")]
+use crate::api::TesseraTimeSeriesBuilder;
 use crate::backends::CandleBertEncoder;
 use crate::core::{
     DenseEmbedding, DenseEncoder, Encoder, SparseEmbedding, TokenEmbedder, TokenEmbeddings,
@@ -37,8 +38,10 @@ use crate::models::registry::{get_model, ModelType};
 use crate::quantization::{
     binary::BinaryVector, multi_vector_distance, quantize_multi, BinaryQuantization,
 };
+#[cfg(feature = "timeseries")]
 use crate::timeseries::models::ChronosBolt;
 use crate::utils::similarity::max_sim;
+#[cfg(feature = "timeseries")]
 use candle_core::Tensor;
 use std::path::Path;
 
@@ -1121,6 +1124,7 @@ impl TesseraVision {
 /// quantification and point forecasts (median).
 ///
 /// Thread-safe and can be shared across threads.
+#[cfg(feature = "timeseries")]
 pub struct TesseraTimeSeries {
     /// Backend encoder (`ChronosBolt` model)
     encoder: ChronosBolt,
@@ -1128,6 +1132,7 @@ pub struct TesseraTimeSeries {
     model_id: String,
 }
 
+#[cfg(feature = "timeseries")]
 impl TesseraTimeSeries {
     /// Create a new time series forecaster with default configuration.
     ///
@@ -1385,6 +1390,7 @@ pub enum Tessera {
     /// Vision-language ColPali-style embedder
     Vision(TesseraVision),
     /// Time series forecasting embedder
+    #[cfg(feature = "timeseries")]
     TimeSeries(TesseraTimeSeries),
 }
 
@@ -1447,10 +1453,15 @@ impl Tessera {
                 let vision = TesseraVision::new(model_id)?;
                 Ok(Self::Vision(vision))
             }
+            #[cfg(feature = "timeseries")]
             ModelType::Timeseries => {
                 let timeseries = TesseraTimeSeries::new(model_id)?;
                 Ok(Self::TimeSeries(timeseries))
             }
+            #[cfg(not(feature = "timeseries"))]
+            ModelType::Timeseries => Err(TesseraError::ConfigError(
+                "Time series models require the 'timeseries' feature. Enable it in Cargo.toml with: features = [\"timeseries\"]".to_string()
+            )),
             ModelType::Unified => Err(TesseraError::ConfigError(
                 "Model type 'Unified' is not yet supported. Currently supported: Dense, Colbert (MultiVector), Sparse, VisionLanguage, Timeseries".to_string()
             )),
