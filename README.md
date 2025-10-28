@@ -13,7 +13,7 @@ Tessera provides state-of-the-art text and document embeddings through five comp
 ### Rust
 
 ```bash
-cargo add tessera
+cargo add tessera-embeddings
 ```
 
 ### Python
