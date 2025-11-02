@@ -180,434 +180,6 @@ pub struct ModelInfo {
     pub description: &'static str,
 }
 
-/// TimesFM 1.0 200M
-///
-/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
-///
-/// - Organization: Google Research
-/// - Release: 2024
-/// - Parameters: 200M
-/// - Embedding dim: 1280
-/// - Context length: 512
-/// - Languages: 0
-pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
-    id: "timesfm-1.0-200m",
-    model_type: ModelType::Timeseries,
-    name: "TimesFM 1.0 200M",
-    huggingface_id: "google/timesfm-1.0-200m",
-    organization: "Google Research",
-    release_date: "2024",
-    architecture_type: "decoder-transformer",
-    architecture_variant: "patched-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "200M",
-    embedding_dim: EmbeddingDimension::Fixed(1280),
-    hidden_dim: 1280,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 0,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
-};
-
-/// Chronos Bolt Small
-///
-/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
-///
-/// - Organization: Amazon
-/// - Release: 2024
-/// - Parameters: 48M
-/// - Embedding dim: 512
-/// - Context length: 2048
-/// - Languages: 0
-pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
-    id: "chronos-bolt-small",
-    model_type: ModelType::Timeseries,
-    name: "Chronos Bolt Small",
-    huggingface_id: "amazon/chronos-bolt-small",
-    organization: "Amazon",
-    release_date: "2024",
-    architecture_type: "t5",
-    architecture_variant: "t5-encoder-decoder",
-    has_projection: true,
-    projection_dims: Some(512),
-    pooling: None,
-    parameters: "48M",
-    embedding_dim: EmbeddingDimension::Fixed(512),
-    hidden_dim: 2048,
-    context_length: 2048,
-    max_position_embeddings: 2048,
-    vocab_size: 2,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
-};
-
-/// Pooling configuration for GTE-Qwen2-7B.
-pub const GTE_QWEN2_7B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// GTE-Qwen2-7B
-///
-/// State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.
-///
-/// - Organization: Alibaba
-/// - Release: 2024
-/// - Parameters: 7B
-/// - Embedding dim: 3584 (Matryoshka: 512-3584 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
-    id: "gte-qwen2-7b",
-    model_type: ModelType::Dense,
-    name: "GTE-Qwen2-7B",
-    huggingface_id: "Alibaba-NLP/gte-Qwen2-7B-instruct",
-    organization: "Alibaba",
-    release_date: "2024",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2-7b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(GTE_QWEN2_7B_POOLING),
-    parameters: "7B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 3584, min: 512, max: 3584, supported: &[512, 1024, 2048, 3584], strategy: Some("truncate_pooled") },
-    hidden_dim: 3584,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.62,
-    ms_marco_mrr10: 0.51,
-    license: "Apache-2.0",
-    description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
-};
-
-/// Pooling configuration for Nomic Embed v1.5.
-pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Nomic Embed v1.5
-///
-/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
-///
-/// - Organization: Nomic AI
-/// - Release: 2024
-/// - Parameters: 137M
-/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
-/// - Context length: 8192
-/// - Languages: 1
-pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
-    id: "nomic-embed-v1.5",
-    model_type: ModelType::Dense,
-    name: "Nomic Embed v1.5",
-    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
-    organization: "Nomic AI",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "nomic-bert",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
-    parameters: "137M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.54,
-    ms_marco_mrr10: 0.43,
-    license: "Apache-2.0",
-    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
-};
-
-/// Pooling configuration for BGE-Base-EN-v1.5.
-pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// BGE-Base-EN-v1.5
-///
-/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
-///
-/// - Organization: BAAI
-/// - Release: 2023
-/// - Parameters: 109M
-/// - Embedding dim: 768
-/// - Context length: 512
-/// - Languages: 1
-pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
-    id: "bge-base-en-v1.5",
-    model_type: ModelType::Dense,
-    name: "BGE-Base-EN-v1.5",
-    huggingface_id: "BAAI/bge-base-en-v1.5",
-    organization: "BAAI",
-    release_date: "2023",
-    architecture_type: "bert",
-    architecture_variant: "bert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.53,
-    ms_marco_mrr10: 0.42,
-    license: "MIT",
-    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
-};
-
-/// Pooling configuration for Snowflake Arctic Embed L.
-pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Snowflake Arctic Embed L
-///
-/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
-///
-/// - Organization: Snowflake
-/// - Release: 2024
-/// - Parameters: 335M
-/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
-/// - Context length: 512
-/// - Languages: 1
-pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
-    id: "snowflake-arctic-l",
-    model_type: ModelType::Dense,
-    name: "Snowflake Arctic Embed L",
-    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
-    organization: "Snowflake",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-large",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
-    parameters: "335M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.56,
-    ms_marco_mrr10: 0.45,
-    license: "Apache-2.0",
-    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
-};
-
-/// Pooling configuration for Qwen3-Embedding-8B.
-pub const QWEN3_EMBEDDING_8B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Qwen3-Embedding-8B
-///
-/// State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages.
-///
-/// - Organization: Alibaba
-/// - Release: 2025
-/// - Parameters: 8B
-/// - Embedding dim: 4096 (Matryoshka: 32-4096 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const QWEN3_EMBEDDING_8B: ModelInfo = ModelInfo {
-    id: "qwen3-embedding-8b",
-    model_type: ModelType::Dense,
-    name: "Qwen3-Embedding-8B",
-    huggingface_id: "Qwen/Qwen3-Embedding-8B",
-    organization: "Alibaba",
-    release_date: "2025",
-    architecture_type: "qwen3",
-    architecture_variant: "qwen3-8b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(QWEN3_EMBEDDING_8B_POOLING),
-    parameters: "8B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 4096, min: 32, max: 4096, supported: &[32, 64, 128, 256, 512, 1024, 2048, 4096], strategy: Some("truncate_pooled") },
-    hidden_dim: 4096,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages.",
-};
-
-/// Pooling configuration for Qwen3-Embedding-4B.
-pub const QWEN3_EMBEDDING_4B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Qwen3-Embedding-4B
-///
-/// Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages.
-///
-/// - Organization: Alibaba
-/// - Release: 2025
-/// - Parameters: 4B
-/// - Embedding dim: 2560 (Matryoshka: 32-2560 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const QWEN3_EMBEDDING_4B: ModelInfo = ModelInfo {
-    id: "qwen3-embedding-4b",
-    model_type: ModelType::Dense,
-    name: "Qwen3-Embedding-4B",
-    huggingface_id: "Qwen/Qwen3-Embedding-4B",
-    organization: "Alibaba",
-    release_date: "2025",
-    architecture_type: "qwen3",
-    architecture_variant: "qwen3-4b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(QWEN3_EMBEDDING_4B_POOLING),
-    parameters: "4B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 2560, min: 32, max: 2560, supported: &[32, 64, 128, 256, 512, 1024, 2048, 2560], strategy: Some("truncate_pooled") },
-    hidden_dim: 2560,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages.",
-};
-
-/// Pooling configuration for Qwen3-Embedding-0.6B.
-pub const QWEN3_EMBEDDING_0_6B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Qwen3-Embedding-0.6B
-///
-/// Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages.
-///
-/// - Organization: Alibaba
-/// - Release: 2025
-/// - Parameters: 0.6B
-/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const QWEN3_EMBEDDING_0_6B: ModelInfo = ModelInfo {
-    id: "qwen3-embedding-0.6b",
-    model_type: ModelType::Dense,
-    name: "Qwen3-Embedding-0.6B",
-    huggingface_id: "Qwen/Qwen3-Embedding-0.6B",
-    organization: "Alibaba",
-    release_date: "2025",
-    architecture_type: "qwen3",
-    architecture_variant: "qwen3-0.6b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(QWEN3_EMBEDDING_0_6B_POOLING),
-    parameters: "0.6B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages.",
-};
-
-/// Pooling configuration for Jina Embeddings v3.
-pub const JINA_EMBEDDINGS_V3_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Jina Embeddings v3
-///
-/// Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 570M
-/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
-/// - Context length: 8192
-/// - Languages: 12
-pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
-    id: "jina-embeddings-v3",
-    model_type: ModelType::Dense,
-    name: "Jina Embeddings v3",
-    huggingface_id: "jinaai/jina-embeddings-v3",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "xlm-roberta",
-    architecture_variant: "jina-xlm-roberta",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_EMBEDDINGS_V3_POOLING),
-    parameters: "570M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 768, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 250002,
-    languages: &["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
-};
-
 /// ColBERT v2
 ///
 /// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
@@ -1102,20 +674,438 @@ pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
     description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
 };
 
+/// Pooling configuration for GTE-Qwen2-7B.
+pub const GTE_QWEN2_7B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// GTE-Qwen2-7B
+///
+/// State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.
+///
+/// - Organization: Alibaba
+/// - Release: 2024
+/// - Parameters: 7B
+/// - Embedding dim: 3584 (Matryoshka: 512-3584 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 3
+pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
+    id: "gte-qwen2-7b",
+    model_type: ModelType::Dense,
+    name: "GTE-Qwen2-7B",
+    huggingface_id: "Alibaba-NLP/gte-Qwen2-7B-instruct",
+    organization: "Alibaba",
+    release_date: "2024",
+    architecture_type: "qwen2",
+    architecture_variant: "qwen2-7b-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(GTE_QWEN2_7B_POOLING),
+    parameters: "7B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 3584, min: 512, max: 3584, supported: &[512, 1024, 2048, 3584], strategy: Some("truncate_pooled") },
+    hidden_dim: 3584,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "zh", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8", "int4"],
+    beir_avg: 0.62,
+    ms_marco_mrr10: 0.51,
+    license: "Apache-2.0",
+    description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
+};
+
+/// Pooling configuration for Nomic Embed v1.5.
+pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Nomic Embed v1.5
+///
+/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
+///
+/// - Organization: Nomic AI
+/// - Release: 2024
+/// - Parameters: 137M
+/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
+/// - Context length: 8192
+/// - Languages: 1
+pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
+    id: "nomic-embed-v1.5",
+    model_type: ModelType::Dense,
+    name: "Nomic Embed v1.5",
+    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
+    organization: "Nomic AI",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "nomic-bert",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
+    parameters: "137M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.54,
+    ms_marco_mrr10: 0.43,
+    license: "Apache-2.0",
+    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
+};
+
+/// Pooling configuration for BGE-Base-EN-v1.5.
+pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// BGE-Base-EN-v1.5
+///
+/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
+///
+/// - Organization: BAAI
+/// - Release: 2023
+/// - Parameters: 109M
+/// - Embedding dim: 768
+/// - Context length: 512
+/// - Languages: 1
+pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
+    id: "bge-base-en-v1.5",
+    model_type: ModelType::Dense,
+    name: "BGE-Base-EN-v1.5",
+    huggingface_id: "BAAI/bge-base-en-v1.5",
+    organization: "BAAI",
+    release_date: "2023",
+    architecture_type: "bert",
+    architecture_variant: "bert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.53,
+    ms_marco_mrr10: 0.42,
+    license: "MIT",
+    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
+};
+
+/// Pooling configuration for Snowflake Arctic Embed L.
+pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Snowflake Arctic Embed L
+///
+/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
+///
+/// - Organization: Snowflake
+/// - Release: 2024
+/// - Parameters: 335M
+/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
+/// - Context length: 512
+/// - Languages: 1
+pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
+    id: "snowflake-arctic-l",
+    model_type: ModelType::Dense,
+    name: "Snowflake Arctic Embed L",
+    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
+    organization: "Snowflake",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-large",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
+    parameters: "335M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.56,
+    ms_marco_mrr10: 0.45,
+    license: "Apache-2.0",
+    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
+};
+
+/// Pooling configuration for Qwen3-Embedding-8B.
+pub const QWEN3_EMBEDDING_8B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Qwen3-Embedding-8B
+///
+/// State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages.
+///
+/// - Organization: Alibaba
+/// - Release: 2025
+/// - Parameters: 8B
+/// - Embedding dim: 4096 (Matryoshka: 32-4096 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 3
+pub const QWEN3_EMBEDDING_8B: ModelInfo = ModelInfo {
+    id: "qwen3-embedding-8b",
+    model_type: ModelType::Dense,
+    name: "Qwen3-Embedding-8B",
+    huggingface_id: "Qwen/Qwen3-Embedding-8B",
+    organization: "Alibaba",
+    release_date: "2025",
+    architecture_type: "qwen3",
+    architecture_variant: "qwen3-8b-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(QWEN3_EMBEDDING_8B_POOLING),
+    parameters: "8B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 4096, min: 32, max: 4096, supported: &[32, 64, 128, 256, 512, 1024, 2048, 4096], strategy: Some("truncate_pooled") },
+    hidden_dim: 4096,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "zh", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8", "int4"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages.",
+};
+
+/// Pooling configuration for Qwen3-Embedding-4B.
+pub const QWEN3_EMBEDDING_4B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Qwen3-Embedding-4B
+///
+/// Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages.
+///
+/// - Organization: Alibaba
+/// - Release: 2025
+/// - Parameters: 4B
+/// - Embedding dim: 2560 (Matryoshka: 32-2560 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 3
+pub const QWEN3_EMBEDDING_4B: ModelInfo = ModelInfo {
+    id: "qwen3-embedding-4b",
+    model_type: ModelType::Dense,
+    name: "Qwen3-Embedding-4B",
+    huggingface_id: "Qwen/Qwen3-Embedding-4B",
+    organization: "Alibaba",
+    release_date: "2025",
+    architecture_type: "qwen3",
+    architecture_variant: "qwen3-4b-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(QWEN3_EMBEDDING_4B_POOLING),
+    parameters: "4B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 2560, min: 32, max: 2560, supported: &[32, 64, 128, 256, 512, 1024, 2048, 2560], strategy: Some("truncate_pooled") },
+    hidden_dim: 2560,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "zh", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8", "int4"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages.",
+};
+
+/// Pooling configuration for Qwen3-Embedding-0.6B.
+pub const QWEN3_EMBEDDING_0_6B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Qwen3-Embedding-0.6B
+///
+/// Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages.
+///
+/// - Organization: Alibaba
+/// - Release: 2025
+/// - Parameters: 0.6B
+/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 3
+pub const QWEN3_EMBEDDING_0_6B: ModelInfo = ModelInfo {
+    id: "qwen3-embedding-0.6b",
+    model_type: ModelType::Dense,
+    name: "Qwen3-Embedding-0.6B",
+    huggingface_id: "Qwen/Qwen3-Embedding-0.6B",
+    organization: "Alibaba",
+    release_date: "2025",
+    architecture_type: "qwen3",
+    architecture_variant: "qwen3-0.6b-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(QWEN3_EMBEDDING_0_6B_POOLING),
+    parameters: "0.6B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "zh", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8", "int4"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages.",
+};
+
+/// Pooling configuration for Jina Embeddings v3.
+pub const JINA_EMBEDDINGS_V3_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Jina Embeddings v3
+///
+/// Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 570M
+/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
+/// - Context length: 8192
+/// - Languages: 12
+pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v3",
+    model_type: ModelType::Dense,
+    name: "Jina Embeddings v3",
+    huggingface_id: "jinaai/jina-embeddings-v3",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "xlm-roberta",
+    architecture_variant: "jina-xlm-roberta",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_EMBEDDINGS_V3_POOLING),
+    parameters: "570M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 768, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 250002,
+    languages: &["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
+};
+
+/// TimesFM 1.0 200M
+///
+/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
+///
+/// - Organization: Google Research
+/// - Release: 2024
+/// - Parameters: 200M
+/// - Embedding dim: 1280
+/// - Context length: 512
+/// - Languages: 0
+pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
+    id: "timesfm-1.0-200m",
+    model_type: ModelType::Timeseries,
+    name: "TimesFM 1.0 200M",
+    huggingface_id: "google/timesfm-1.0-200m",
+    organization: "Google Research",
+    release_date: "2024",
+    architecture_type: "decoder-transformer",
+    architecture_variant: "patched-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "200M",
+    embedding_dim: EmbeddingDimension::Fixed(1280),
+    hidden_dim: 1280,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 0,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
+};
+
+/// Chronos Bolt Small
+///
+/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
+///
+/// - Organization: Amazon
+/// - Release: 2024
+/// - Parameters: 48M
+/// - Embedding dim: 512
+/// - Context length: 2048
+/// - Languages: 0
+pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
+    id: "chronos-bolt-small",
+    model_type: ModelType::Timeseries,
+    name: "Chronos Bolt Small",
+    huggingface_id: "amazon/chronos-bolt-small",
+    organization: "Amazon",
+    release_date: "2024",
+    architecture_type: "t5",
+    architecture_variant: "t5-encoder-decoder",
+    has_projection: true,
+    projection_dims: Some(512),
+    pooling: None,
+    parameters: "48M",
+    embedding_dim: EmbeddingDimension::Fixed(512),
+    hidden_dim: 2048,
+    context_length: 2048,
+    max_position_embeddings: 2048,
+    vocab_size: 2,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
+};
+
 /// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
-    TIMESFM_1_0_200M,
-    CHRONOS_BOLT_SMALL,
-    GTE_QWEN2_7B,
-    NOMIC_EMBED_V1_5,
-    BGE_BASE_EN_V1_5,
-    SNOWFLAKE_ARCTIC_L,
-    QWEN3_EMBEDDING_8B,
-    QWEN3_EMBEDDING_4B,
-    QWEN3_EMBEDDING_0_6B,
-    JINA_EMBEDDINGS_V3,
     COLBERT_V2,
     COLBERT_SMALL,
     JINA_COLBERT_V2,
@@ -1129,6 +1119,16 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     MINICOIL_V1,
     SPLADE_PP_EN_V1,
     SPLADE_PP_EN_V2,
+    GTE_QWEN2_7B,
+    NOMIC_EMBED_V1_5,
+    BGE_BASE_EN_V1_5,
+    SNOWFLAKE_ARCTIC_L,
+    QWEN3_EMBEDDING_8B,
+    QWEN3_EMBEDDING_4B,
+    QWEN3_EMBEDDING_0_6B,
+    JINA_EMBEDDINGS_V3,
+    TIMESFM_1_0_200M,
+    CHRONOS_BOLT_SMALL,
 ];
 
 
