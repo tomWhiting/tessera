@@ -608,15 +608,15 @@
           "description": "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance."
         },
         {
-          "id": "qwen3-embedding-8b",
+          "id": "jina-embeddings-v2-small-en",
           "type": "dense",
-          "name": "Qwen3-Embedding-8B",
-          "huggingface_id": "Qwen/Qwen3-Embedding-8B",
-          "organization": "Alibaba",
-          "release_date": "2025",
+          "name": "Jina Embeddings v2 Small EN",
+          "huggingface_id": "jinaai/jina-embeddings-v2-small-en",
+          "organization": "Jina AI",
+          "release_date": "2023",
           "architecture": {
-            "type": "qwen3",
-            "variant": "qwen3-8b-decoder",
+            "type": "jina-bert",
+            "variant": "jina-bert-small-en",
             "has_projection": false,
             "projection_dims": null
           },
@@ -625,20 +625,12 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "8B",
-            "embedding_dim": {
-              "default": 4096,
-              "matryoshka": {
-                "min": 32,
-                "max": 4096,
-                "supported": [32, 64, 128, 256, 512, 1024, 2048, 4096],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 4096,
-            "context_length": 32768,
-            "max_position_embeddings": 32768,
-            "vocab_size": 151936
+            "parameters": "33M",
+            "embedding_dim": 512,
+            "hidden_dim": 512,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -649,28 +641,28 @@
             }
           },
           "capabilities": {
-            "languages": ["en", "zh", "multilingual"],
+            "languages": ["en"],
             "modalities": ["text"],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8", "int4"]
+            "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
             "beir_avg": 0.0,
             "ms_marco_mrr10": 0.0
           },
           "license": "Apache-2.0",
-          "description": "State-of-the-art multilingual dense retrieval model based on Qwen3-8B with bidirectional attention. Ranks #1 on MTEB multilingual leaderboard with score of 70.58. Supports Matryoshka dimensions from 32 to 4096 and instruction-aware embeddings across 100+ languages."
+          "description": "Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications."
         },
         {
-          "id": "qwen3-embedding-4b",
+          "id": "jina-embeddings-v2-base-en",
           "type": "dense",
-          "name": "Qwen3-Embedding-4B",
-          "huggingface_id": "Qwen/Qwen3-Embedding-4B",
-          "organization": "Alibaba",
-          "release_date": "2025",
+          "name": "Jina Embeddings v2 Base EN",
+          "huggingface_id": "jinaai/jina-embeddings-v2-base-en",
+          "organization": "Jina AI",
+          "release_date": "2023",
           "architecture": {
-            "type": "qwen3",
-            "variant": "qwen3-4b-decoder",
+            "type": "jina-bert",
+            "variant": "jina-bert-base-en",
             "has_projection": false,
             "projection_dims": null
           },
@@ -679,20 +671,12 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "4B",
-            "embedding_dim": {
-              "default": 2560,
-              "matryoshka": {
-                "min": 32,
-                "max": 2560,
-                "supported": [32, 64, 128, 256, 512, 1024, 2048, 2560],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 2560,
-            "context_length": 32768,
-            "max_position_embeddings": 32768,
-            "vocab_size": 151936
+            "parameters": "137M",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -703,71 +687,17 @@
             }
           },
           "capabilities": {
-            "languages": ["en", "zh", "multilingual"],
+            "languages": ["en"],
             "modalities": ["text"],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8", "int4"]
+            "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
             "beir_avg": 0.0,
             "ms_marco_mrr10": 0.0
           },
           "license": "Apache-2.0",
-          "description": "Efficient multilingual dense retrieval model based on Qwen3-4B. Achieves 69.45 MTEB score with strong retrieval performance. Supports Matryoshka dimensions from 32 to 2560 and instruction-aware embeddings across 100+ languages."
-        },
-        {
-          "id": "qwen3-embedding-0.6b",
-          "type": "dense",
-          "name": "Qwen3-Embedding-0.6B",
-          "huggingface_id": "Qwen/Qwen3-Embedding-0.6B",
-          "organization": "Alibaba",
-          "release_date": "2025",
-          "architecture": {
-            "type": "qwen3",
-            "variant": "qwen3-0.6b-decoder",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "pooling": {
-            "strategy": "mean",
-            "normalize": true
-          },
-          "specs": {
-            "parameters": "0.6B",
-            "embedding_dim": {
-              "default": 1024,
-              "matryoshka": {
-                "min": 32,
-                "max": 1024,
-                "supported": [32, 64, 128, 256, 512, 1024],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 1024,
-            "context_length": 32768,
-            "max_position_embeddings": 32768,
-            "vocab_size": 151936
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": ["en", "zh", "multilingual"],
-            "modalities": ["text"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8", "int4"]
-          },
-          "performance": {
-            "beir_avg": 0.0,
-            "ms_marco_mrr10": 0.0
-          },
-          "license": "Apache-2.0",
-          "description": "Compact multilingual dense retrieval model based on Qwen3-0.6B with 28 layers. Achieves 64.33 MTEB score with efficient inference. Supports Matryoshka dimensions from 32 to 1024 and instruction-aware embeddings across 100+ languages."
+          "description": "Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives."
         },
         {
           "id": "jina-embeddings-v3",

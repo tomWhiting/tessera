@@ -84,10 +84,11 @@
 //! # fn main() -> anyhow::Result<()> {
 //! let embedder = TesseraMultiVector::new("colbert-v2")?;
 //!
-//! let query_vectors = embedder.encode("machine learning algorithms")?;
-//! let doc_vectors = embedder.encode("algorithms for machine learning applications")?;
-//!
-//! let similarity = embedder.similarity_multi_vectors(&query_vectors, &doc_vectors)?;
+//! // Compute similarity between two texts using MaxSim
+//! let similarity = embedder.similarity(
+//!     "machine learning algorithms",
+//!     "algorithms for machine learning applications"
+//! )?;
 //! println!("MaxSim score: {:.4}", similarity);
 //! # Ok(())
 //! # }
@@ -181,13 +182,13 @@
 //! ## Builder Pattern for Configuration
 //!
 //! ```no_run
-//! use tessera::TesseraMultiVector;
+//! use tessera::{TesseraMultiVector, QuantizationConfig};
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! let embedder = TesseraMultiVector::builder()
 //!     .model("jina-colbert-v2")
 //!     .dimension(96)  // Matryoshka support
-//!     .batch_size(32)
+//!     .quantization(QuantizationConfig::Binary)  // Optional: 32x compression
 //!     .build()?;
 //! # Ok(())
 //! # }

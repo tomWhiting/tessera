@@ -153,6 +153,50 @@ pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Ar
     result
 }
 
+/// Last token pooling (weighted by attention mask).
+///
+/// Extracts the embedding of the last valid token in the sequence.
+/// This is used by decoder-based embedding models like Qwen3-Embedding
+/// where the final token accumulates sequence information through
+/// bidirectional attention.
+///
+/// # Arguments
+/// * `token_embeddings` - Token embedding matrix (`num_tokens` × `embedding_dim`)
+/// * `attention_mask` - Binary mask indicating valid tokens (1 = valid, 0 = padding)
+///
+/// # Returns
+/// The last valid token's embedding vector
+///
+/// # Example
+/// ```
+/// use ndarray::array;
+/// use tessera::utils::last_token_pooling;
+///
+/// let embeddings = array![
+///     [1.0, 2.0],  // Token 0 (valid)
+///     [3.0, 4.0],  // Token 1 (valid) <- last valid
+///     [5.0, 6.0],  // Token 2 (padding - ignored)
+/// ];
+/// let mask = vec![1, 1, 0];  // Last token is padding
+///
+/// let pooled = last_token_pooling(&embeddings, &mask);
+/// // Returns token 1: [3.0, 4.0]
+/// assert!((pooled[0] - 3.0).abs() < 1e-6);
+/// assert!((pooled[1] - 4.0).abs() < 1e-6);
+/// ```
+#[must_use]
+pub fn last_token_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
+    // Find the last valid token (last position where mask == 1)
+    let last_valid_idx = attention_mask
+        .iter()
+        .rposition(|&m| m == 1)
+        .unwrap_or(0);
+
+    // Ensure we don't go out of bounds
+    let idx = last_valid_idx.min(token_embeddings.nrows().saturating_sub(1));
+    token_embeddings.row(idx).to_owned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +293,46 @@ mod tests {
         assert_eq!(pooled.len(), 2);
         assert_eq!(pooled[0], 0.0);
         assert_eq!(pooled[1], 0.0);
+    }
+
+    #[test]
+    fn test_last_token_pooling_all_valid() {
+        let embeddings = array![[1.0, 2.0], [3.0, 4.0], [5.0, 6.0],];
+        let mask = vec![1, 1, 1];
+
+        let pooled = last_token_pooling(&embeddings, &mask);
+
+        assert_eq!(pooled.len(), 2);
+        assert!((pooled[0] - 5.0).abs() < 1e-6); // Last token
+        assert!((pooled[1] - 6.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_last_token_pooling_with_padding() {
+        let embeddings = array![
+            [1.0, 2.0],
+            [3.0, 4.0], // Last valid
+            [5.0, 6.0], // Padding
+        ];
+        let mask = vec![1, 1, 0];
+
+        let pooled = last_token_pooling(&embeddings, &mask);
+
+        assert_eq!(pooled.len(), 2);
+        assert!((pooled[0] - 3.0).abs() < 1e-6); // Token 1, not padding
+        assert!((pooled[1] - 4.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_last_token_pooling_single_token() {
+        let embeddings = array![[1.0, 2.0, 3.0],];
+        let mask = vec![1];
+
+        let pooled = last_token_pooling(&embeddings, &mask);
+
+        assert_eq!(pooled.len(), 3);
+        assert_eq!(pooled[0], 1.0);
+        assert_eq!(pooled[1], 2.0);
+        assert_eq!(pooled[2], 3.0);
     }
 }

@@ -268,7 +268,7 @@ fn validate_registry(registry: &ModelRegistry) {
 
             // Validate pooling configuration if present
             if let Some(ref pooling) = model.pooling {
-                let valid_strategies = ["mean", "cls", "max"];
+                let valid_strategies = ["mean", "cls", "max", "last_token"];
                 let strategy_lower = pooling.strategy.to_lowercase();
                 assert!(
                     valid_strategies.contains(&strategy_lower.as_str()),
@@ -347,6 +347,13 @@ pub enum PoolingStrategy {
     ///
     /// Captures the most salient features from any token position.
     Max,
+
+    /// Use the last valid token's embedding.
+    ///
+    /// Used by decoder-based embedding models (e.g., Qwen3-Embedding)
+    /// where bidirectional attention allows the final token to accumulate
+    /// information from the entire sequence.
+    LastToken,
 }
 
 /// Pooling configuration for dense embedding models.
@@ -817,6 +824,7 @@ fn pooling_strategy_to_enum(strategy: &str) -> &'static str {
         "mean" => "PoolingStrategy::Mean",
         "cls" => "PoolingStrategy::Cls",
         "max" => "PoolingStrategy::Max",
+        "last_token" | "lasttoken" => "PoolingStrategy::LastToken",
         _ => panic!("Invalid pooling strategy: {}", strategy),
     }
 }

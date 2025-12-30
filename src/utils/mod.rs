@@ -24,7 +24,7 @@ pub mod pdf;
 pub use batching::{create_attention_mask, pad_sequences};
 pub use matryoshka::{apply_matryoshka, MatryoshkaStrategy};
 pub use normalization::{l2_norm, l2_normalize};
-pub use pooling::{cls_pooling, max_pooling, mean_pooling};
+pub use pooling::{cls_pooling, last_token_pooling, max_pooling, mean_pooling};
 pub use similarity::{cosine_similarity, dot_product, euclidean_distance, max_sim};
 
 #[cfg(feature = "pdf")]

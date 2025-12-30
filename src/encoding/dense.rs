@@ -52,18 +52,37 @@ enum BertVariant {
     Bert(candle_transformers::models::bert::BertModel),
     DistilBert(candle_transformers::models::distilbert::DistilBertModel),
     JinaBert(candle_transformers::models::jina_bert::BertModel),
+    XlmRoberta(candle_transformers::models::xlm_roberta::XLMRobertaModel),
+    ModernBert(candle_transformers::models::modernbert::ModernBert),
+    /// Qwen3 model wrapped in RefCell for interior mutability.
+    /// Needed because forward_embeddings clears KV cache which requires &mut self.
+    Qwen3(std::cell::RefCell<candle_transformers::models::qwen3::Model>),
 }
 
 impl BertVariant {
-    fn forward(&self, token_ids: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
+    fn forward(&self, token_ids: &Tensor, _attention_mask: &Tensor) -> Result<Tensor> {
         match self {
             Self::Bert(model) => model
-                .forward(token_ids, attention_mask, None)
+                .forward(token_ids, _attention_mask, None)
                 .context("BERT forward pass"),
             Self::DistilBert(model) => model
-                .forward(token_ids, attention_mask)
+                .forward(token_ids, _attention_mask)
                 .context("DistilBERT forward pass"),
             Self::JinaBert(model) => model.forward(token_ids).context("JinaBERT forward pass"),
+            Self::XlmRoberta(model) => {
+                // XLM-RoBERTa uses token_type_ids (all zeros for single sequence)
+                let token_type_ids = token_ids.zeros_like().context("Creating token type IDs")?;
+                model
+                    .forward(token_ids, _attention_mask, &token_type_ids, None, None, None)
+                    .context("XLM-RoBERTa forward pass")
+            }
+            Self::ModernBert(model) => model
+                .forward(token_ids, _attention_mask)
+                .context("ModernBERT forward pass"),
+            Self::Qwen3(model) => model
+                .borrow_mut()
+                .forward_embeddings(token_ids)
+                .context("Qwen3 embedding forward pass"),
         }
     }
 }
@@ -72,6 +91,8 @@ impl BertVariant {
 #[derive(Debug, Deserialize)]
 struct ModelTypeDetector {
     model_type: Option<String>,
+    #[serde(default)]
+    architectures: Vec<String>,
     #[serde(default)]
     hidden_size: Option<usize>,
     #[serde(default)]
@@ -125,6 +146,7 @@ impl CandleDenseEncoder {
             crate::models::registry::PoolingStrategy::Cls => PoolingStrategy::Cls,
             crate::models::registry::PoolingStrategy::Mean => PoolingStrategy::Mean,
             crate::models::registry::PoolingStrategy::Max => PoolingStrategy::Max,
+            crate::models::registry::PoolingStrategy::LastToken => PoolingStrategy::LastToken,
         };
 
         // Load tokenizer
@@ -175,6 +197,9 @@ impl CandleDenseEncoder {
         // Create the appropriate model variant with correct prefix
         let model_vb = match (has_prefix, model_type.as_str()) {
             (true, "distilbert") => vb.pp("distilbert"),
+            (true, "xlm-roberta") => vb.pp("roberta"), // XLM-RoBERTa uses "roberta" prefix
+            (true, "modernbert") => vb, // ModernBERT typically doesn't use prefix
+            (_, "qwen3") => vb, // Qwen3 handles "model." prefix internally
             (true, _) => vb.pp("bert"),
             (false, _) => vb, // No prefix (e.g., BGE models)
         };
@@ -196,13 +221,40 @@ impl CandleDenseEncoder {
 
     /// Detects the model type from config
     fn detect_model_type(detector: &ModelTypeDetector) -> Result<String> {
-        // First check explicit model_type field
+        // First check architectures field for specific model variants
+        // This catches cases where model_type is generic "bert" but architecture is specific
+        for arch in &detector.architectures {
+            let arch_lower = arch.to_lowercase();
+            if arch_lower.contains("jinabert") {
+                return Ok("jinabert".to_string());
+            }
+        }
+
+        // Then check explicit model_type field
         if let Some(ref model_type) = detector.model_type {
             let model_type_lower = model_type.to_lowercase();
+
+            // Check for specific model types (order matters - more specific first)
             if model_type_lower.contains("distilbert") {
                 return Ok("distilbert".to_string());
-            } else if model_type_lower.contains("jina") {
+            } else if model_type_lower.contains("jina") || model_type_lower.contains("jinabert") {
                 return Ok("jinabert".to_string());
+            } else if model_type_lower.contains("xlm") && model_type_lower.contains("roberta") {
+                return Ok("xlm-roberta".to_string());
+            } else if model_type_lower == "xlm-roberta" {
+                return Ok("xlm-roberta".to_string());
+            } else if model_type_lower.contains("modernbert") || model_type_lower == "modernbert" {
+                return Ok("modernbert".to_string());
+            } else if model_type_lower.contains("qwen3") {
+                // Qwen3 embedding models use bidirectional attention via forward_embeddings
+                return Ok("qwen3".to_string());
+            } else if model_type_lower.contains("qwen2") || model_type_lower.contains("qwen") {
+                // Qwen2/GTE-Qwen2 models - not yet implemented (TODO: add Qwen2 support)
+                anyhow::bail!(
+                    "Qwen2 embedding models are not yet supported in Tessera. \
+                     Consider using Qwen3 models (qwen3-embedding-0.6b, etc.) or \
+                     a BERT-family model like 'bge-base-en-v1.5' for now.",
+                );
             } else if model_type_lower.contains("bert") {
                 return Ok("bert".to_string());
             }
@@ -236,15 +288,21 @@ impl CandleDenseEncoder {
 
             let tensor_names = tensors.names();
 
-            // Check if any tensor starts with "bert." or "distilbert."
+            // Check if any tensor starts with common prefixes
             // Look for the word embeddings tensor which should always exist
             for name in tensor_names {
                 if name.starts_with("bert.embeddings.word_embeddings") {
                     return Ok(true); // Has "bert." prefix
                 } else if name.starts_with("distilbert.embeddings.word_embeddings") {
                     return Ok(true); // Has "distilbert." prefix
+                } else if name.starts_with("roberta.embeddings.word_embeddings") {
+                    return Ok(true); // Has "roberta." prefix (XLM-RoBERTa)
+                } else if name.starts_with("model.embeddings") {
+                    return Ok(true); // Has "model." prefix (some models)
                 } else if name == "embeddings.word_embeddings.weight" {
                     return Ok(false); // No prefix (e.g., BGE models)
+                } else if name == "word_embeddings.weight" {
+                    return Ok(false); // No prefix (ModernBERT style)
                 }
             }
 
@@ -263,8 +321,14 @@ impl CandleDenseEncoder {
                     return Ok(true);
                 } else if name.starts_with("distilbert.embeddings.word_embeddings") {
                     return Ok(true);
+                } else if name.starts_with("roberta.embeddings.word_embeddings") {
+                    return Ok(true); // XLM-RoBERTa
+                } else if name.starts_with("model.embeddings") {
+                    return Ok(true);
                 } else if name == "embeddings.word_embeddings.weight" {
                     return Ok(false);
+                } else if name == "word_embeddings.weight" {
+                    return Ok(false); // ModernBERT style
                 }
             }
 
@@ -290,6 +354,29 @@ impl CandleDenseEncoder {
                 let model = candle_transformers::models::jina_bert::BertModel::new(vb, &config)
                     .context("Loading JinaBERT model")?;
                 Ok(BertVariant::JinaBert(model))
+            }
+            "xlm-roberta" => {
+                let config: candle_transformers::models::xlm_roberta::Config =
+                    serde_json::from_str(config_str).context("Parsing XLM-RoBERTa config")?;
+                let model =
+                    candle_transformers::models::xlm_roberta::XLMRobertaModel::new(&config, vb)
+                        .context("Loading XLM-RoBERTa model")?;
+                Ok(BertVariant::XlmRoberta(model))
+            }
+            "modernbert" => {
+                let config: candle_transformers::models::modernbert::Config =
+                    serde_json::from_str(config_str).context("Parsing ModernBERT config")?;
+                let model =
+                    candle_transformers::models::modernbert::ModernBert::load(vb, &config)
+                        .context("Loading ModernBERT model")?;
+                Ok(BertVariant::ModernBert(model))
+            }
+            "qwen3" => {
+                let config: candle_transformers::models::qwen3::Config =
+                    serde_json::from_str(config_str).context("Parsing Qwen3 config")?;
+                let model = candle_transformers::models::qwen3::Model::new(&config, vb)
+                    .context("Loading Qwen3 model")?;
+                Ok(BertVariant::Qwen3(std::cell::RefCell::new(model)))
             }
             _ => {
                 let config: candle_transformers::models::bert::Config =
@@ -352,6 +439,9 @@ impl CandleDenseEncoder {
             }
             PoolingStrategy::Max => {
                 crate::utils::pooling::max_pooling(&embeddings_2d, attention_mask)
+            }
+            PoolingStrategy::LastToken => {
+                crate::utils::pooling::last_token_pooling(&embeddings_2d, attention_mask)
             }
         };
 

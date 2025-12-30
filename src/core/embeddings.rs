@@ -276,6 +276,13 @@ pub enum PoolingStrategy {
     ///
     /// Captures the most salient features from any token position.
     Max,
+
+    /// Use the last valid token's embedding.
+    ///
+    /// Used by decoder-based embedding models (e.g., Qwen3-Embedding)
+    /// where bidirectional attention allows the final token to accumulate
+    /// information from the entire sequence.
+    LastToken,
 }
 
 /// Sparse vocabulary-space embedding.
