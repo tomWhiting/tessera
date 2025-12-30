@@ -187,10 +187,7 @@ pub fn max_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Ar
 #[must_use]
 pub fn last_token_pooling(token_embeddings: &Array2<f32>, attention_mask: &[i64]) -> Array1<f32> {
     // Find the last valid token (last position where mask == 1)
-    let last_valid_idx = attention_mask
-        .iter()
-        .rposition(|&m| m == 1)
-        .unwrap_or(0);
+    let last_valid_idx = attention_mask.iter().rposition(|&m| m == 1).unwrap_or(0);
 
     // Ensure we don't go out of bounds
     let idx = last_valid_idx.min(token_embeddings.nrows().saturating_sub(1));
