@@ -40,7 +40,7 @@ safetensors = "0.6"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 thiserror = "2.0.17"
-tokenizers = "0.22.1"
+tokenizers = { version = "0.22.1", features = ["http"] }
 
 # Vision/Image Processing (Phase 3.1 - ColPali)
 image = "0.25"              # Image loading, format conversion, and resizing for vision models
@@ -66,7 +66,7 @@ nursery = "warn"
 
 # Patch candle to use local fork with T5 hidden states support
 [patch.crates-io]
-# Use fork with T5 hidden states exposed for Chronos Bolt
-candle-core = { git = "https://github.com/tomWhiting/candle.git", rev = "cd14fb2" }
-candle-nn = { git = "https://github.com/tomWhiting/candle.git", rev = "cd14fb2" }
-candle-transformers = { git = "https://github.com/tomWhiting/candle.git", rev = "cd14fb2" }
+# Use fork with T5 hidden states, JinaBERT Code, Qwen2 embeddings, and prefix detection
+candle-core = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }
+candle-nn = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }
+candle-transformers = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }

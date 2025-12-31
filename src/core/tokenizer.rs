@@ -14,27 +14,52 @@ pub struct Tokenizer {
 impl Tokenizer {
     /// Loads a tokenizer from the `HuggingFace` Hub.
     ///
+    /// Uses the tokenizers crate's built-in `from_pretrained` which handles
+    /// different tokenizer formats automatically (tokenizer.json, vocab.json + merges.txt, etc.)
+    ///
+    /// For fine-tuned models that don't include tokenizer files, this falls back to
+    /// loading from the base model (e.g., Jina Code Embeddings → Qwen2.5-Coder).
+    ///
     /// # Arguments
     /// * `model_name` - Name of the model on `HuggingFace` Hub (e.g., "bert-base-uncased")
     ///
     /// # Returns
     /// A new Tokenizer instance
     pub fn from_pretrained(model_name: &str) -> Result<Self> {
-        // Download tokenizer file from HuggingFace Hub
-        let api =
-            hf_hub::api::sync::Api::new().context("Failed to initialize HuggingFace Hub API")?;
-        let repo = api.model(model_name.to_string());
+        // Use tokenizers crate's built-in from_pretrained (requires "http" feature)
+        // This handles different tokenizer formats: tokenizer.json, vocab.json + merges.txt, etc.
+        match HfTokenizer::from_pretrained(model_name, None) {
+            Ok(inner) => Ok(Self { inner }),
+            Err(e) => {
+                // Try fallback tokenizers for known model families without tokenizer.json
+                let fallback = Self::get_fallback_tokenizer(model_name);
+                if let Some(fallback_model) = fallback {
+                    HfTokenizer::from_pretrained(fallback_model, None)
+                        .map(|inner| Self { inner })
+                        .map_err(|e2| anyhow::anyhow!("Failed to load tokenizer from {model_name} or fallback {fallback_model}: {e2}"))
+                        .with_context(|| format!("Loading tokenizer for model: {model_name}"))
+                } else {
+                    Err(anyhow::anyhow!("Failed to load tokenizer: {e}"))
+                        .with_context(|| format!("Loading tokenizer for model: {model_name}"))
+                }
+            }
+        }
+    }
 
-        let tokenizer_path = repo
-            .get("tokenizer.json")
-            .with_context(|| format!("Downloading tokenizer for {model_name}"))?;
+    /// Returns a fallback tokenizer model for known fine-tuned models that don't include tokenizer files.
+    fn get_fallback_tokenizer(model_name: &str) -> Option<&'static str> {
+        let name_lower = model_name.to_lowercase();
 
-        // Load tokenizer from file
-        let inner = HfTokenizer::from_file(&tokenizer_path)
-            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {e}"))
-            .with_context(|| format!("Loading tokenizer for model: {model_name}"))?;
+        // Jina Code Embeddings are fine-tuned from Qwen2.5-Coder
+        if name_lower.contains("jina-code-embeddings") {
+            if name_lower.contains("0.5b") {
+                return Some("Qwen/Qwen2.5-Coder-0.5B");
+            } else if name_lower.contains("1.5b") {
+                return Some("Qwen/Qwen2.5-Coder-1.5B");
+            }
+        }
 
-        Ok(Self { inner })
+        None
     }
 
     /// Encodes text into token IDs.

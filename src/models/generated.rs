@@ -415,6 +415,446 @@ pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
     description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
 };
 
+/// Pooling configuration for GTE-Qwen2-7B.
+pub const GTE_QWEN2_7B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// GTE-Qwen2-7B
+///
+/// State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.
+///
+/// - Organization: Alibaba
+/// - Release: 2024
+/// - Parameters: 7B
+/// - Embedding dim: 3584 (Matryoshka: 512-3584 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 3
+pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
+    id: "gte-qwen2-7b",
+    model_type: ModelType::Dense,
+    name: "GTE-Qwen2-7B",
+    huggingface_id: "Alibaba-NLP/gte-Qwen2-7B-instruct",
+    organization: "Alibaba",
+    release_date: "2024",
+    architecture_type: "qwen2",
+    architecture_variant: "qwen2-7b-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(GTE_QWEN2_7B_POOLING),
+    parameters: "7B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 3584, min: 512, max: 3584, supported: &[512, 1024, 2048, 3584], strategy: Some("truncate_pooled") },
+    hidden_dim: 3584,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "zh", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8", "int4"],
+    beir_avg: 0.62,
+    ms_marco_mrr10: 0.51,
+    license: "Apache-2.0",
+    description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
+};
+
+/// Pooling configuration for Nomic Embed v1.5.
+pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Nomic Embed v1.5
+///
+/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
+///
+/// - Organization: Nomic AI
+/// - Release: 2024
+/// - Parameters: 137M
+/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
+/// - Context length: 8192
+/// - Languages: 1
+pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
+    id: "nomic-embed-v1.5",
+    model_type: ModelType::Dense,
+    name: "Nomic Embed v1.5",
+    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
+    organization: "Nomic AI",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "nomic-bert",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
+    parameters: "137M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.54,
+    ms_marco_mrr10: 0.43,
+    license: "Apache-2.0",
+    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
+};
+
+/// Pooling configuration for BGE-Base-EN-v1.5.
+pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// BGE-Base-EN-v1.5
+///
+/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
+///
+/// - Organization: BAAI
+/// - Release: 2023
+/// - Parameters: 109M
+/// - Embedding dim: 768
+/// - Context length: 512
+/// - Languages: 1
+pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
+    id: "bge-base-en-v1.5",
+    model_type: ModelType::Dense,
+    name: "BGE-Base-EN-v1.5",
+    huggingface_id: "BAAI/bge-base-en-v1.5",
+    organization: "BAAI",
+    release_date: "2023",
+    architecture_type: "bert",
+    architecture_variant: "bert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.53,
+    ms_marco_mrr10: 0.42,
+    license: "MIT",
+    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
+};
+
+/// Pooling configuration for Snowflake Arctic Embed L.
+pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Snowflake Arctic Embed L
+///
+/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
+///
+/// - Organization: Snowflake
+/// - Release: 2024
+/// - Parameters: 335M
+/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
+/// - Context length: 512
+/// - Languages: 1
+pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
+    id: "snowflake-arctic-l",
+    model_type: ModelType::Dense,
+    name: "Snowflake Arctic Embed L",
+    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
+    organization: "Snowflake",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-large",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
+    parameters: "335M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.56,
+    ms_marco_mrr10: 0.45,
+    license: "Apache-2.0",
+    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
+};
+
+/// Pooling configuration for Jina Embeddings v2 Small EN.
+pub const JINA_EMBEDDINGS_V2_SMALL_EN_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Jina Embeddings v2 Small EN
+///
+/// Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications.
+///
+/// - Organization: Jina AI
+/// - Release: 2023
+/// - Parameters: 33M
+/// - Embedding dim: 512
+/// - Context length: 8192
+/// - Languages: 1
+pub const JINA_EMBEDDINGS_V2_SMALL_EN: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v2-small-en",
+    model_type: ModelType::Dense,
+    name: "Jina Embeddings v2 Small EN",
+    huggingface_id: "jinaai/jina-embeddings-v2-small-en",
+    organization: "Jina AI",
+    release_date: "2023",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-small-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_EMBEDDINGS_V2_SMALL_EN_POOLING),
+    parameters: "33M",
+    embedding_dim: EmbeddingDimension::Fixed(512),
+    hidden_dim: 512,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications.",
+};
+
+/// Pooling configuration for Jina Embeddings v2 BASE CODE.
+pub const JINA_EMBEDDINGS_V2_BASE_CODE_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Jina Embeddings v2 BASE CODE
+///
+/// Compact Code embedding model with 8K context via ALiBi positional encoding. Only 161 parameters with 768-dimensional embeddings.
+///
+/// - Organization: Jina AI
+/// - Release: 2023
+/// - Parameters: 161M
+/// - Embedding dim: 768
+/// - Context length: 8192
+/// - Languages: 1
+pub const JINA_EMBEDDINGS_V2_BASE_CODE: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v2-base-code",
+    model_type: ModelType::Dense,
+    name: "Jina Embeddings v2 BASE CODE",
+    huggingface_id: "jinaai/jina-embeddings-v2-base-code",
+    organization: "Jina AI",
+    release_date: "2023",
+    architecture_type: "jina-bert-v2",
+    architecture_variant: "jina-bert-v2-base-code",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_EMBEDDINGS_V2_BASE_CODE_POOLING),
+    parameters: "161M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 61056,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Compact Code embedding model with 8K context via ALiBi positional encoding. Only 161 parameters with 768-dimensional embeddings.",
+};
+
+/// Pooling configuration for Jina Embeddings v2 Base EN.
+pub const JINA_EMBEDDINGS_V2_BASE_EN_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Jina Embeddings v2 Base EN
+///
+/// Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives.
+///
+/// - Organization: Jina AI
+/// - Release: 2023
+/// - Parameters: 137M
+/// - Embedding dim: 768
+/// - Context length: 8192
+/// - Languages: 1
+pub const JINA_EMBEDDINGS_V2_BASE_EN: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v2-base-en",
+    model_type: ModelType::Dense,
+    name: "Jina Embeddings v2 Base EN",
+    huggingface_id: "jinaai/jina-embeddings-v2-base-en",
+    organization: "Jina AI",
+    release_date: "2023",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_EMBEDDINGS_V2_BASE_EN_POOLING),
+    parameters: "137M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives.",
+};
+
+/// Pooling configuration for Jina Code Embeddings 1.5B.
+pub const JINA_CODE_EMBEDDINGS_1_5B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::LastToken,
+    normalize: true,
+};
+
+/// Jina Code Embeddings 1.5B
+///
+/// Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.
+///
+/// - Organization: Jina AI
+/// - Release: 2025
+/// - Parameters: 1.5B
+/// - Embedding dim: 1536 (Matryoshka: 128-1536 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 16
+pub const JINA_CODE_EMBEDDINGS_1_5B: ModelInfo = ModelInfo {
+    id: "jina-code-embeddings-1.5b",
+    model_type: ModelType::Dense,
+    name: "Jina Code Embeddings 1.5B",
+    huggingface_id: "jinaai/jina-code-embeddings-1.5b",
+    organization: "Jina AI",
+    release_date: "2025",
+    architecture_type: "qwen2",
+    architecture_variant: "qwen2.5-coder-1.5b",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_CODE_EMBEDDINGS_1_5B_POOLING),
+    parameters: "1.5B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1536, min: 128, max: 1536, supported: &[128, 256, 512, 768, 1024, 1536], strategy: Some("truncate_pooled") },
+    hidden_dim: 1536,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
+    modalities: &["text", "code"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.",
+};
+
+/// Pooling configuration for Jina Code Embeddings 0.5B.
+pub const JINA_CODE_EMBEDDINGS_0_5B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::LastToken,
+    normalize: true,
+};
+
+/// Jina Code Embeddings 0.5B
+///
+/// Compact code embedding model based on Qwen2.5-Coder-0.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (64-896 dims). Lighter-weight alternative for code search and retrieval.
+///
+/// - Organization: Jina AI
+/// - Release: 2025
+/// - Parameters: 0.5B
+/// - Embedding dim: 896 (Matryoshka: 64-896 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 16
+pub const JINA_CODE_EMBEDDINGS_0_5B: ModelInfo = ModelInfo {
+    id: "jina-code-embeddings-0.5b",
+    model_type: ModelType::Dense,
+    name: "Jina Code Embeddings 0.5B",
+    huggingface_id: "jinaai/jina-code-embeddings-0.5b",
+    organization: "Jina AI",
+    release_date: "2025",
+    architecture_type: "qwen2",
+    architecture_variant: "qwen2.5-coder-0.5b",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_CODE_EMBEDDINGS_0_5B_POOLING),
+    parameters: "0.5B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 896, min: 64, max: 896, supported: &[64, 128, 256, 512, 768, 896], strategy: Some("truncate_pooled") },
+    hidden_dim: 896,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
+    modalities: &["text", "code"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Compact code embedding model based on Qwen2.5-Coder-0.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (64-896 dims). Lighter-weight alternative for code search and retrieval.",
+};
+
+/// Pooling configuration for Jina Embeddings v3.
+pub const JINA_EMBEDDINGS_V3_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Jina Embeddings v3
+///
+/// Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 570M
+/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
+/// - Context length: 8192
+/// - Languages: 12
+pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v3",
+    model_type: ModelType::Dense,
+    name: "Jina Embeddings v3",
+    huggingface_id: "jinaai/jina-embeddings-v3",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "xlm-roberta",
+    architecture_variant: "jina-xlm-roberta",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_EMBEDDINGS_V3_POOLING),
+    parameters: "570M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 768, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 250002,
+    languages: &["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
+};
+
 /// ColBERT v2
 ///
 /// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
@@ -757,314 +1197,6 @@ pub const BGE_M3_MULTI: ModelInfo = ModelInfo {
     description: "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.",
 };
 
-/// Pooling configuration for GTE-Qwen2-7B.
-pub const GTE_QWEN2_7B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// GTE-Qwen2-7B
-///
-/// State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.
-///
-/// - Organization: Alibaba
-/// - Release: 2024
-/// - Parameters: 7B
-/// - Embedding dim: 3584 (Matryoshka: 512-3584 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
-    id: "gte-qwen2-7b",
-    model_type: ModelType::Dense,
-    name: "GTE-Qwen2-7B",
-    huggingface_id: "Alibaba-NLP/gte-Qwen2-7B-instruct",
-    organization: "Alibaba",
-    release_date: "2024",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2-7b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(GTE_QWEN2_7B_POOLING),
-    parameters: "7B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 3584, min: 512, max: 3584, supported: &[512, 1024, 2048, 3584], strategy: Some("truncate_pooled") },
-    hidden_dim: 3584,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.62,
-    ms_marco_mrr10: 0.51,
-    license: "Apache-2.0",
-    description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
-};
-
-/// Pooling configuration for Nomic Embed v1.5.
-pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Nomic Embed v1.5
-///
-/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
-///
-/// - Organization: Nomic AI
-/// - Release: 2024
-/// - Parameters: 137M
-/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
-/// - Context length: 8192
-/// - Languages: 1
-pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
-    id: "nomic-embed-v1.5",
-    model_type: ModelType::Dense,
-    name: "Nomic Embed v1.5",
-    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
-    organization: "Nomic AI",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "nomic-bert",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
-    parameters: "137M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.54,
-    ms_marco_mrr10: 0.43,
-    license: "Apache-2.0",
-    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
-};
-
-/// Pooling configuration for BGE-Base-EN-v1.5.
-pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// BGE-Base-EN-v1.5
-///
-/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
-///
-/// - Organization: BAAI
-/// - Release: 2023
-/// - Parameters: 109M
-/// - Embedding dim: 768
-/// - Context length: 512
-/// - Languages: 1
-pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
-    id: "bge-base-en-v1.5",
-    model_type: ModelType::Dense,
-    name: "BGE-Base-EN-v1.5",
-    huggingface_id: "BAAI/bge-base-en-v1.5",
-    organization: "BAAI",
-    release_date: "2023",
-    architecture_type: "bert",
-    architecture_variant: "bert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.53,
-    ms_marco_mrr10: 0.42,
-    license: "MIT",
-    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
-};
-
-/// Pooling configuration for Snowflake Arctic Embed L.
-pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Snowflake Arctic Embed L
-///
-/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
-///
-/// - Organization: Snowflake
-/// - Release: 2024
-/// - Parameters: 335M
-/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
-/// - Context length: 512
-/// - Languages: 1
-pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
-    id: "snowflake-arctic-l",
-    model_type: ModelType::Dense,
-    name: "Snowflake Arctic Embed L",
-    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
-    organization: "Snowflake",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-large",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
-    parameters: "335M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.56,
-    ms_marco_mrr10: 0.45,
-    license: "Apache-2.0",
-    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
-};
-
-/// Pooling configuration for Jina Embeddings v2 Small EN.
-pub const JINA_EMBEDDINGS_V2_SMALL_EN_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Jina Embeddings v2 Small EN
-///
-/// Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications.
-///
-/// - Organization: Jina AI
-/// - Release: 2023
-/// - Parameters: 33M
-/// - Embedding dim: 512
-/// - Context length: 8192
-/// - Languages: 1
-pub const JINA_EMBEDDINGS_V2_SMALL_EN: ModelInfo = ModelInfo {
-    id: "jina-embeddings-v2-small-en",
-    model_type: ModelType::Dense,
-    name: "Jina Embeddings v2 Small EN",
-    huggingface_id: "jinaai/jina-embeddings-v2-small-en",
-    organization: "Jina AI",
-    release_date: "2023",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-small-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_EMBEDDINGS_V2_SMALL_EN_POOLING),
-    parameters: "33M",
-    embedding_dim: EmbeddingDimension::Fixed(512),
-    hidden_dim: 512,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications.",
-};
-
-/// Pooling configuration for Jina Embeddings v2 Base EN.
-pub const JINA_EMBEDDINGS_V2_BASE_EN_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Jina Embeddings v2 Base EN
-///
-/// Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives.
-///
-/// - Organization: Jina AI
-/// - Release: 2023
-/// - Parameters: 137M
-/// - Embedding dim: 768
-/// - Context length: 8192
-/// - Languages: 1
-pub const JINA_EMBEDDINGS_V2_BASE_EN: ModelInfo = ModelInfo {
-    id: "jina-embeddings-v2-base-en",
-    model_type: ModelType::Dense,
-    name: "Jina Embeddings v2 Base EN",
-    huggingface_id: "jinaai/jina-embeddings-v2-base-en",
-    organization: "Jina AI",
-    release_date: "2023",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_EMBEDDINGS_V2_BASE_EN_POOLING),
-    parameters: "137M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives.",
-};
-
-/// Pooling configuration for Jina Embeddings v3.
-pub const JINA_EMBEDDINGS_V3_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Jina Embeddings v3
-///
-/// Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 570M
-/// - Embedding dim: 1024 (Matryoshka: 32-1024 [\truncate_pooled\])
-/// - Context length: 8192
-/// - Languages: 12
-pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
-    id: "jina-embeddings-v3",
-    model_type: ModelType::Dense,
-    name: "Jina Embeddings v3",
-    huggingface_id: "jinaai/jina-embeddings-v3",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "xlm-roberta",
-    architecture_variant: "jina-xlm-roberta",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_EMBEDDINGS_V3_POOLING),
-    parameters: "570M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 32, max: 1024, supported: &[32, 64, 128, 256, 512, 768, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 250002,
-    languages: &["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
-};
-
 /// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
@@ -1075,6 +1207,16 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     SPLADE_PP_EN_V2,
     TIMESFM_1_0_200M,
     CHRONOS_BOLT_SMALL,
+    GTE_QWEN2_7B,
+    NOMIC_EMBED_V1_5,
+    BGE_BASE_EN_V1_5,
+    SNOWFLAKE_ARCTIC_L,
+    JINA_EMBEDDINGS_V2_SMALL_EN,
+    JINA_EMBEDDINGS_V2_BASE_CODE,
+    JINA_EMBEDDINGS_V2_BASE_EN,
+    JINA_CODE_EMBEDDINGS_1_5B,
+    JINA_CODE_EMBEDDINGS_0_5B,
+    JINA_EMBEDDINGS_V3,
     COLBERT_V2,
     COLBERT_SMALL,
     JINA_COLBERT_V2,
@@ -1084,13 +1226,6 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     COLPALI_V1_3_HF,
     GTE_MODERN_COLBERT,
     BGE_M3_MULTI,
-    GTE_QWEN2_7B,
-    NOMIC_EMBED_V1_5,
-    BGE_BASE_EN_V1_5,
-    SNOWFLAKE_ARCTIC_L,
-    JINA_EMBEDDINGS_V2_SMALL_EN,
-    JINA_EMBEDDINGS_V2_BASE_EN,
-    JINA_EMBEDDINGS_V3,
 ];
 
 

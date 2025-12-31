@@ -52,8 +52,13 @@ enum BertVariant {
     Bert(candle_transformers::models::bert::BertModel),
     DistilBert(candle_transformers::models::distilbert::DistilBertModel),
     JinaBert(candle_transformers::models::jina_bert::BertModel),
+    /// JinaBERT Code model variant (different FFN structure from standard JinaBERT)
+    JinaBertCode(candle_transformers::models::jina_bert_code::BertModel),
     XlmRoberta(candle_transformers::models::xlm_roberta::XLMRobertaModel),
     ModernBert(candle_transformers::models::modernbert::ModernBert),
+    /// Qwen2 model wrapped in RefCell for interior mutability.
+    /// Used for jina-code-embeddings and GTE-Qwen2 models.
+    Qwen2(std::cell::RefCell<candle_transformers::models::qwen2::Model>),
     /// Qwen3 model wrapped in RefCell for interior mutability.
     /// Needed because forward_embeddings clears KV cache which requires &mut self.
     Qwen3(std::cell::RefCell<candle_transformers::models::qwen3::Model>),
@@ -69,6 +74,9 @@ impl BertVariant {
                 .forward(token_ids, _attention_mask)
                 .context("DistilBERT forward pass"),
             Self::JinaBert(model) => model.forward(token_ids).context("JinaBERT forward pass"),
+            Self::JinaBertCode(model) => {
+                model.forward(token_ids).context("JinaBERT Code forward pass")
+            }
             Self::XlmRoberta(model) => {
                 // XLM-RoBERTa uses token_type_ids (all zeros for single sequence)
                 let token_type_ids = token_ids.zeros_like().context("Creating token type IDs")?;
@@ -79,6 +87,10 @@ impl BertVariant {
             Self::ModernBert(model) => model
                 .forward(token_ids, _attention_mask)
                 .context("ModernBERT forward pass"),
+            Self::Qwen2(model) => model
+                .borrow_mut()
+                .forward_embeddings(token_ids)
+                .context("Qwen2 embedding forward pass"),
             Self::Qwen3(model) => model
                 .borrow_mut()
                 .forward_embeddings(token_ids)
@@ -170,7 +182,7 @@ impl CandleDenseEncoder {
         let detector: ModelTypeDetector =
             serde_json::from_str(&config_str).context("Parsing config to detect model type")?;
 
-        let model_type = Self::detect_model_type(&detector)
+        let mut model_type = Self::detect_model_type(&detector)
             .with_context(|| format!("Detecting model type for {model_name}"))?;
 
         // Try to load safetensors first, fall back to pytorch_model.bin
@@ -178,6 +190,15 @@ impl CandleDenseEncoder {
             .get("model.safetensors")
             .or_else(|_| repo.get("pytorch_model.bin"))
             .with_context(|| format!("Downloading model weights for {model_name}"))?;
+
+        // Refine JinaBERT detection: check if it's the code variant
+        if model_type == "jinabert" {
+            let is_code_variant = Self::is_jinabert_code_variant(&weights_path)
+                .with_context(|| format!("Checking JinaBERT variant for {model_name}"))?;
+            if is_code_variant {
+                model_type = "jinabert-code".to_string();
+            }
+        }
 
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
@@ -199,6 +220,7 @@ impl CandleDenseEncoder {
             (true, "distilbert") => vb.pp("distilbert"),
             (true, "xlm-roberta") => vb.pp("roberta"), // XLM-RoBERTa uses "roberta" prefix
             (true, "modernbert") => vb, // ModernBERT typically doesn't use prefix
+            (_, "qwen2") => vb, // Qwen2 handles "model." prefix internally
             (_, "qwen3") => vb, // Qwen3 handles "model." prefix internally
             (true, _) => vb.pp("bert"),
             (false, _) => vb, // No prefix (e.g., BGE models)
@@ -248,13 +270,12 @@ impl CandleDenseEncoder {
             } else if model_type_lower.contains("qwen3") {
                 // Qwen3 embedding models use bidirectional attention via forward_embeddings
                 return Ok("qwen3".to_string());
-            } else if model_type_lower.contains("qwen2") || model_type_lower.contains("qwen") {
-                // Qwen2/GTE-Qwen2 models - not yet implemented (TODO: add Qwen2 support)
-                anyhow::bail!(
-                    "Qwen2 embedding models are not yet supported in Tessera. \
-                     Consider using Qwen3 models (qwen3-embedding-0.6b, etc.) or \
-                     a BERT-family model like 'bge-base-en-v1.5' for now.",
-                );
+            } else if model_type_lower.contains("qwen2") {
+                // Qwen2 embedding models (jina-code-embeddings, GTE-Qwen2, etc.)
+                return Ok("qwen2".to_string());
+            } else if model_type_lower == "qwen" || model_type_lower.contains("qwen") {
+                // Generic Qwen - assume Qwen2 for embedding models
+                return Ok("qwen2".to_string());
             } else if model_type_lower.contains("bert") {
                 return Ok("bert".to_string());
             }
@@ -268,6 +289,45 @@ impl CandleDenseEncoder {
         } else {
             anyhow::bail!("Could not detect model type from config")
         }
+    }
+
+    /// Detects if a JinaBERT model is the code variant (different FFN structure).
+    ///
+    /// JinaBERT code models use `up_gated_layer`/`down_layer` instead of
+    /// `gated_layers`/`wo` in the MLP layers.
+    fn is_jinabert_code_variant(weights_path: &std::path::Path) -> Result<bool> {
+        let extension = weights_path.extension().and_then(|s| s.to_str());
+
+        if extension == Some("safetensors") {
+            use safetensors::SafeTensors;
+            let buffer = std::fs::read(weights_path)
+                .context("Reading safetensors for JinaBERT variant detection")?;
+            let tensors = SafeTensors::deserialize(&buffer)
+                .context("Deserializing safetensors for variant detection")?;
+
+            for name in tensors.names() {
+                // Code variant uses up_gated_layer instead of gated_layers
+                if name.contains("mlp.up_gated_layer") {
+                    return Ok(true);
+                } else if name.contains("mlp.gated_layers") {
+                    return Ok(false);
+                }
+            }
+        } else {
+            let weights = candle_core::pickle::read_pth_tensor_info(weights_path, false, None)
+                .context("Reading pytorch model for variant detection")?;
+
+            for tensor_info in &weights {
+                if tensor_info.name.contains("mlp.up_gated_layer") {
+                    return Ok(true);
+                } else if tensor_info.name.contains("mlp.gated_layers") {
+                    return Ok(false);
+                }
+            }
+        }
+
+        // Default to standard JinaBERT
+        Ok(false)
     }
 
     /// Detects whether the model weights use a prefix (e.g., "bert.", "distilbert.")
@@ -355,6 +415,13 @@ impl CandleDenseEncoder {
                     .context("Loading JinaBERT model")?;
                 Ok(BertVariant::JinaBert(model))
             }
+            "jinabert-code" => {
+                let config: candle_transformers::models::jina_bert_code::Config =
+                    serde_json::from_str(config_str).context("Parsing JinaBERT Code config")?;
+                let model = candle_transformers::models::jina_bert_code::BertModel::new(vb, &config)
+                    .context("Loading JinaBERT Code model")?;
+                Ok(BertVariant::JinaBertCode(model))
+            }
             "xlm-roberta" => {
                 let config: candle_transformers::models::xlm_roberta::Config =
                     serde_json::from_str(config_str).context("Parsing XLM-RoBERTa config")?;
@@ -370,6 +437,13 @@ impl CandleDenseEncoder {
                     candle_transformers::models::modernbert::ModernBert::load(vb, &config)
                         .context("Loading ModernBERT model")?;
                 Ok(BertVariant::ModernBert(model))
+            }
+            "qwen2" => {
+                let config: candle_transformers::models::qwen2::Config =
+                    serde_json::from_str(config_str).context("Parsing Qwen2 config")?;
+                let model = candle_transformers::models::qwen2::Model::new(&config, vb)
+                    .context("Loading Qwen2 model")?;
+                Ok(BertVariant::Qwen2(std::cell::RefCell::new(model)))
             }
             "qwen3" => {
                 let config: candle_transformers::models::qwen3::Config =
