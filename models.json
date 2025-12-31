@@ -5,25 +5,25 @@
       "description": "Multi-vector models outputting one vector per token (ColBERT, ColPali)",
       "models": [
         {
-          "id": "colbert-v2",
-          "type": "colbert",
-          "name": "ColBERT v2",
-          "huggingface_id": "colbert-ir/colbertv2.0",
-          "organization": "Stanford NLP",
-          "release_date": "2022",
+          "id": "bge-m3-multi",
+          "type": "unified",
+          "name": "BGE-M3 (Multi-Vector Mode)",
+          "huggingface_id": "BAAI/bge-m3",
+          "organization": "BAAI",
+          "release_date": "2024",
           "architecture": {
-            "type": "bert",
-            "variant": "bert-base",
-            "has_projection": true,
-            "projection_dims": 128
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": false,
+            "projection_dims": null
           },
           "specs": {
-            "parameters": "110M",
-            "embedding_dim": 128,
-            "hidden_dim": 768,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 30522
+            "parameters": "568M",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 250002
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -34,17 +34,27 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
+            "languages": [
+              "en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru",
+              "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv",
+              "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et",
+              "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr",
+              "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn",
+              "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg",
+              "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt",
+              "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne",
+              "si", "my", "km", "lo", "pl", "it", "pt", "nl"
+            ],
             "modalities": ["text"],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8", "binary"]
+            "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
-            "beir_avg": 0.52,
-            "ms_marco_mrr10": 0.39
+            "beir_avg": 0.55,
+            "ms_marco_mrr10": 0.44
           },
           "license": "MIT",
-          "description": "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions."
+          "description": "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode."
         },
         {
           "id": "colbert-small",
@@ -89,33 +99,25 @@
           "description": "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference."
         },
         {
-          "id": "jina-colbert-v2",
+          "id": "colbert-v2",
           "type": "colbert",
-          "name": "Jina ColBERT v2",
-          "huggingface_id": "jinaai/jina-colbert-v2",
-          "organization": "Jina AI",
-          "release_date": "2024",
+          "name": "ColBERT v2",
+          "huggingface_id": "colbert-ir/colbertv2.0",
+          "organization": "Stanford NLP",
+          "release_date": "2022",
           "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
+            "type": "bert",
+            "variant": "bert-base",
+            "has_projection": true,
+            "projection_dims": 128
           },
           "specs": {
-            "parameters": "560M",
-            "embedding_dim": {
-              "default": 768,
-              "matryoshka": {
-                "min": 64,
-                "max": 768,
-                "supported": [64, 96, 128, 256, 384, 512, 768],
-                "strategy": "truncate_output"
-              }
-            },
+            "parameters": "110M",
+            "embedding_dim": 128,
             "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -126,368 +128,17 @@
             }
           },
           "capabilities": {
-            "languages": [
-              "en",
-              "de",
-              "fr",
-              "es",
-              "it",
-              "pt",
-              "nl",
-              "pl",
-              "ru",
-              "zh",
-              "ja",
-              "ko",
-              "ar",
-              "hi",
-              "th",
-              "tr",
-              "vi",
-              "id",
-              "ms",
-              "fa",
-              "uk",
-              "ro",
-              "cs",
-              "sv",
-              "da",
-              "no",
-              "fi",
-              "el",
-              "he",
-              "bg",
-              "hr",
-              "sk",
-              "sl",
-              "et",
-              "lv",
-              "lt",
-              "hu",
-              "ca",
-              "eu",
-              "gl",
-              "cy",
-              "sq",
-              "mk",
-              "sr",
-              "bs",
-              "mt",
-              "is",
-              "ga",
-              "af",
-              "sw",
-              "zu",
-              "xh",
-              "st",
-              "tn",
-              "ny",
-              "sn",
-              "yo",
-              "ig",
-              "ha",
-              "am",
-              "ti",
-              "om",
-              "so",
-              "mg",
-              "mi",
-              "sm",
-              "to",
-              "fj",
-              "haw",
-              "ht",
-              "qu",
-              "gn",
-              "ay",
-              "tt",
-              "ug",
-              "kk",
-              "ky",
-              "tg",
-              "uz",
-              "tk",
-              "mn",
-              "bo",
-              "dz",
-              "ne",
-              "si",
-              "my",
-              "km",
-              "lo"
-            ],
+            "languages": ["en"],
             "modalities": ["text"],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": ["fp32", "fp16", "int8", "binary"]
           },
           "performance": {
-            "beir_avg": 0.54,
-            "ms_marco_mrr10": 0.42
-          },
-          "license": "Apache-2.0",
-          "description": "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions."
-        },
-        {
-          "id": "jina-colbert-v2-96",
-          "type": "colbert",
-          "name": "Jina ColBERT v2 (96-dim)",
-          "huggingface_id": "jinaai/jina-colbert-v2",
-          "organization": "Jina AI",
-          "release_date": "2024",
-          "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "specs": {
-            "parameters": "560M",
-            "embedding_dim": 96,
-            "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": [
-              "en",
-              "de",
-              "fr",
-              "es",
-              "it",
-              "pt",
-              "nl",
-              "pl",
-              "ru",
-              "zh",
-              "ja",
-              "ko",
-              "ar",
-              "hi",
-              "th",
-              "tr",
-              "vi",
-              "id",
-              "ms",
-              "fa",
-              "uk",
-              "ro",
-              "cs",
-              "sv",
-              "da",
-              "no",
-              "fi",
-              "el",
-              "he",
-              "bg",
-              "hr",
-              "sk",
-              "sl",
-              "et",
-              "lv",
-              "lt",
-              "hu",
-              "ca",
-              "eu",
-              "gl",
-              "cy",
-              "sq",
-              "mk",
-              "sr",
-              "bs",
-              "mt",
-              "is",
-              "ga",
-              "af",
-              "sw",
-              "zu",
-              "xh",
-              "st",
-              "tn",
-              "ny",
-              "sn",
-              "yo",
-              "ig",
-              "ha",
-              "am",
-              "ti",
-              "om",
-              "so",
-              "mg",
-              "mi",
-              "sm",
-              "to",
-              "fj",
-              "haw",
-              "ht",
-              "qu",
-              "gn",
-              "ay",
-              "tt",
-              "ug",
-              "kk",
-              "ky",
-              "tg",
-              "uz",
-              "tk",
-              "mn",
-              "bo",
-              "dz",
-              "ne",
-              "si",
-              "my",
-              "km",
-              "lo"
-            ],
-            "modalities": ["text"],
-            "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.53,
-            "ms_marco_mrr10": 0.41
-          },
-          "license": "Apache-2.0",
-          "description": "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss."
-        },
-        {
-          "id": "jina-colbert-v2-64",
-          "type": "colbert",
-          "name": "Jina ColBERT v2 (64-dim)",
-          "huggingface_id": "jinaai/jina-colbert-v2",
-          "organization": "Jina AI",
-          "release_date": "2024",
-          "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "specs": {
-            "parameters": "560M",
-            "embedding_dim": 64,
-            "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": [
-              "en",
-              "de",
-              "fr",
-              "es",
-              "it",
-              "pt",
-              "nl",
-              "pl",
-              "ru",
-              "zh",
-              "ja",
-              "ko",
-              "ar",
-              "hi",
-              "th",
-              "tr",
-              "vi",
-              "id",
-              "ms",
-              "fa",
-              "uk",
-              "ro",
-              "cs",
-              "sv",
-              "da",
-              "no",
-              "fi",
-              "el",
-              "he",
-              "bg",
-              "hr",
-              "sk",
-              "sl",
-              "et",
-              "lv",
-              "lt",
-              "hu",
-              "ca",
-              "eu",
-              "gl",
-              "cy",
-              "sq",
-              "mk",
-              "sr",
-              "bs",
-              "mt",
-              "is",
-              "ga",
-              "af",
-              "sw",
-              "zu",
-              "xh",
-              "st",
-              "tn",
-              "ny",
-              "sn",
-              "yo",
-              "ig",
-              "ha",
-              "am",
-              "ti",
-              "om",
-              "so",
-              "mg",
-              "mi",
-              "sm",
-              "to",
-              "fj",
-              "haw",
-              "ht",
-              "qu",
-              "gn",
-              "ay",
-              "tt",
-              "ug",
-              "kk",
-              "ky",
-              "tg",
-              "uz",
-              "tk",
-              "mn",
-              "bo",
-              "dz",
-              "ne",
-              "si",
-              "my",
-              "km",
-              "lo"
-            ],
-            "modalities": ["text"],
-            "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.51,
+            "beir_avg": 0.52,
             "ms_marco_mrr10": 0.39
           },
-          "license": "Apache-2.0",
-          "description": "Jina ColBERT v2 at 64 dimensions for maximum compactness."
+          "license": "MIT",
+          "description": "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions."
         },
         {
           "id": "colpali-v1.2",
@@ -620,25 +271,25 @@
           "description": "Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length."
         },
         {
-          "id": "bge-m3-multi",
-          "type": "unified",
-          "name": "BGE-M3 (Multi-Vector Mode)",
-          "huggingface_id": "BAAI/bge-m3",
-          "organization": "BAAI",
+          "id": "jina-colbert-v2-64",
+          "type": "colbert",
+          "name": "Jina ColBERT v2 (64-dim)",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
           "release_date": "2024",
           "architecture": {
-            "type": "xlm-roberta",
-            "variant": "xlm-roberta-large",
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
             "has_projection": false,
             "projection_dims": null
           },
           "specs": {
-            "parameters": "568M",
-            "embedding_dim": 1024,
-            "hidden_dim": 1024,
+            "parameters": "560M",
+            "embedding_dim": 64,
+            "hidden_dim": 768,
             "context_length": 8192,
             "max_position_embeddings": 8192,
-            "vocab_size": 250002
+            "vocab_size": 30528
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -650,111 +301,190 @@
           },
           "capabilities": {
             "languages": [
-              "en",
-              "zh",
-              "es",
-              "fr",
-              "de",
-              "ar",
-              "hi",
-              "ja",
-              "ko",
-              "ru",
-              "th",
-              "tr",
-              "vi",
-              "id",
-              "ms",
-              "fa",
-              "uk",
-              "ro",
-              "cs",
-              "sv",
-              "da",
-              "no",
-              "fi",
-              "el",
-              "he",
-              "bg",
-              "hr",
-              "sk",
-              "sl",
-              "et",
-              "lv",
-              "lt",
-              "hu",
-              "ca",
-              "eu",
-              "gl",
-              "cy",
-              "sq",
-              "mk",
-              "sr",
-              "bs",
-              "mt",
-              "is",
-              "ga",
-              "af",
-              "sw",
-              "zu",
-              "xh",
-              "st",
-              "tn",
-              "ny",
-              "sn",
-              "yo",
-              "ig",
-              "ha",
-              "am",
-              "ti",
-              "om",
-              "so",
-              "mg",
-              "mi",
-              "sm",
-              "to",
-              "fj",
-              "haw",
-              "ht",
-              "qu",
-              "gn",
-              "ay",
-              "tt",
-              "ug",
-              "kk",
-              "ky",
-              "tg",
-              "uz",
-              "tk",
-              "mn",
-              "bo",
-              "dz",
-              "ne",
-              "si",
-              "my",
-              "km",
-              "lo",
-              "pl",
-              "it",
-              "pt",
-              "nl"
+              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
+              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
+              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
+              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
+              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
+              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
+              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
+              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
+              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
             ],
             "modalities": ["text"],
             "multi_vector": true,
             "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
-            "beir_avg": 0.55,
-            "ms_marco_mrr10": 0.44
+            "beir_avg": 0.51,
+            "ms_marco_mrr10": 0.39
           },
-          "license": "MIT",
-          "description": "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode."
+          "license": "Apache-2.0",
+          "description": "Jina ColBERT v2 at 64 dimensions for maximum compactness."
+        },
+        {
+          "id": "jina-colbert-v2-96",
+          "type": "colbert",
+          "name": "Jina ColBERT v2 (96-dim)",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "560M",
+            "embedding_dim": 96,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
+              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
+              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
+              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
+              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
+              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
+              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
+              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
+              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
+            ],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.53,
+            "ms_marco_mrr10": 0.41
+          },
+          "license": "Apache-2.0",
+          "description": "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss."
+        },
+        {
+          "id": "jina-colbert-v2",
+          "type": "colbert",
+          "name": "Jina ColBERT v2",
+          "huggingface_id": "jinaai/jina-colbert-v2",
+          "organization": "Jina AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "jina-bert",
+            "variant": "jina-bert-v2-base-en",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "560M",
+            "embedding_dim": {
+              "default": 768,
+              "matryoshka": {
+                "min": 64,
+                "max": 768,
+                "supported": [64, 96, 128, 256, 384, 512, 768],
+                "strategy": "truncate_output"
+              }
+            },
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
+              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
+              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
+              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
+              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
+              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
+              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
+              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
+              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
+            ],
+            "modalities": ["text"],
+            "multi_vector": true,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.54,
+            "ms_marco_mrr10": 0.42
+          },
+          "license": "Apache-2.0",
+          "description": "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions."
         }
       ]
     },
     "dense": {
       "description": "Dense models outputting single vector per input (BERT, GTE, E5, etc.)",
       "models": [
+        {
+          "id": "bge-base-en-v1.5",
+          "type": "dense",
+          "name": "BGE-Base-EN-v1.5",
+          "huggingface_id": "BAAI/bge-base-en-v1.5",
+          "organization": "BAAI",
+          "release_date": "2023",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "109M",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.53,
+            "ms_marco_mrr10": 0.42
+          },
+          "license": "MIT",
+          "description": "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance."
+        },
         {
           "id": "gte-qwen2-7b",
           "type": "dense",
@@ -810,160 +540,6 @@
           "description": "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584."
         },
         {
-          "id": "nomic-embed-v1.5",
-          "type": "dense",
-          "name": "Nomic Embed v1.5",
-          "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
-          "organization": "Nomic AI",
-          "release_date": "2024",
-          "architecture": {
-            "type": "bert",
-            "variant": "nomic-bert",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "pooling": {
-            "strategy": "mean",
-            "normalize": true
-          },
-          "specs": {
-            "parameters": "137M",
-            "embedding_dim": {
-              "default": 768,
-              "matryoshka": {
-                "min": 64,
-                "max": 768,
-                "supported": [64, 128, 256, 512, 768],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.54,
-            "ms_marco_mrr10": 0.43
-          },
-          "license": "Apache-2.0",
-          "description": "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens."
-        },
-        {
-          "id": "bge-base-en-v1.5",
-          "type": "dense",
-          "name": "BGE-Base-EN-v1.5",
-          "huggingface_id": "BAAI/bge-base-en-v1.5",
-          "organization": "BAAI",
-          "release_date": "2023",
-          "architecture": {
-            "type": "bert",
-            "variant": "bert-base",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "pooling": {
-            "strategy": "mean",
-            "normalize": true
-          },
-          "specs": {
-            "parameters": "109M",
-            "embedding_dim": 768,
-            "hidden_dim": 768,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 30522
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.53,
-            "ms_marco_mrr10": 0.42
-          },
-          "license": "MIT",
-          "description": "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance."
-        },
-        {
-          "id": "snowflake-arctic-l",
-          "type": "dense",
-          "name": "Snowflake Arctic Embed L",
-          "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
-          "organization": "Snowflake",
-          "release_date": "2024",
-          "architecture": {
-            "type": "bert",
-            "variant": "bert-large",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "pooling": {
-            "strategy": "mean",
-            "normalize": true
-          },
-          "specs": {
-            "parameters": "335M",
-            "embedding_dim": {
-              "default": 1024,
-              "matryoshka": {
-                "min": 256,
-                "max": 1024,
-                "supported": [256, 512, 768, 1024],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 1024,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 30522
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.56,
-            "ms_marco_mrr10": 0.45
-          },
-          "license": "Apache-2.0",
-          "description": "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance."
-        },
-        {
           "id": "jina-embeddings-v2-small-en",
           "type": "dense",
           "name": "Jina Embeddings v2 Small EN",
@@ -1008,52 +584,6 @@
           },
           "license": "Apache-2.0",
           "description": "Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications."
-        },
-        {
-          "id": "jina-embeddings-v2-base-code",
-          "type": "dense",
-          "name": "Jina Embeddings v2 BASE CODE",
-          "huggingface_id": "jinaai/jina-embeddings-v2-base-code",
-          "organization": "Jina AI",
-          "release_date": "2023",
-          "architecture": {
-            "type": "jina-bert-v2",
-            "variant": "jina-bert-v2-base-code",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "pooling": {
-            "strategy": "mean",
-            "normalize": true
-          },
-          "specs": {
-            "parameters": "161M",
-            "embedding_dim": 768,
-            "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 61056
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.0,
-            "ms_marco_mrr10": 0.0
-          },
-          "license": "Apache-2.0",
-          "description": "Compact Code embedding model with 8K context via ALiBi positional encoding. Only 161 parameters with 768-dimensional embeddings."
         },
         {
           "id": "jina-embeddings-v2-base-en",
@@ -1102,37 +632,29 @@
           "description": "Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives."
         },
         {
-          "id": "jina-code-embeddings-1.5b",
+          "id": "jina-embeddings-v2-base-code",
           "type": "dense",
-          "name": "Jina Code Embeddings 1.5B",
-          "huggingface_id": "jinaai/jina-code-embeddings-1.5b",
+          "name": "Jina Embeddings v2 Base Code",
+          "huggingface_id": "jinaai/jina-embeddings-v2-base-code",
           "organization": "Jina AI",
-          "release_date": "2025",
+          "release_date": "2023",
           "architecture": {
-            "type": "qwen2",
-            "variant": "qwen2.5-coder-1.5b",
+            "type": "jina-bert-v2",
+            "variant": "jina-bert-v2-base-code",
             "has_projection": false,
             "projection_dims": null
           },
           "pooling": {
-            "strategy": "last_token",
+            "strategy": "mean",
             "normalize": true
           },
           "specs": {
-            "parameters": "1.5B",
-            "embedding_dim": {
-              "default": 1536,
-              "matryoshka": {
-                "min": 128,
-                "max": 1536,
-                "supported": [128, 256, 512, 768, 1024, 1536],
-                "strategy": "truncate_pooled"
-              }
-            },
-            "hidden_dim": 1536,
-            "context_length": 32768,
-            "max_position_embeddings": 32768,
-            "vocab_size": 151936
+            "parameters": "161M",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 61056
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -1143,8 +665,8 @@
             }
           },
           "capabilities": {
-            "languages": ["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
-            "modalities": ["text", "code"],
+            "languages": ["en"],
+            "modalities": ["text"],
             "multi_vector": false,
             "quantization": ["fp32", "fp16", "int8"]
           },
@@ -1153,7 +675,7 @@
             "ms_marco_mrr10": 0.0
           },
           "license": "Apache-2.0",
-          "description": "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval."
+          "description": "Code embedding model with 8K context via ALiBi positional encoding. 161M parameters with 768-dimensional embeddings. Trained for code search and retrieval tasks."
         },
         {
           "id": "jina-code-embeddings-0.5b",
@@ -1251,20 +773,7 @@
             }
           },
           "capabilities": {
-            "languages": [
-              "en",
-              "zh",
-              "de",
-              "fr",
-              "es",
-              "it",
-              "pt",
-              "ja",
-              "ko",
-              "ar",
-              "ru",
-              "multilingual"
-            ],
+            "languages": ["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
             "modalities": ["text"],
             "multi_vector": false,
             "quantization": ["fp32", "fp16", "int8"]
@@ -1275,29 +784,144 @@
           },
           "license": "Apache-2.0",
           "description": "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters."
-        }
-      ]
-    },
-    "sparse": {
-      "description": "Sparse models with vocabulary-sized vectors (SPLADE, uniCOIL)",
-      "models": [
+        },
         {
-          "id": "splade-v3",
-          "type": "sparse",
-          "name": "SPLADE v3",
-          "huggingface_id": "naver/splade-v3",
-          "organization": "Naver Labs",
-          "release_date": "2023",
+          "id": "jina-code-embeddings-1.5b",
+          "type": "dense",
+          "name": "Jina Code Embeddings 1.5B",
+          "huggingface_id": "jinaai/jina-code-embeddings-1.5b",
+          "organization": "Jina AI",
+          "release_date": "2025",
           "architecture": {
-            "type": "bert",
-            "variant": "distilbert-base",
+            "type": "qwen2",
+            "variant": "qwen2.5-coder-1.5b",
             "has_projection": false,
             "projection_dims": null
           },
+          "pooling": {
+            "strategy": "last_token",
+            "normalize": true
+          },
           "specs": {
-            "parameters": "66M",
-            "embedding_dim": 30522,
+            "parameters": "1.5B",
+            "embedding_dim": {
+              "default": 1536,
+              "matryoshka": {
+                "min": 128,
+                "max": 1536,
+                "supported": [128, 256, 512, 768, 1024, 1536],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 1536,
+            "context_length": 32768,
+            "max_position_embeddings": 32768,
+            "vocab_size": 151936
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
+            "modalities": ["text", "code"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval."
+        },
+        {
+          "id": "nomic-embed-v1.5",
+          "type": "dense",
+          "name": "Nomic Embed v1.5",
+          "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
+          "organization": "Nomic AI",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "nomic-bert",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "137M",
+            "embedding_dim": {
+              "default": 768,
+              "matryoshka": {
+                "min": 64,
+                "max": 768,
+                "supported": [64, 128, 256, 512, 768],
+                "strategy": "truncate_pooled"
+              }
+            },
             "hidden_dim": 768,
+            "context_length": 8192,
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.54,
+            "ms_marco_mrr10": 0.43
+          },
+          "license": "Apache-2.0",
+          "description": "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens."
+        },
+        {
+          "id": "snowflake-arctic-l",
+          "type": "dense",
+          "name": "Snowflake Arctic Embed L",
+          "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
+          "organization": "Snowflake",
+          "release_date": "2024",
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "335M",
+            "embedding_dim": {
+              "default": 1024,
+              "matryoshka": {
+                "min": 256,
+                "max": 1024,
+                "supported": [256, 512, 768, 1024],
+                "strategy": "truncate_pooled"
+              }
+            },
+            "hidden_dim": 1024,
             "context_length": 512,
             "max_position_embeddings": 512,
             "vocab_size": 30522
@@ -1314,15 +938,20 @@
             "languages": ["en"],
             "modalities": ["text"],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16"]
+            "quantization": ["fp32", "fp16", "int8"]
           },
           "performance": {
-            "beir_avg": 0.49,
-            "ms_marco_mrr10": 0.38
+            "beir_avg": 0.56,
+            "ms_marco_mrr10": 0.45
           },
-          "license": "CC-BY-NC-SA-4.0",
-          "description": "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage."
-        },
+          "license": "Apache-2.0",
+          "description": "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance."
+        }
+      ]
+    },
+    "sparse": {
+      "description": "Sparse models with vocabulary-sized vectors (SPLADE, uniCOIL)",
+      "models": [
         {
           "id": "minicoil-v1",
           "type": "sparse",
@@ -1364,6 +993,48 @@
           },
           "license": "Apache-2.0",
           "description": "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance."
+        },
+        {
+          "id": "splade-v3",
+          "type": "sparse",
+          "name": "SPLADE v3",
+          "huggingface_id": "naver/splade-v3",
+          "organization": "Naver Labs",
+          "release_date": "2023",
+          "architecture": {
+            "type": "bert",
+            "variant": "distilbert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "66M",
+            "embedding_dim": 30522,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16"]
+          },
+          "performance": {
+            "beir_avg": 0.49,
+            "ms_marco_mrr10": 0.38
+          },
+          "license": "CC-BY-NC-SA-4.0",
+          "description": "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage."
         },
         {
           "id": "splade-pp-en-v1",
@@ -1457,48 +1128,6 @@
       "description": "Time series foundation models (TimesFM, Chronos)",
       "models": [
         {
-          "id": "timesfm-1.0-200m",
-          "type": "timeseries",
-          "name": "TimesFM 1.0 200M",
-          "huggingface_id": "google/timesfm-1.0-200m",
-          "organization": "Google Research",
-          "release_date": "2024",
-          "architecture": {
-            "type": "decoder-transformer",
-            "variant": "patched-decoder",
-            "has_projection": false,
-            "projection_dims": null
-          },
-          "specs": {
-            "parameters": "200M",
-            "embedding_dim": 1280,
-            "hidden_dim": 1280,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 0
-          },
-          "files": {
-            "tokenizer": "tokenizer.json",
-            "config": "config.json",
-            "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
-            }
-          },
-          "capabilities": {
-            "languages": [],
-            "modalities": ["timeseries"],
-            "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
-          },
-          "performance": {
-            "beir_avg": 0.0,
-            "ms_marco_mrr10": 0.0
-          },
-          "license": "Apache-2.0",
-          "description": "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting."
-        },
-        {
           "id": "chronos-bolt-small",
           "type": "timeseries",
           "name": "Chronos Bolt Small",
@@ -1547,6 +1176,48 @@
           },
           "license": "Apache-2.0",
           "description": "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting."
+        },
+        {
+          "id": "timesfm-1.0-200m",
+          "type": "timeseries",
+          "name": "TimesFM 1.0 200M",
+          "huggingface_id": "google/timesfm-1.0-200m",
+          "organization": "Google Research",
+          "release_date": "2024",
+          "architecture": {
+            "type": "decoder-transformer",
+            "variant": "patched-decoder",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "specs": {
+            "parameters": "200M",
+            "embedding_dim": 1280,
+            "hidden_dim": 1280,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 0
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": [],
+            "modalities": ["timeseries"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "performance": {
+            "beir_avg": 0.0,
+            "ms_marco_mrr10": 0.0
+          },
+          "license": "Apache-2.0",
+          "description": "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting."
         }
       ]
     },

@@ -2,6 +2,21 @@
 //!
 //! This module provides a wrapper around the `HuggingFace` tokenizers library
 //! for loading and using BERT-compatible tokenizers.
+//!
+//! # Tokenizer Resolution for Fine-Tuned Models
+//!
+//! Some fine-tuned models on HuggingFace don't bundle their own tokenizer files
+//! because they use the **exact same tokenizer** as their base model. This is a
+//! common pattern to avoid file duplication.
+//!
+//! For example, `jina-code-embeddings-0.5b` is fine-tuned from `Qwen2.5-Coder-0.5B`.
+//! The fine-tuning process doesn't modify the tokenizer, so Jina doesn't include
+//! tokenizer files in their repo. We handle this by redirecting to the base model's
+//! tokenizer, which is **identical** - not a fallback or substitute.
+//!
+//! This redirect pattern is used for:
+//! - `jina-code-embeddings-0.5b` → `Qwen/Qwen2.5-Coder-0.5B`
+//! - `jina-code-embeddings-1.5b` → `Qwen/Qwen2.5-Coder-1.5B`
 
 use anyhow::{Context, Result};
 use tokenizers::Tokenizer as HfTokenizer;
@@ -31,12 +46,13 @@ impl Tokenizer {
         match HfTokenizer::from_pretrained(model_name, None) {
             Ok(inner) => Ok(Self { inner }),
             Err(e) => {
-                // Try fallback tokenizers for known model families without tokenizer.json
-                let fallback = Self::get_fallback_tokenizer(model_name);
-                if let Some(fallback_model) = fallback {
-                    HfTokenizer::from_pretrained(fallback_model, None)
+                // For fine-tuned models without bundled tokenizer, load from base model
+                if let Some(base_model) = Self::get_base_model_tokenizer(model_name) {
+                    HfTokenizer::from_pretrained(base_model, None)
                         .map(|inner| Self { inner })
-                        .map_err(|e2| anyhow::anyhow!("Failed to load tokenizer from {model_name} or fallback {fallback_model}: {e2}"))
+                        .map_err(|e2| anyhow::anyhow!(
+                            "Failed to load tokenizer from {model_name} or base model {base_model}: {e2}"
+                        ))
                         .with_context(|| format!("Loading tokenizer for model: {model_name}"))
                 } else {
                     Err(anyhow::anyhow!("Failed to load tokenizer: {e}"))
@@ -46,11 +62,19 @@ impl Tokenizer {
         }
     }
 
-    /// Returns a fallback tokenizer model for known fine-tuned models that don't include tokenizer files.
-    fn get_fallback_tokenizer(model_name: &str) -> Option<&'static str> {
+    /// Returns the base model tokenizer for fine-tuned models that don't bundle tokenizer files.
+    ///
+    /// This is **not** a fallback to a different tokenizer - it redirects to the **identical**
+    /// tokenizer from the base model. Fine-tuning doesn't modify the tokenizer, so models
+    /// like jina-code-embeddings use the exact same tokenizer as their Qwen2.5-Coder base.
+    ///
+    /// # Returns
+    /// - `Some(base_model_id)` if the model is a known fine-tune without bundled tokenizer
+    /// - `None` if no redirect is needed (model has its own tokenizer or is unknown)
+    fn get_base_model_tokenizer(model_name: &str) -> Option<&'static str> {
         let name_lower = model_name.to_lowercase();
 
-        // Jina Code Embeddings are fine-tuned from Qwen2.5-Coder
+        // Jina Code Embeddings are fine-tuned from Qwen2.5-Coder (identical tokenizer)
         if name_lower.contains("jina-code-embeddings") {
             if name_lower.contains("0.5b") {
                 return Some("Qwen/Qwen2.5-Coder-0.5B");

@@ -187,106 +187,36 @@ pub struct ModelInfo {
     pub description: &'static str,
 }
 
-/// SPLADE v3
+/// Pooling configuration for BGE-Base-EN-v1.5.
+pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// BGE-Base-EN-v1.5
 ///
-/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
+/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
 ///
-/// - Organization: Naver Labs
+/// - Organization: BAAI
 /// - Release: 2023
-/// - Parameters: 66M
-/// - Embedding dim: 30522
+/// - Parameters: 109M
+/// - Embedding dim: 768
 /// - Context length: 512
 /// - Languages: 1
-pub const SPLADE_V3: ModelInfo = ModelInfo {
-    id: "splade-v3",
-    model_type: ModelType::Sparse,
-    name: "SPLADE v3",
-    huggingface_id: "naver/splade-v3",
-    organization: "Naver Labs",
+pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
+    id: "bge-base-en-v1.5",
+    model_type: ModelType::Dense,
+    name: "BGE-Base-EN-v1.5",
+    huggingface_id: "BAAI/bge-base-en-v1.5",
+    organization: "BAAI",
     release_date: "2023",
     architecture_type: "bert",
-    architecture_variant: "distilbert-base",
+    architecture_variant: "bert-base",
     has_projection: false,
     projection_dims: None,
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16"],
-    beir_avg: 0.49,
-    ms_marco_mrr10: 0.38,
-    license: "CC-BY-NC-SA-4.0",
-    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
-};
-
-/// miniCOIL v1
-///
-/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
-///
-/// - Organization: Qdrant
-/// - Release: 2024
-/// - Parameters: 66M
-/// - Embedding dim: 4
-/// - Context length: 512
-/// - Languages: 1
-pub const MINICOIL_V1: ModelInfo = ModelInfo {
-    id: "minicoil-v1",
-    model_type: ModelType::Sparse,
-    name: "miniCOIL v1",
-    huggingface_id: "Qdrant/minicoil-v1",
-    organization: "Qdrant",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "distilbert-base",
-    has_projection: true,
-    projection_dims: Some(4),
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(4),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.46,
-    ms_marco_mrr10: 0.35,
-    license: "Apache-2.0",
-    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
-};
-
-/// SPLADE++ EN v1
-///
-/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v1",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v1",
-    huggingface_id: "prithivida/Splade_PP_en_v1",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
+    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
     parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
+    embedding_dim: EmbeddingDimension::Fixed(768),
     hidden_dim: 768,
     context_length: 512,
     max_position_embeddings: 512,
@@ -294,125 +224,11 @@ pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
     languages: &["en"],
     modalities: &["text"],
     multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.3722,
-    license: "apache-2.0",
-    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
-};
-
-/// SPLADE++ EN v2
-///
-/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v2",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v2",
-    huggingface_id: "prithivida/Splade_PP_en_v2",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.378,
-    license: "apache-2.0",
-    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
-};
-
-/// TimesFM 1.0 200M
-///
-/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
-///
-/// - Organization: Google Research
-/// - Release: 2024
-/// - Parameters: 200M
-/// - Embedding dim: 1280
-/// - Context length: 512
-/// - Languages: 0
-pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
-    id: "timesfm-1.0-200m",
-    model_type: ModelType::Timeseries,
-    name: "TimesFM 1.0 200M",
-    huggingface_id: "google/timesfm-1.0-200m",
-    organization: "Google Research",
-    release_date: "2024",
-    architecture_type: "decoder-transformer",
-    architecture_variant: "patched-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "200M",
-    embedding_dim: EmbeddingDimension::Fixed(1280),
-    hidden_dim: 1280,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 0,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
     quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
-};
-
-/// Chronos Bolt Small
-///
-/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
-///
-/// - Organization: Amazon
-/// - Release: 2024
-/// - Parameters: 48M
-/// - Embedding dim: 512
-/// - Context length: 2048
-/// - Languages: 0
-pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
-    id: "chronos-bolt-small",
-    model_type: ModelType::Timeseries,
-    name: "Chronos Bolt Small",
-    huggingface_id: "amazon/chronos-bolt-small",
-    organization: "Amazon",
-    release_date: "2024",
-    architecture_type: "t5",
-    architecture_variant: "t5-encoder-decoder",
-    has_projection: true,
-    projection_dims: Some(512),
-    pooling: None,
-    parameters: "48M",
-    embedding_dim: EmbeddingDimension::Fixed(512),
-    hidden_dim: 2048,
-    context_length: 2048,
-    max_position_embeddings: 2048,
-    vocab_size: 2,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
+    beir_avg: 0.53,
+    ms_marco_mrr10: 0.42,
+    license: "MIT",
+    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
 };
 
 /// Pooling configuration for GTE-Qwen2-7B.
@@ -459,138 +275,6 @@ pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
     description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
 };
 
-/// Pooling configuration for Nomic Embed v1.5.
-pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Nomic Embed v1.5
-///
-/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
-///
-/// - Organization: Nomic AI
-/// - Release: 2024
-/// - Parameters: 137M
-/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
-/// - Context length: 8192
-/// - Languages: 1
-pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
-    id: "nomic-embed-v1.5",
-    model_type: ModelType::Dense,
-    name: "Nomic Embed v1.5",
-    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
-    organization: "Nomic AI",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "nomic-bert",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
-    parameters: "137M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.54,
-    ms_marco_mrr10: 0.43,
-    license: "Apache-2.0",
-    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
-};
-
-/// Pooling configuration for BGE-Base-EN-v1.5.
-pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// BGE-Base-EN-v1.5
-///
-/// Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.
-///
-/// - Organization: BAAI
-/// - Release: 2023
-/// - Parameters: 109M
-/// - Embedding dim: 768
-/// - Context length: 512
-/// - Languages: 1
-pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
-    id: "bge-base-en-v1.5",
-    model_type: ModelType::Dense,
-    name: "BGE-Base-EN-v1.5",
-    huggingface_id: "BAAI/bge-base-en-v1.5",
-    organization: "BAAI",
-    release_date: "2023",
-    architecture_type: "bert",
-    architecture_variant: "bert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(BGE_BASE_EN_V1_5_POOLING),
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.53,
-    ms_marco_mrr10: 0.42,
-    license: "MIT",
-    description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
-};
-
-/// Pooling configuration for Snowflake Arctic Embed L.
-pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Snowflake Arctic Embed L
-///
-/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
-///
-/// - Organization: Snowflake
-/// - Release: 2024
-/// - Parameters: 335M
-/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
-/// - Context length: 512
-/// - Languages: 1
-pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
-    id: "snowflake-arctic-l",
-    model_type: ModelType::Dense,
-    name: "Snowflake Arctic Embed L",
-    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
-    organization: "Snowflake",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-large",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
-    parameters: "335M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
-    hidden_dim: 1024,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.56,
-    ms_marco_mrr10: 0.45,
-    license: "Apache-2.0",
-    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
-};
-
 /// Pooling configuration for Jina Embeddings v2 Small EN.
 pub const JINA_EMBEDDINGS_V2_SMALL_EN_POOLING: PoolingConfig = PoolingConfig {
     strategy: PoolingStrategy::Mean,
@@ -633,50 +317,6 @@ pub const JINA_EMBEDDINGS_V2_SMALL_EN: ModelInfo = ModelInfo {
     ms_marco_mrr10: 0.0,
     license: "Apache-2.0",
     description: "Compact English embedding model with 8K context via ALiBi positional encoding. Only 33M parameters with 512-dimensional embeddings. Fast inference suitable for real-time applications.",
-};
-
-/// Pooling configuration for Jina Embeddings v2 BASE CODE.
-pub const JINA_EMBEDDINGS_V2_BASE_CODE_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// Jina Embeddings v2 BASE CODE
-///
-/// Compact Code embedding model with 8K context via ALiBi positional encoding. Only 161 parameters with 768-dimensional embeddings.
-///
-/// - Organization: Jina AI
-/// - Release: 2023
-/// - Parameters: 161M
-/// - Embedding dim: 768
-/// - Context length: 8192
-/// - Languages: 1
-pub const JINA_EMBEDDINGS_V2_BASE_CODE: ModelInfo = ModelInfo {
-    id: "jina-embeddings-v2-base-code",
-    model_type: ModelType::Dense,
-    name: "Jina Embeddings v2 BASE CODE",
-    huggingface_id: "jinaai/jina-embeddings-v2-base-code",
-    organization: "Jina AI",
-    release_date: "2023",
-    architecture_type: "jina-bert-v2",
-    architecture_variant: "jina-bert-v2-base-code",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_EMBEDDINGS_V2_BASE_CODE_POOLING),
-    parameters: "161M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 61056,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Compact Code embedding model with 8K context via ALiBi positional encoding. Only 161 parameters with 768-dimensional embeddings.",
 };
 
 /// Pooling configuration for Jina Embeddings v2 Base EN.
@@ -723,48 +363,48 @@ pub const JINA_EMBEDDINGS_V2_BASE_EN: ModelInfo = ModelInfo {
     description: "Strong English embedding model with 8K context via ALiBi positional encoding. 137M parameters with 768-dimensional embeddings. Trained on 400M+ sentence pairs with hard negatives.",
 };
 
-/// Pooling configuration for Jina Code Embeddings 1.5B.
-pub const JINA_CODE_EMBEDDINGS_1_5B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::LastToken,
+/// Pooling configuration for Jina Embeddings v2 Base Code.
+pub const JINA_EMBEDDINGS_V2_BASE_CODE_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
     normalize: true,
 };
 
-/// Jina Code Embeddings 1.5B
+/// Jina Embeddings v2 Base Code
 ///
-/// Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.
+/// Code embedding model with 8K context via ALiBi positional encoding. 161M parameters with 768-dimensional embeddings. Trained for code search and retrieval tasks.
 ///
 /// - Organization: Jina AI
-/// - Release: 2025
-/// - Parameters: 1.5B
-/// - Embedding dim: 1536 (Matryoshka: 128-1536 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 16
-pub const JINA_CODE_EMBEDDINGS_1_5B: ModelInfo = ModelInfo {
-    id: "jina-code-embeddings-1.5b",
+/// - Release: 2023
+/// - Parameters: 161M
+/// - Embedding dim: 768
+/// - Context length: 8192
+/// - Languages: 1
+pub const JINA_EMBEDDINGS_V2_BASE_CODE: ModelInfo = ModelInfo {
+    id: "jina-embeddings-v2-base-code",
     model_type: ModelType::Dense,
-    name: "Jina Code Embeddings 1.5B",
-    huggingface_id: "jinaai/jina-code-embeddings-1.5b",
+    name: "Jina Embeddings v2 Base Code",
+    huggingface_id: "jinaai/jina-embeddings-v2-base-code",
     organization: "Jina AI",
-    release_date: "2025",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2.5-coder-1.5b",
+    release_date: "2023",
+    architecture_type: "jina-bert-v2",
+    architecture_variant: "jina-bert-v2-base-code",
     has_projection: false,
     projection_dims: None,
-    pooling: Some(JINA_CODE_EMBEDDINGS_1_5B_POOLING),
-    parameters: "1.5B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1536, min: 128, max: 1536, supported: &[128, 256, 512, 768, 1024, 1536], strategy: Some("truncate_pooled") },
-    hidden_dim: 1536,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
-    modalities: &["text", "code"],
+    pooling: Some(JINA_EMBEDDINGS_V2_BASE_CODE_POOLING),
+    parameters: "161M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 61056,
+    languages: &["en"],
+    modalities: &["text"],
     multi_vector: false,
     quantization: &["fp32", "fp16", "int8"],
     beir_avg: 0.0,
     ms_marco_mrr10: 0.0,
     license: "Apache-2.0",
-    description: "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.",
+    description: "Code embedding model with 8K context via ALiBi positional encoding. 161M parameters with 768-dimensional embeddings. Trained for code search and retrieval tasks.",
 };
 
 /// Pooling configuration for Jina Code Embeddings 0.5B.
@@ -855,42 +495,402 @@ pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
     description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
 };
 
-/// ColBERT v2
+/// Pooling configuration for Jina Code Embeddings 1.5B.
+pub const JINA_CODE_EMBEDDINGS_1_5B_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::LastToken,
+    normalize: true,
+};
+
+/// Jina Code Embeddings 1.5B
 ///
-/// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
+/// Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.
 ///
-/// - Organization: Stanford NLP
-/// - Release: 2022
-/// - Parameters: 110M
-/// - Embedding dim: 128
+/// - Organization: Jina AI
+/// - Release: 2025
+/// - Parameters: 1.5B
+/// - Embedding dim: 1536 (Matryoshka: 128-1536 [\truncate_pooled\])
+/// - Context length: 32768
+/// - Languages: 16
+pub const JINA_CODE_EMBEDDINGS_1_5B: ModelInfo = ModelInfo {
+    id: "jina-code-embeddings-1.5b",
+    model_type: ModelType::Dense,
+    name: "Jina Code Embeddings 1.5B",
+    huggingface_id: "jinaai/jina-code-embeddings-1.5b",
+    organization: "Jina AI",
+    release_date: "2025",
+    architecture_type: "qwen2",
+    architecture_variant: "qwen2.5-coder-1.5b",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(JINA_CODE_EMBEDDINGS_1_5B_POOLING),
+    parameters: "1.5B",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1536, min: 128, max: 1536, supported: &[128, 256, 512, 768, 1024, 1536], strategy: Some("truncate_pooled") },
+    hidden_dim: 1536,
+    context_length: 32768,
+    max_position_embeddings: 32768,
+    vocab_size: 151936,
+    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
+    modalities: &["text", "code"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.",
+};
+
+/// Pooling configuration for Nomic Embed v1.5.
+pub const NOMIC_EMBED_V1_5_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Nomic Embed v1.5
+///
+/// Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.
+///
+/// - Organization: Nomic AI
+/// - Release: 2024
+/// - Parameters: 137M
+/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_pooled\])
+/// - Context length: 8192
+/// - Languages: 1
+pub const NOMIC_EMBED_V1_5: ModelInfo = ModelInfo {
+    id: "nomic-embed-v1.5",
+    model_type: ModelType::Dense,
+    name: "Nomic Embed v1.5",
+    huggingface_id: "nomic-ai/nomic-embed-text-v1.5",
+    organization: "Nomic AI",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "nomic-bert",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(NOMIC_EMBED_V1_5_POOLING),
+    parameters: "137M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 128, 256, 512, 768], strategy: Some("truncate_pooled") },
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.54,
+    ms_marco_mrr10: 0.43,
+    license: "Apache-2.0",
+    description: "Efficient embedding model with strong performance and Matryoshka support. Extended context window of 8K tokens.",
+};
+
+/// Pooling configuration for Snowflake Arctic Embed L.
+pub const SNOWFLAKE_ARCTIC_L_POOLING: PoolingConfig = PoolingConfig {
+    strategy: PoolingStrategy::Mean,
+    normalize: true,
+};
+
+/// Snowflake Arctic Embed L
+///
+/// High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.
+///
+/// - Organization: Snowflake
+/// - Release: 2024
+/// - Parameters: 335M
+/// - Embedding dim: 1024 (Matryoshka: 256-1024 [\truncate_pooled\])
 /// - Context length: 512
 /// - Languages: 1
-pub const COLBERT_V2: ModelInfo = ModelInfo {
-    id: "colbert-v2",
-    model_type: ModelType::Colbert,
-    name: "ColBERT v2",
-    huggingface_id: "colbert-ir/colbertv2.0",
-    organization: "Stanford NLP",
-    release_date: "2022",
+pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
+    id: "snowflake-arctic-l",
+    model_type: ModelType::Dense,
+    name: "Snowflake Arctic Embed L",
+    huggingface_id: "Snowflake/snowflake-arctic-embed-l-v2.0",
+    organization: "Snowflake",
+    release_date: "2024",
     architecture_type: "bert",
-    architecture_variant: "bert-base",
+    architecture_variant: "bert-large",
+    has_projection: false,
+    projection_dims: None,
+    pooling: Some(SNOWFLAKE_ARCTIC_L_POOLING),
+    parameters: "335M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 1024, min: 256, max: 1024, supported: &[256, 512, 768, 1024], strategy: Some("truncate_pooled") },
+    hidden_dim: 1024,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.56,
+    ms_marco_mrr10: 0.45,
+    license: "Apache-2.0",
+    description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
+};
+
+/// Chronos Bolt Small
+///
+/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
+///
+/// - Organization: Amazon
+/// - Release: 2024
+/// - Parameters: 48M
+/// - Embedding dim: 512
+/// - Context length: 2048
+/// - Languages: 0
+pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
+    id: "chronos-bolt-small",
+    model_type: ModelType::Timeseries,
+    name: "Chronos Bolt Small",
+    huggingface_id: "amazon/chronos-bolt-small",
+    organization: "Amazon",
+    release_date: "2024",
+    architecture_type: "t5",
+    architecture_variant: "t5-encoder-decoder",
     has_projection: true,
-    projection_dims: Some(128),
+    projection_dims: Some(512),
     pooling: None,
-    parameters: "110M",
-    embedding_dim: EmbeddingDimension::Fixed(128),
+    parameters: "48M",
+    embedding_dim: EmbeddingDimension::Fixed(512),
+    hidden_dim: 2048,
+    context_length: 2048,
+    max_position_embeddings: 2048,
+    vocab_size: 2,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
+};
+
+/// TimesFM 1.0 200M
+///
+/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
+///
+/// - Organization: Google Research
+/// - Release: 2024
+/// - Parameters: 200M
+/// - Embedding dim: 1280
+/// - Context length: 512
+/// - Languages: 0
+pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
+    id: "timesfm-1.0-200m",
+    model_type: ModelType::Timeseries,
+    name: "TimesFM 1.0 200M",
+    huggingface_id: "google/timesfm-1.0-200m",
+    organization: "Google Research",
+    release_date: "2024",
+    architecture_type: "decoder-transformer",
+    architecture_variant: "patched-decoder",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "200M",
+    embedding_dim: EmbeddingDimension::Fixed(1280),
+    hidden_dim: 1280,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 0,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "Apache-2.0",
+    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
+};
+
+/// miniCOIL v1
+///
+/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
+///
+/// - Organization: Qdrant
+/// - Release: 2024
+/// - Parameters: 66M
+/// - Embedding dim: 4
+/// - Context length: 512
+/// - Languages: 1
+pub const MINICOIL_V1: ModelInfo = ModelInfo {
+    id: "minicoil-v1",
+    model_type: ModelType::Sparse,
+    name: "miniCOIL v1",
+    huggingface_id: "Qdrant/minicoil-v1",
+    organization: "Qdrant",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: true,
+    projection_dims: Some(4),
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(4),
     hidden_dim: 768,
     context_length: 512,
     max_position_embeddings: 512,
     vocab_size: 30522,
     languages: &["en"],
     modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.46,
+    ms_marco_mrr10: 0.35,
+    license: "Apache-2.0",
+    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
+};
+
+/// SPLADE v3
+///
+/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
+///
+/// - Organization: Naver Labs
+/// - Release: 2023
+/// - Parameters: 66M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_V3: ModelInfo = ModelInfo {
+    id: "splade-v3",
+    model_type: ModelType::Sparse,
+    name: "SPLADE v3",
+    huggingface_id: "naver/splade-v3",
+    organization: "Naver Labs",
+    release_date: "2023",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16"],
+    beir_avg: 0.49,
+    ms_marco_mrr10: 0.38,
+    license: "CC-BY-NC-SA-4.0",
+    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
+};
+
+/// SPLADE++ EN v1
+///
+/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v1",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v1",
+    huggingface_id: "prithivida/Splade_PP_en_v1",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.3722,
+    license: "apache-2.0",
+    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
+};
+
+/// SPLADE++ EN v2
+///
+/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v2",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v2",
+    huggingface_id: "prithivida/Splade_PP_en_v2",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.378,
+    license: "apache-2.0",
+    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
+};
+
+/// BGE-M3 (Multi-Vector Mode)
+///
+/// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
+///
+/// - Organization: BAAI
+/// - Release: 2024
+/// - Parameters: 568M
+/// - Embedding dim: 1024
+/// - Context length: 8192
+/// - Languages: 88
+pub const BGE_M3_MULTI: ModelInfo = ModelInfo {
+    id: "bge-m3-multi",
+    model_type: ModelType::Unified,
+    name: "BGE-M3 (Multi-Vector Mode)",
+    huggingface_id: "BAAI/bge-m3",
+    organization: "BAAI",
+    release_date: "2024",
+    architecture_type: "xlm-roberta",
+    architecture_variant: "xlm-roberta-large",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "568M",
+    embedding_dim: EmbeddingDimension::Fixed(1024),
+    hidden_dim: 1024,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 250002,
+    languages: &["en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo", "pl", "it", "pt", "nl"],
+    modalities: &["text"],
     multi_vector: true,
-    quantization: &["fp32", "fp16", "int8", "binary"],
-    beir_avg: 0.52,
-    ms_marco_mrr10: 0.39,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.55,
+    ms_marco_mrr10: 0.44,
     license: "MIT",
-    description: "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.",
+    description: "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.",
 };
 
 /// ColBERT Small
@@ -931,118 +931,42 @@ pub const COLBERT_SMALL: ModelInfo = ModelInfo {
     description: "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.",
 };
 
-/// Jina ColBERT v2
+/// ColBERT v2
 ///
-/// Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.
+/// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
 ///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_output\])
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2",
+/// - Organization: Stanford NLP
+/// - Release: 2022
+/// - Parameters: 110M
+/// - Embedding dim: 128
+/// - Context length: 512
+/// - Languages: 1
+pub const COLBERT_V2: ModelInfo = ModelInfo {
+    id: "colbert-v2",
     model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
+    name: "ColBERT v2",
+    huggingface_id: "colbert-ir/colbertv2.0",
+    organization: "Stanford NLP",
+    release_date: "2022",
+    architecture_type: "bert",
+    architecture_variant: "bert-base",
+    has_projection: true,
+    projection_dims: Some(128),
     pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 96, 128, 256, 384, 512, 768], strategy: Some("truncate_output") },
+    parameters: "110M",
+    embedding_dim: EmbeddingDimension::Fixed(128),
     hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
     modalities: &["text"],
     multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.54,
-    ms_marco_mrr10: 0.42,
-    license: "Apache-2.0",
-    description: "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.",
-};
-
-/// Jina ColBERT v2 (96-dim)
-///
-/// Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 96
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2_96: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2-96",
-    model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2 (96-dim)",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Fixed(96),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.53,
-    ms_marco_mrr10: 0.41,
-    license: "Apache-2.0",
-    description: "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.",
-};
-
-/// Jina ColBERT v2 (64-dim)
-///
-/// Jina ColBERT v2 at 64 dimensions for maximum compactness.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 64
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2_64: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2-64",
-    model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2 (64-dim)",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Fixed(64),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.51,
+    quantization: &["fp32", "fp16", "int8", "binary"],
+    beir_avg: 0.52,
     ms_marco_mrr10: 0.39,
-    license: "Apache-2.0",
-    description: "Jina ColBERT v2 at 64 dimensions for maximum compactness.",
+    license: "MIT",
+    description: "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.",
 };
 
 /// ColPali v1.2 Merged
@@ -1159,73 +1083,149 @@ pub const GTE_MODERN_COLBERT: ModelInfo = ModelInfo {
     description: "Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length.",
 };
 
-/// BGE-M3 (Multi-Vector Mode)
+/// Jina ColBERT v2 (64-dim)
 ///
-/// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
+/// Jina ColBERT v2 at 64 dimensions for maximum compactness.
 ///
-/// - Organization: BAAI
+/// - Organization: Jina AI
 /// - Release: 2024
-/// - Parameters: 568M
-/// - Embedding dim: 1024
+/// - Parameters: 560M
+/// - Embedding dim: 64
 /// - Context length: 8192
 /// - Languages: 88
-pub const BGE_M3_MULTI: ModelInfo = ModelInfo {
-    id: "bge-m3-multi",
-    model_type: ModelType::Unified,
-    name: "BGE-M3 (Multi-Vector Mode)",
-    huggingface_id: "BAAI/bge-m3",
-    organization: "BAAI",
+pub const JINA_COLBERT_V2_64: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2-64",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2 (64-dim)",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
     release_date: "2024",
-    architecture_type: "xlm-roberta",
-    architecture_variant: "xlm-roberta-large",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
     has_projection: false,
     projection_dims: None,
     pooling: None,
-    parameters: "568M",
-    embedding_dim: EmbeddingDimension::Fixed(1024),
-    hidden_dim: 1024,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Fixed(64),
+    hidden_dim: 768,
     context_length: 8192,
     max_position_embeddings: 8192,
-    vocab_size: 250002,
-    languages: &["en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo", "pl", "it", "pt", "nl"],
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
     modalities: &["text"],
     multi_vector: true,
     quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.55,
-    ms_marco_mrr10: 0.44,
-    license: "MIT",
-    description: "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.",
+    beir_avg: 0.51,
+    ms_marco_mrr10: 0.39,
+    license: "Apache-2.0",
+    description: "Jina ColBERT v2 at 64 dimensions for maximum compactness.",
+};
+
+/// Jina ColBERT v2 (96-dim)
+///
+/// Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 560M
+/// - Embedding dim: 96
+/// - Context length: 8192
+/// - Languages: 88
+pub const JINA_COLBERT_V2_96: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2-96",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2 (96-dim)",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Fixed(96),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.53,
+    ms_marco_mrr10: 0.41,
+    license: "Apache-2.0",
+    description: "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.",
+};
+
+/// Jina ColBERT v2
+///
+/// Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 560M
+/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_output\])
+/// - Context length: 8192
+/// - Languages: 88
+pub const JINA_COLBERT_V2: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 96, 128, 256, 384, 512, 768], strategy: Some("truncate_output") },
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.54,
+    ms_marco_mrr10: 0.42,
+    license: "Apache-2.0",
+    description: "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.",
 };
 
 /// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
-    SPLADE_V3,
-    MINICOIL_V1,
-    SPLADE_PP_EN_V1,
-    SPLADE_PP_EN_V2,
-    TIMESFM_1_0_200M,
-    CHRONOS_BOLT_SMALL,
-    GTE_QWEN2_7B,
-    NOMIC_EMBED_V1_5,
     BGE_BASE_EN_V1_5,
-    SNOWFLAKE_ARCTIC_L,
+    GTE_QWEN2_7B,
     JINA_EMBEDDINGS_V2_SMALL_EN,
-    JINA_EMBEDDINGS_V2_BASE_CODE,
     JINA_EMBEDDINGS_V2_BASE_EN,
-    JINA_CODE_EMBEDDINGS_1_5B,
+    JINA_EMBEDDINGS_V2_BASE_CODE,
     JINA_CODE_EMBEDDINGS_0_5B,
     JINA_EMBEDDINGS_V3,
-    COLBERT_V2,
+    JINA_CODE_EMBEDDINGS_1_5B,
+    NOMIC_EMBED_V1_5,
+    SNOWFLAKE_ARCTIC_L,
+    CHRONOS_BOLT_SMALL,
+    TIMESFM_1_0_200M,
+    MINICOIL_V1,
+    SPLADE_V3,
+    SPLADE_PP_EN_V1,
+    SPLADE_PP_EN_V2,
+    BGE_M3_MULTI,
     COLBERT_SMALL,
-    JINA_COLBERT_V2,
-    JINA_COLBERT_V2_96,
-    JINA_COLBERT_V2_64,
+    COLBERT_V2,
     COLPALI_V1_2,
     COLPALI_V1_3_HF,
     GTE_MODERN_COLBERT,
-    BGE_M3_MULTI,
+    JINA_COLBERT_V2_64,
+    JINA_COLBERT_V2_96,
+    JINA_COLBERT_V2,
 ];
 
 
