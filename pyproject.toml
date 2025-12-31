@@ -39,7 +39,9 @@ keywords = [
     "rust",
 ]
 dependencies = [
+    "huggingface-hub>=1.2.3",
     "numpy>=1.21.0",
+    "safetensors>=0.7.0",
 ]
 
 [project.optional-dependencies]
