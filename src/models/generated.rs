@@ -187,6 +187,348 @@ pub struct ModelInfo {
     pub description: &'static str,
 }
 
+/// BGE-M3 (Multi-Vector Mode)
+///
+/// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
+///
+/// - Organization: BAAI
+/// - Release: 2024
+/// - Parameters: 568M
+/// - Embedding dim: 1024
+/// - Context length: 8192
+/// - Languages: 88
+pub const BGE_M3_MULTI: ModelInfo = ModelInfo {
+    id: "bge-m3-multi",
+    model_type: ModelType::Unified,
+    name: "BGE-M3 (Multi-Vector Mode)",
+    huggingface_id: "BAAI/bge-m3",
+    organization: "BAAI",
+    release_date: "2024",
+    architecture_type: "xlm-roberta",
+    architecture_variant: "xlm-roberta-large",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "568M",
+    embedding_dim: EmbeddingDimension::Fixed(1024),
+    hidden_dim: 1024,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 250002,
+    languages: &["en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo", "pl", "it", "pt", "nl"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.55,
+    ms_marco_mrr10: 0.44,
+    license: "MIT",
+    description: "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.",
+};
+
+/// ColBERT Small
+///
+/// Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.
+///
+/// - Organization: Answer.AI
+/// - Release: 2024
+/// - Parameters: 33M
+/// - Embedding dim: 96
+/// - Context length: 512
+/// - Languages: 1
+pub const COLBERT_SMALL: ModelInfo = ModelInfo {
+    id: "colbert-small",
+    model_type: ModelType::Colbert,
+    name: "ColBERT Small",
+    huggingface_id: "answerdotai/answerai-colbert-small-v1",
+    organization: "Answer.AI",
+    release_date: "2024",
+    architecture_type: "distilbert",
+    architecture_variant: "distilbert-base",
+    has_projection: true,
+    projection_dims: Some(96),
+    pooling: None,
+    parameters: "33M",
+    embedding_dim: EmbeddingDimension::Fixed(96),
+    hidden_dim: 384,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.45,
+    ms_marco_mrr10: 0.32,
+    license: "Apache-2.0",
+    description: "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.",
+};
+
+/// ColBERT v2
+///
+/// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
+///
+/// - Organization: Stanford NLP
+/// - Release: 2022
+/// - Parameters: 110M
+/// - Embedding dim: 128
+/// - Context length: 512
+/// - Languages: 1
+pub const COLBERT_V2: ModelInfo = ModelInfo {
+    id: "colbert-v2",
+    model_type: ModelType::Colbert,
+    name: "ColBERT v2",
+    huggingface_id: "colbert-ir/colbertv2.0",
+    organization: "Stanford NLP",
+    release_date: "2022",
+    architecture_type: "bert",
+    architecture_variant: "bert-base",
+    has_projection: true,
+    projection_dims: Some(128),
+    pooling: None,
+    parameters: "110M",
+    embedding_dim: EmbeddingDimension::Fixed(128),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8", "binary"],
+    beir_avg: 0.52,
+    ms_marco_mrr10: 0.39,
+    license: "MIT",
+    description: "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.",
+};
+
+/// ColPali v1.2 Merged
+///
+/// Vision-language ColBERT model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Based on PaliGemma-3B with fixed initialization and right padding.
+///
+/// - Organization: vidore
+/// - Release: 2024
+/// - Parameters: 3B
+/// - Embedding dim: 128
+/// - Context length: 512
+/// - Languages: 1
+pub const COLPALI_V1_2: ModelInfo = ModelInfo {
+    id: "colpali-v1.2",
+    model_type: ModelType::VisionLanguage,
+    name: "ColPali v1.2 Merged",
+    huggingface_id: "vidore/colpali-v1.2-merged",
+    organization: "vidore",
+    release_date: "2024",
+    architecture_type: "paligemma",
+    architecture_variant: "paligemma-3b-mix-448",
+    has_projection: true,
+    projection_dims: Some(128),
+    pooling: None,
+    parameters: "3B",
+    embedding_dim: EmbeddingDimension::Fixed(128),
+    hidden_dim: 2048,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 257216,
+    languages: &["multilingual"],
+    modalities: &["vision", "text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "gemma",
+    description: "Vision-language ColBERT model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Based on PaliGemma-3B with fixed initialization and right padding.",
+};
+
+/// ColPali v1.3 HF
+///
+/// Latest ColPali vision-language model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Improved performance over v1.2 with average NDCG@5 of 0.546 on ViDoRe benchmark.
+///
+/// - Organization: vidore
+/// - Release: 2024
+/// - Parameters: 3B
+/// - Embedding dim: 128
+/// - Context length: 512
+/// - Languages: 1
+pub const COLPALI_V1_3_HF: ModelInfo = ModelInfo {
+    id: "colpali-v1.3-hf",
+    model_type: ModelType::VisionLanguage,
+    name: "ColPali v1.3 HF",
+    huggingface_id: "vidore/colpali-v1.3-hf",
+    organization: "vidore",
+    release_date: "2024",
+    architecture_type: "paligemma",
+    architecture_variant: "paligemma-3b-mix-448",
+    has_projection: true,
+    projection_dims: Some(128),
+    pooling: None,
+    parameters: "3B",
+    embedding_dim: EmbeddingDimension::Fixed(128),
+    hidden_dim: 2048,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 257216,
+    languages: &["multilingual"],
+    modalities: &["vision", "text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.0,
+    license: "gemma",
+    description: "Latest ColPali vision-language model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Improved performance over v1.2 with average NDCG@5 of 0.546 on ViDoRe benchmark.",
+};
+
+/// GTE-ModernColBERT v1
+///
+/// Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length.
+///
+/// - Organization: LightOn AI
+/// - Release: 2025
+/// - Parameters: 130M
+/// - Embedding dim: 768
+/// - Context length: 8192
+/// - Languages: 1
+pub const GTE_MODERN_COLBERT: ModelInfo = ModelInfo {
+    id: "gte-modern-colbert",
+    model_type: ModelType::Colbert,
+    name: "GTE-ModernColBERT v1",
+    huggingface_id: "lightonai/GTE-ModernColBERT-v1",
+    organization: "LightOn AI",
+    release_date: "2025",
+    architecture_type: "modernbert",
+    architecture_variant: "gte-modernbert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "130M",
+    embedding_dim: EmbeddingDimension::Fixed(768),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 50370,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.68,
+    ms_marco_mrr10: 0.75,
+    license: "Apache-2.0",
+    description: "Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length.",
+};
+
+/// Jina ColBERT v2 (64-dim)
+///
+/// Jina ColBERT v2 at 64 dimensions for maximum compactness.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 560M
+/// - Embedding dim: 64
+/// - Context length: 8192
+/// - Languages: 88
+pub const JINA_COLBERT_V2_64: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2-64",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2 (64-dim)",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Fixed(64),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.51,
+    ms_marco_mrr10: 0.39,
+    license: "Apache-2.0",
+    description: "Jina ColBERT v2 at 64 dimensions for maximum compactness.",
+};
+
+/// Jina ColBERT v2 (96-dim)
+///
+/// Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 560M
+/// - Embedding dim: 96
+/// - Context length: 8192
+/// - Languages: 88
+pub const JINA_COLBERT_V2_96: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2-96",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2 (96-dim)",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Fixed(96),
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.53,
+    ms_marco_mrr10: 0.41,
+    license: "Apache-2.0",
+    description: "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.",
+};
+
+/// Jina ColBERT v2
+///
+/// Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.
+///
+/// - Organization: Jina AI
+/// - Release: 2024
+/// - Parameters: 560M
+/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_output\])
+/// - Context length: 8192
+/// - Languages: 88
+pub const JINA_COLBERT_V2: ModelInfo = ModelInfo {
+    id: "jina-colbert-v2",
+    model_type: ModelType::Colbert,
+    name: "Jina ColBERT v2",
+    huggingface_id: "jinaai/jina-colbert-v2",
+    organization: "Jina AI",
+    release_date: "2024",
+    architecture_type: "jina-bert",
+    architecture_variant: "jina-bert-v2-base-en",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "560M",
+    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 96, 128, 256, 384, 512, 768], strategy: Some("truncate_output") },
+    hidden_dim: 768,
+    context_length: 8192,
+    max_position_embeddings: 8192,
+    vocab_size: 30528,
+    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
+    modalities: &["text"],
+    multi_vector: true,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.54,
+    ms_marco_mrr10: 0.42,
+    license: "Apache-2.0",
+    description: "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.",
+};
+
 /// Pooling configuration for BGE-Base-EN-v1.5.
 pub const BGE_BASE_EN_V1_5_POOLING: PoolingConfig = PoolingConfig {
     strategy: PoolingStrategy::Mean,
@@ -627,82 +969,6 @@ pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
     description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
 };
 
-/// Chronos Bolt Small
-///
-/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
-///
-/// - Organization: Amazon
-/// - Release: 2024
-/// - Parameters: 48M
-/// - Embedding dim: 512
-/// - Context length: 2048
-/// - Languages: 0
-pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
-    id: "chronos-bolt-small",
-    model_type: ModelType::Timeseries,
-    name: "Chronos Bolt Small",
-    huggingface_id: "amazon/chronos-bolt-small",
-    organization: "Amazon",
-    release_date: "2024",
-    architecture_type: "t5",
-    architecture_variant: "t5-encoder-decoder",
-    has_projection: true,
-    projection_dims: Some(512),
-    pooling: None,
-    parameters: "48M",
-    embedding_dim: EmbeddingDimension::Fixed(512),
-    hidden_dim: 2048,
-    context_length: 2048,
-    max_position_embeddings: 2048,
-    vocab_size: 2,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
-};
-
-/// TimesFM 1.0 200M
-///
-/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
-///
-/// - Organization: Google Research
-/// - Release: 2024
-/// - Parameters: 200M
-/// - Embedding dim: 1280
-/// - Context length: 512
-/// - Languages: 0
-pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
-    id: "timesfm-1.0-200m",
-    model_type: ModelType::Timeseries,
-    name: "TimesFM 1.0 200M",
-    huggingface_id: "google/timesfm-1.0-200m",
-    organization: "Google Research",
-    release_date: "2024",
-    architecture_type: "decoder-transformer",
-    architecture_variant: "patched-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "200M",
-    embedding_dim: EmbeddingDimension::Fixed(1280),
-    hidden_dim: 1280,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 0,
-    languages: &[],
-    modalities: &["timeseries"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
-};
-
 /// miniCOIL v1
 ///
 /// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
@@ -855,352 +1121,95 @@ pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
     description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
 };
 
-/// BGE-M3 (Multi-Vector Mode)
+/// Chronos Bolt Small
 ///
-/// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
+/// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
 ///
-/// - Organization: BAAI
+/// - Organization: Amazon
 /// - Release: 2024
-/// - Parameters: 568M
-/// - Embedding dim: 1024
-/// - Context length: 8192
-/// - Languages: 88
-pub const BGE_M3_MULTI: ModelInfo = ModelInfo {
-    id: "bge-m3-multi",
-    model_type: ModelType::Unified,
-    name: "BGE-M3 (Multi-Vector Mode)",
-    huggingface_id: "BAAI/bge-m3",
-    organization: "BAAI",
+/// - Parameters: 48M
+/// - Embedding dim: 512
+/// - Context length: 2048
+/// - Languages: 0
+pub const CHRONOS_BOLT_SMALL: ModelInfo = ModelInfo {
+    id: "chronos-bolt-small",
+    model_type: ModelType::Timeseries,
+    name: "Chronos Bolt Small",
+    huggingface_id: "amazon/chronos-bolt-small",
+    organization: "Amazon",
     release_date: "2024",
-    architecture_type: "xlm-roberta",
-    architecture_variant: "xlm-roberta-large",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "568M",
-    embedding_dim: EmbeddingDimension::Fixed(1024),
-    hidden_dim: 1024,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 250002,
-    languages: &["en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo", "pl", "it", "pt", "nl"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.55,
-    ms_marco_mrr10: 0.44,
-    license: "MIT",
-    description: "Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.",
-};
-
-/// ColBERT Small
-///
-/// Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.
-///
-/// - Organization: Answer.AI
-/// - Release: 2024
-/// - Parameters: 33M
-/// - Embedding dim: 96
-/// - Context length: 512
-/// - Languages: 1
-pub const COLBERT_SMALL: ModelInfo = ModelInfo {
-    id: "colbert-small",
-    model_type: ModelType::Colbert,
-    name: "ColBERT Small",
-    huggingface_id: "answerdotai/answerai-colbert-small-v1",
-    organization: "Answer.AI",
-    release_date: "2024",
-    architecture_type: "distilbert",
-    architecture_variant: "distilbert-base",
+    architecture_type: "t5",
+    architecture_variant: "t5-encoder-decoder",
     has_projection: true,
-    projection_dims: Some(96),
+    projection_dims: Some(512),
     pooling: None,
-    parameters: "33M",
-    embedding_dim: EmbeddingDimension::Fixed(96),
-    hidden_dim: 384,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.45,
-    ms_marco_mrr10: 0.32,
-    license: "Apache-2.0",
-    description: "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.",
-};
-
-/// ColBERT v2
-///
-/// Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
-///
-/// - Organization: Stanford NLP
-/// - Release: 2022
-/// - Parameters: 110M
-/// - Embedding dim: 128
-/// - Context length: 512
-/// - Languages: 1
-pub const COLBERT_V2: ModelInfo = ModelInfo {
-    id: "colbert-v2",
-    model_type: ModelType::Colbert,
-    name: "ColBERT v2",
-    huggingface_id: "colbert-ir/colbertv2.0",
-    organization: "Stanford NLP",
-    release_date: "2022",
-    architecture_type: "bert",
-    architecture_variant: "bert-base",
-    has_projection: true,
-    projection_dims: Some(128),
-    pooling: None,
-    parameters: "110M",
-    embedding_dim: EmbeddingDimension::Fixed(128),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8", "binary"],
-    beir_avg: 0.52,
-    ms_marco_mrr10: 0.39,
-    license: "MIT",
-    description: "Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.",
-};
-
-/// ColPali v1.2 Merged
-///
-/// Vision-language ColBERT model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Based on PaliGemma-3B with fixed initialization and right padding.
-///
-/// - Organization: vidore
-/// - Release: 2024
-/// - Parameters: 3B
-/// - Embedding dim: 128
-/// - Context length: 512
-/// - Languages: 1
-pub const COLPALI_V1_2: ModelInfo = ModelInfo {
-    id: "colpali-v1.2",
-    model_type: ModelType::VisionLanguage,
-    name: "ColPali v1.2 Merged",
-    huggingface_id: "vidore/colpali-v1.2-merged",
-    organization: "vidore",
-    release_date: "2024",
-    architecture_type: "paligemma",
-    architecture_variant: "paligemma-3b-mix-448",
-    has_projection: true,
-    projection_dims: Some(128),
-    pooling: None,
-    parameters: "3B",
-    embedding_dim: EmbeddingDimension::Fixed(128),
+    parameters: "48M",
+    embedding_dim: EmbeddingDimension::Fixed(512),
     hidden_dim: 2048,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 257216,
-    languages: &["multilingual"],
-    modalities: &["vision", "text"],
-    multi_vector: true,
+    context_length: 2048,
+    max_position_embeddings: 2048,
+    vocab_size: 2,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
     quantization: &["fp32", "fp16", "int8"],
     beir_avg: 0.0,
     ms_marco_mrr10: 0.0,
-    license: "gemma",
-    description: "Vision-language ColBERT model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Based on PaliGemma-3B with fixed initialization and right padding.",
+    license: "Apache-2.0",
+    description: "Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.",
 };
 
-/// ColPali v1.3 HF
+/// TimesFM 1.0 200M
 ///
-/// Latest ColPali vision-language model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Improved performance over v1.2 with average NDCG@5 of 0.546 on ViDoRe benchmark.
+/// Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.
 ///
-/// - Organization: vidore
+/// - Organization: Google Research
 /// - Release: 2024
-/// - Parameters: 3B
-/// - Embedding dim: 128
+/// - Parameters: 200M
+/// - Embedding dim: 1280
 /// - Context length: 512
-/// - Languages: 1
-pub const COLPALI_V1_3_HF: ModelInfo = ModelInfo {
-    id: "colpali-v1.3-hf",
-    model_type: ModelType::VisionLanguage,
-    name: "ColPali v1.3 HF",
-    huggingface_id: "vidore/colpali-v1.3-hf",
-    organization: "vidore",
+/// - Languages: 0
+pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
+    id: "timesfm-1.0-200m",
+    model_type: ModelType::Timeseries,
+    name: "TimesFM 1.0 200M",
+    huggingface_id: "google/timesfm-1.0-200m",
+    organization: "Google Research",
     release_date: "2024",
-    architecture_type: "paligemma",
-    architecture_variant: "paligemma-3b-mix-448",
-    has_projection: true,
-    projection_dims: Some(128),
+    architecture_type: "decoder-transformer",
+    architecture_variant: "patched-decoder",
+    has_projection: false,
+    projection_dims: None,
     pooling: None,
-    parameters: "3B",
-    embedding_dim: EmbeddingDimension::Fixed(128),
-    hidden_dim: 2048,
+    parameters: "200M",
+    embedding_dim: EmbeddingDimension::Fixed(1280),
+    hidden_dim: 1280,
     context_length: 512,
     max_position_embeddings: 512,
-    vocab_size: 257216,
-    languages: &["multilingual"],
-    modalities: &["vision", "text"],
-    multi_vector: true,
+    vocab_size: 0,
+    languages: &[],
+    modalities: &["timeseries"],
+    multi_vector: false,
     quantization: &["fp32", "fp16", "int8"],
     beir_avg: 0.0,
     ms_marco_mrr10: 0.0,
-    license: "gemma",
-    description: "Latest ColPali vision-language model for document retrieval. Encodes page images as multi-vector patch embeddings for OCR-free document search using late interaction. Improved performance over v1.2 with average NDCG@5 of 0.546 on ViDoRe benchmark.",
-};
-
-/// GTE-ModernColBERT v1
-///
-/// Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length.
-///
-/// - Organization: LightOn AI
-/// - Release: 2025
-/// - Parameters: 130M
-/// - Embedding dim: 768
-/// - Context length: 8192
-/// - Languages: 1
-pub const GTE_MODERN_COLBERT: ModelInfo = ModelInfo {
-    id: "gte-modern-colbert",
-    model_type: ModelType::Colbert,
-    name: "GTE-ModernColBERT v1",
-    huggingface_id: "lightonai/GTE-ModernColBERT-v1",
-    organization: "LightOn AI",
-    release_date: "2025",
-    architecture_type: "modernbert",
-    architecture_variant: "gte-modernbert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "130M",
-    embedding_dim: EmbeddingDimension::Fixed(768),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 50370,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.68,
-    ms_marco_mrr10: 0.75,
     license: "Apache-2.0",
-    description: "Modern ColBERT model based on ModernBERT architecture with improved reasoning performance. Uses global-local attention and extended 8K context length.",
-};
-
-/// Jina ColBERT v2 (64-dim)
-///
-/// Jina ColBERT v2 at 64 dimensions for maximum compactness.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 64
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2_64: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2-64",
-    model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2 (64-dim)",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Fixed(64),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.51,
-    ms_marco_mrr10: 0.39,
-    license: "Apache-2.0",
-    description: "Jina ColBERT v2 at 64 dimensions for maximum compactness.",
-};
-
-/// Jina ColBERT v2 (96-dim)
-///
-/// Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 96
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2_96: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2-96",
-    model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2 (96-dim)",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Fixed(96),
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.53,
-    ms_marco_mrr10: 0.41,
-    license: "Apache-2.0",
-    description: "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss.",
-};
-
-/// Jina ColBERT v2
-///
-/// Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.
-///
-/// - Organization: Jina AI
-/// - Release: 2024
-/// - Parameters: 560M
-/// - Embedding dim: 768 (Matryoshka: 64-768 [\truncate_output\])
-/// - Context length: 8192
-/// - Languages: 88
-pub const JINA_COLBERT_V2: ModelInfo = ModelInfo {
-    id: "jina-colbert-v2",
-    model_type: ModelType::Colbert,
-    name: "Jina ColBERT v2",
-    huggingface_id: "jinaai/jina-colbert-v2",
-    organization: "Jina AI",
-    release_date: "2024",
-    architecture_type: "jina-bert",
-    architecture_variant: "jina-bert-v2-base-en",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "560M",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 768, min: 64, max: 768, supported: &[64, 96, 128, 256, 384, 512, 768], strategy: Some("truncate_output") },
-    hidden_dim: 768,
-    context_length: 8192,
-    max_position_embeddings: 8192,
-    vocab_size: 30528,
-    languages: &["en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne", "si", "my", "km", "lo"],
-    modalities: &["text"],
-    multi_vector: true,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.54,
-    ms_marco_mrr10: 0.42,
-    license: "Apache-2.0",
-    description: "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions.",
+    description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
 };
 
 /// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
+    BGE_M3_MULTI,
+    COLBERT_SMALL,
+    COLBERT_V2,
+    COLPALI_V1_2,
+    COLPALI_V1_3_HF,
+    GTE_MODERN_COLBERT,
+    JINA_COLBERT_V2_64,
+    JINA_COLBERT_V2_96,
+    JINA_COLBERT_V2,
     BGE_BASE_EN_V1_5,
     GTE_QWEN2_7B,
     JINA_EMBEDDINGS_V2_SMALL_EN,
@@ -1211,21 +1220,12 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     JINA_CODE_EMBEDDINGS_1_5B,
     NOMIC_EMBED_V1_5,
     SNOWFLAKE_ARCTIC_L,
-    CHRONOS_BOLT_SMALL,
-    TIMESFM_1_0_200M,
     MINICOIL_V1,
     SPLADE_V3,
     SPLADE_PP_EN_V1,
     SPLADE_PP_EN_V2,
-    BGE_M3_MULTI,
-    COLBERT_SMALL,
-    COLBERT_V2,
-    COLPALI_V1_2,
-    COLPALI_V1_3_HF,
-    GTE_MODERN_COLBERT,
-    JINA_COLBERT_V2_64,
-    JINA_COLBERT_V2_96,
-    JINA_COLBERT_V2,
+    CHRONOS_BOLT_SMALL,
+    TIMESFM_1_0_200M,
 ];
 
 

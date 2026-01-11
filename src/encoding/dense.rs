@@ -74,14 +74,21 @@ impl BertVariant {
                 .forward(token_ids, _attention_mask)
                 .context("DistilBERT forward pass"),
             Self::JinaBert(model) => model.forward(token_ids).context("JinaBERT forward pass"),
-            Self::JinaBertCode(model) => {
-                model.forward(token_ids).context("JinaBERT Code forward pass")
-            }
+            Self::JinaBertCode(model) => model
+                .forward(token_ids)
+                .context("JinaBERT Code forward pass"),
             Self::XlmRoberta(model) => {
                 // XLM-RoBERTa uses token_type_ids (all zeros for single sequence)
                 let token_type_ids = token_ids.zeros_like().context("Creating token type IDs")?;
                 model
-                    .forward(token_ids, _attention_mask, &token_type_ids, None, None, None)
+                    .forward(
+                        token_ids,
+                        _attention_mask,
+                        &token_type_ids,
+                        None,
+                        None,
+                        None,
+                    )
                     .context("XLM-RoBERTa forward pass")
             }
             Self::ModernBert(model) => model
@@ -219,9 +226,9 @@ impl CandleDenseEncoder {
         let model_vb = match (has_prefix, model_type.as_str()) {
             (true, "distilbert") => vb.pp("distilbert"),
             (true, "xlm-roberta") => vb.pp("roberta"), // XLM-RoBERTa uses "roberta" prefix
-            (true, "modernbert") => vb, // ModernBERT typically doesn't use prefix
-            (_, "qwen2") => vb, // Qwen2 handles "model." prefix internally
-            (_, "qwen3") => vb, // Qwen3 handles "model." prefix internally
+            (true, "modernbert") => vb,                // ModernBERT typically doesn't use prefix
+            (_, "qwen2") => vb,                        // Qwen2 handles "model." prefix internally
+            (_, "qwen3") => vb,                        // Qwen3 handles "model." prefix internally
             (true, _) => vb.pp("bert"),
             (false, _) => vb, // No prefix (e.g., BGE models)
         };
@@ -418,8 +425,9 @@ impl CandleDenseEncoder {
             "jinabert-code" => {
                 let config: candle_transformers::models::jina_bert_code::Config =
                     serde_json::from_str(config_str).context("Parsing JinaBERT Code config")?;
-                let model = candle_transformers::models::jina_bert_code::BertModel::new(vb, &config)
-                    .context("Loading JinaBERT Code model")?;
+                let model =
+                    candle_transformers::models::jina_bert_code::BertModel::new(vb, &config)
+                        .context("Loading JinaBERT Code model")?;
                 Ok(BertVariant::JinaBertCode(model))
             }
             "xlm-roberta" => {
@@ -433,9 +441,8 @@ impl CandleDenseEncoder {
             "modernbert" => {
                 let config: candle_transformers::models::modernbert::Config =
                     serde_json::from_str(config_str).context("Parsing ModernBERT config")?;
-                let model =
-                    candle_transformers::models::modernbert::ModernBert::load(vb, &config)
-                        .context("Loading ModernBERT model")?;
+                let model = candle_transformers::models::modernbert::ModernBert::load(vb, &config)
+                    .context("Loading ModernBERT model")?;
                 Ok(BertVariant::ModernBert(model))
             }
             "qwen2" => {
