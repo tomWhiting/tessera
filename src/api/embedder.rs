@@ -465,6 +465,10 @@ pub struct TesseraDense {
     encoder: CandleDenseEncoder,
     /// Model identifier from registry
     model_id: String,
+    /// Maximum batch size for encode_batch (None = no limit)
+    batch_size: Option<usize>,
+    /// Milliseconds to sleep between batches
+    yield_ms: Option<u64>,
 }
 
 impl TesseraDense {
@@ -528,9 +532,30 @@ impl TesseraDense {
         TesseraDenseBuilder::new()
     }
 
-    /// Internal constructor used by builder.
+    /// Internal constructor used by builder (legacy, no batch options).
+    #[allow(dead_code)]
     pub(crate) const fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
-        Self { encoder, model_id }
+        Self {
+            encoder,
+            model_id,
+            batch_size: None,
+            yield_ms: None,
+        }
+    }
+
+    /// Internal constructor with batch options.
+    pub(crate) const fn from_encoder_with_options(
+        encoder: CandleDenseEncoder,
+        model_id: String,
+        batch_size: Option<usize>,
+        yield_ms: Option<u64>,
+    ) -> Self {
+        Self {
+            encoder,
+            model_id,
+            batch_size,
+            yield_ms,
+        }
     }
 
     /// Encode a single text into a dense embedding.
@@ -571,6 +596,9 @@ impl TesseraDense {
     /// More efficient than calling `encode()` repeatedly due to
     /// batched inference on GPU. Achieves 5-10x speedup for batch sizes of 100+.
     ///
+    /// If `batch_size` was configured via the builder, texts are processed in
+    /// chunks with optional yielding between batches to prevent GPU saturation.
+    ///
     /// # Arguments
     ///
     /// * `texts` - Slice of texts to encode
@@ -592,12 +620,47 @@ impl TesseraDense {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<DenseEmbedding>> {
-        <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(|e| {
-            TesseraError::EncodingError {
-                context: format!("Failed to encode batch of {} texts", texts.len()),
-                source: e,
+        // If no batch_size configured, process all at once (original behavior)
+        let Some(batch_size) = self.batch_size else {
+            return <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(
+                |e| TesseraError::EncodingError {
+                    context: format!("Failed to encode batch of {} texts", texts.len()),
+                    source: e,
+                },
+            );
+        };
+
+        // Process in chunks with optional yielding
+        let mut all_embeddings = Vec::with_capacity(texts.len());
+        let yield_duration = self
+            .yield_ms
+            .map(std::time::Duration::from_millis);
+
+        for (chunk_idx, chunk) in texts.chunks(batch_size).enumerate() {
+            // Yield between batches (not before the first one)
+            if chunk_idx > 0 {
+                if let Some(duration) = yield_duration {
+                    std::thread::sleep(duration);
+                }
             }
-        })
+
+            // Process this chunk
+            let chunk_embeddings =
+                <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, chunk).map_err(
+                    |e| TesseraError::EncodingError {
+                        context: format!(
+                            "Failed to encode batch chunk {} ({} texts)",
+                            chunk_idx,
+                            chunk.len()
+                        ),
+                        source: e,
+                    },
+                )?;
+
+            all_embeddings.extend(chunk_embeddings);
+        }
+
+        Ok(all_embeddings)
     }
 
     /// Compute cosine similarity between two texts.

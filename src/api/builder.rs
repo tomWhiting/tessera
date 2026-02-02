@@ -317,6 +317,10 @@ pub struct TesseraDenseBuilder {
     device: Option<Device>,
     /// Target embedding dimension for Matryoshka models
     dimension: Option<usize>,
+    /// Maximum batch size for encode_batch (None = no limit)
+    batch_size: Option<usize>,
+    /// Milliseconds to sleep between batches (for GPU throttling)
+    yield_ms: Option<u64>,
 }
 
 impl TesseraDenseBuilder {
@@ -329,6 +333,8 @@ impl TesseraDenseBuilder {
             model_id: None,
             device: None,
             dimension: None,
+            batch_size: None,
+            yield_ms: None,
         }
     }
 
@@ -399,6 +405,53 @@ impl TesseraDenseBuilder {
     #[must_use]
     pub const fn dimension(mut self, dimension: usize) -> Self {
         self.dimension = Some(dimension);
+        self
+    }
+
+    /// Set the maximum batch size for `encode_batch`.
+    ///
+    /// When encoding many texts, they will be processed in chunks of this size.
+    /// This helps prevent GPU memory exhaustion and allows the system to remain
+    /// responsive during long encoding operations.
+    ///
+    /// # Arguments
+    ///
+    /// * `size` - Maximum number of texts to process in a single GPU batch
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let builder = TesseraDenseBuilder::new()
+    ///     .model("bge-base-en-v1.5")
+    ///     .batch_size(8);  // Process 8 texts at a time
+    /// ```
+    #[must_use]
+    pub const fn batch_size(mut self, size: usize) -> Self {
+        self.batch_size = Some(size);
+        self
+    }
+
+    /// Set milliseconds to yield between batches.
+    ///
+    /// When processing multiple batches, sleep for this duration between each batch.
+    /// This prevents GPU saturation and keeps the system responsive (especially
+    /// important on macOS where Metal shares GPU with the display).
+    ///
+    /// # Arguments
+    ///
+    /// * `ms` - Milliseconds to sleep between batches (0 = no sleep)
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let builder = TesseraDenseBuilder::new()
+    ///     .model("bge-base-en-v1.5")
+    ///     .batch_size(4)
+    ///     .yield_ms(50);  // 50ms pause between batches
+    /// ```
+    #[must_use]
+    pub const fn yield_ms(mut self, ms: u64) -> Self {
+        self.yield_ms = Some(ms);
         self
     }
 
@@ -501,8 +554,13 @@ impl TesseraDenseBuilder {
                 source: e,
             })?;
 
-        // Create TesseraDense instance
-        Ok(TesseraDense::from_encoder(encoder, model_id))
+        // Create TesseraDense instance with batch options
+        Ok(TesseraDense::from_encoder_with_options(
+            encoder,
+            model_id,
+            self.batch_size,
+            self.yield_ms,
+        ))
     }
 }
 

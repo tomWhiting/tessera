@@ -187,6 +187,158 @@ pub struct ModelInfo {
     pub description: &'static str,
 }
 
+/// miniCOIL v1
+///
+/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
+///
+/// - Organization: Qdrant
+/// - Release: 2024
+/// - Parameters: 66M
+/// - Embedding dim: 4
+/// - Context length: 512
+/// - Languages: 1
+pub const MINICOIL_V1: ModelInfo = ModelInfo {
+    id: "minicoil-v1",
+    model_type: ModelType::Sparse,
+    name: "miniCOIL v1",
+    huggingface_id: "Qdrant/minicoil-v1",
+    organization: "Qdrant",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: true,
+    projection_dims: Some(4),
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(4),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.46,
+    ms_marco_mrr10: 0.35,
+    license: "Apache-2.0",
+    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
+};
+
+/// SPLADE v3
+///
+/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
+///
+/// - Organization: Naver Labs
+/// - Release: 2023
+/// - Parameters: 66M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_V3: ModelInfo = ModelInfo {
+    id: "splade-v3",
+    model_type: ModelType::Sparse,
+    name: "SPLADE v3",
+    huggingface_id: "naver/splade-v3",
+    organization: "Naver Labs",
+    release_date: "2023",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16"],
+    beir_avg: 0.49,
+    ms_marco_mrr10: 0.38,
+    license: "CC-BY-NC-SA-4.0",
+    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
+};
+
+/// SPLADE++ EN v1
+///
+/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v1",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v1",
+    huggingface_id: "prithivida/Splade_PP_en_v1",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.3722,
+    license: "apache-2.0",
+    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
+};
+
+/// SPLADE++ EN v2
+///
+/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v2",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v2",
+    huggingface_id: "prithivida/Splade_PP_en_v2",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.378,
+    license: "apache-2.0",
+    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
+};
+
 /// BGE-M3 (Multi-Vector Mode)
 ///
 /// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
@@ -969,158 +1121,6 @@ pub const SNOWFLAKE_ARCTIC_L: ModelInfo = ModelInfo {
     description: "High-performance large embedding model with Matryoshka support from Snowflake. Strong retrieval performance.",
 };
 
-/// miniCOIL v1
-///
-/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
-///
-/// - Organization: Qdrant
-/// - Release: 2024
-/// - Parameters: 66M
-/// - Embedding dim: 4
-/// - Context length: 512
-/// - Languages: 1
-pub const MINICOIL_V1: ModelInfo = ModelInfo {
-    id: "minicoil-v1",
-    model_type: ModelType::Sparse,
-    name: "miniCOIL v1",
-    huggingface_id: "Qdrant/minicoil-v1",
-    organization: "Qdrant",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "distilbert-base",
-    has_projection: true,
-    projection_dims: Some(4),
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(4),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.46,
-    ms_marco_mrr10: 0.35,
-    license: "Apache-2.0",
-    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
-};
-
-/// SPLADE v3
-///
-/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
-///
-/// - Organization: Naver Labs
-/// - Release: 2023
-/// - Parameters: 66M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_V3: ModelInfo = ModelInfo {
-    id: "splade-v3",
-    model_type: ModelType::Sparse,
-    name: "SPLADE v3",
-    huggingface_id: "naver/splade-v3",
-    organization: "Naver Labs",
-    release_date: "2023",
-    architecture_type: "bert",
-    architecture_variant: "distilbert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16"],
-    beir_avg: 0.49,
-    ms_marco_mrr10: 0.38,
-    license: "CC-BY-NC-SA-4.0",
-    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
-};
-
-/// SPLADE++ EN v1
-///
-/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v1",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v1",
-    huggingface_id: "prithivida/Splade_PP_en_v1",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.3722,
-    license: "apache-2.0",
-    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
-};
-
-/// SPLADE++ EN v2
-///
-/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v2",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v2",
-    huggingface_id: "prithivida/Splade_PP_en_v2",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.378,
-    license: "apache-2.0",
-    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
-};
-
 /// Chronos Bolt Small
 ///
 /// Efficient T5 encoder-decoder model for probabilistic time series forecasting. Uses continuous patch-based encoding (NOT discrete tokenization like original Chronos). Predicts 9 quantiles for uncertainty quantification. 250x faster than original Chronos. Trained on 100B observations with direct multi-step forecasting.
@@ -1201,6 +1201,10 @@ pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
+    MINICOIL_V1,
+    SPLADE_V3,
+    SPLADE_PP_EN_V1,
+    SPLADE_PP_EN_V2,
     BGE_M3_MULTI,
     COLBERT_SMALL,
     COLBERT_V2,
@@ -1220,10 +1224,6 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     JINA_CODE_EMBEDDINGS_1_5B,
     NOMIC_EMBED_V1_5,
     SNOWFLAKE_ARCTIC_L,
-    MINICOIL_V1,
-    SPLADE_V3,
-    SPLADE_PP_EN_V1,
-    SPLADE_PP_EN_V2,
     CHRONOS_BOLT_SMALL,
     TIMESFM_1_0_200M,
 ];
