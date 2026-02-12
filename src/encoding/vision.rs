@@ -49,16 +49,16 @@ use anyhow::{Context, Result};
 use candle_core::{DType, Device, IndexOp, Module, Tensor};
 use candle_nn::{Linear, VarBuilder};
 use candle_transformers::models::paligemma::{Config as PaliGemmaConfig, Model as PaliGemmaModel};
-use std::cell::RefCell;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 /// Vision-language encoder using `ColPali` architecture (PaliGemma-based).
 ///
 /// This encoder supports image-to-embedding and text-to-embedding operations
 /// for vision-language retrieval using late interaction (`MaxSim` scoring).
 pub struct ColPaliEncoder {
-    /// `PaliGemma` model for vision-language processing (wrapped in `RefCell` for interior mutability)
-    model: RefCell<PaliGemmaModel>,
+    /// `PaliGemma` model for vision-language processing (wrapped in `Arc<Mutex>` for thread-safe sharing)
+    model: Arc<Mutex<PaliGemmaModel>>,
 
     /// Tokenizer for text encoding
     tokenizer: Tokenizer,
@@ -200,7 +200,7 @@ impl ColPaliEncoder {
         );
 
         Ok(Self {
-            model: RefCell::new(model),
+            model: Arc::new(Mutex::new(model)),
             tokenizer,
             image_processor,
             device,
@@ -243,8 +243,11 @@ impl ColPaliEncoder {
         // We use a minimal token sequence just to get the image features
         let dummy_input_ids = Tensor::new(&[0u32], &self.device)?.unsqueeze(0)?; // [1, 1]
 
-        // 4. Borrow model mutably through RefCell
-        let mut model = self.model.borrow_mut();
+        // 4. Acquire lock on model for thread-safe access
+        let mut model = self
+            .model
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to acquire model lock: {}", e))?;
 
         // 5. Run PaliGemma setup to get image features
         // Note: PaliGemma's setup() method processes the image and returns combined features
@@ -333,8 +336,11 @@ impl ColPaliEncoder {
         let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
             .context("Failed to create token IDs tensor")?;
 
-        // 3. Borrow model mutably through RefCell
-        let mut model = self.model.borrow_mut();
+        // 3. Acquire lock on model for thread-safe access
+        let mut model = self
+            .model
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Failed to acquire model lock: {}", e))?;
 
         // 4. For text-only encoding, we use forward_without_projection
         // This gives us the language model embeddings without image context

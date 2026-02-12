@@ -64,6 +64,27 @@ all = "warn"
 pedantic = "warn"
 nursery = "warn"
 
+# =============================================================================
+# Build Profiles - Critical for GPU Performance
+# =============================================================================
+
+[profile.release]
+opt-level = 3          # Maximum optimization
+lto = "fat"            # Link-time optimization - critical for GPU code inlining
+codegen-units = 1      # Single codegen unit for better optimization
+strip = "symbols"      # Strip symbols for smaller binary
+panic = "abort"        # Abort on panic (no unwinding overhead)
+
+[profile.dev]
+opt-level = 1          # Some optimization even in dev for faster iteration
+
+[profile.bench]
+inherits = "release"   # Use release settings for benchmarks
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true           # Keep debug symbols for profiling
+
 # Patch candle to use local fork with T5 hidden states support
 [patch.crates-io]
 # Use fork with T5 hidden states, JinaBERT Code, Qwen2 embeddings, and prefix detection

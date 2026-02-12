@@ -56,12 +56,13 @@ enum BertVariant {
     JinaBertCode(candle_transformers::models::jina_bert_code::BertModel),
     XlmRoberta(candle_transformers::models::xlm_roberta::XLMRobertaModel),
     ModernBert(candle_transformers::models::modernbert::ModernBert),
-    /// Qwen2 model wrapped in RefCell for interior mutability.
+    /// Qwen2 model wrapped in Arc<Mutex> for thread-safe interior mutability.
     /// Used for jina-code-embeddings and GTE-Qwen2 models.
-    Qwen2(std::cell::RefCell<candle_transformers::models::qwen2::Model>),
-    /// Qwen3 model wrapped in RefCell for interior mutability.
+    /// Note: Mutex is needed because forward_embeddings clears KV cache which requires &mut self.
+    Qwen2(std::sync::Arc<std::sync::Mutex<candle_transformers::models::qwen2::Model>>),
+    /// Qwen3 model wrapped in Arc<Mutex> for thread-safe interior mutability.
     /// Needed because forward_embeddings clears KV cache which requires &mut self.
-    Qwen3(std::cell::RefCell<candle_transformers::models::qwen3::Model>),
+    Qwen3(std::sync::Arc<std::sync::Mutex<candle_transformers::models::qwen3::Model>>),
 }
 
 impl BertVariant {
@@ -95,11 +96,13 @@ impl BertVariant {
                 .forward(token_ids, _attention_mask)
                 .context("ModernBERT forward pass"),
             Self::Qwen2(model) => model
-                .borrow_mut()
+                .lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire Qwen2 model lock: {}", e))?
                 .forward_embeddings(token_ids)
                 .context("Qwen2 embedding forward pass"),
             Self::Qwen3(model) => model
-                .borrow_mut()
+                .lock()
+                .map_err(|e| anyhow::anyhow!("Failed to acquire Qwen3 model lock: {}", e))?
                 .forward_embeddings(token_ids)
                 .context("Qwen3 embedding forward pass"),
         }
@@ -450,14 +453,18 @@ impl CandleDenseEncoder {
                     serde_json::from_str(config_str).context("Parsing Qwen2 config")?;
                 let model = candle_transformers::models::qwen2::Model::new(&config, vb)
                     .context("Loading Qwen2 model")?;
-                Ok(BertVariant::Qwen2(std::cell::RefCell::new(model)))
+                Ok(BertVariant::Qwen2(std::sync::Arc::new(
+                    std::sync::Mutex::new(model),
+                )))
             }
             "qwen3" => {
                 let config: candle_transformers::models::qwen3::Config =
                     serde_json::from_str(config_str).context("Parsing Qwen3 config")?;
                 let model = candle_transformers::models::qwen3::Model::new(&config, vb)
                     .context("Loading Qwen3 model")?;
-                Ok(BertVariant::Qwen3(std::cell::RefCell::new(model)))
+                Ok(BertVariant::Qwen3(std::sync::Arc::new(
+                    std::sync::Mutex::new(model),
+                )))
             }
             _ => {
                 let config: candle_transformers::models::bert::Config =
@@ -634,7 +641,7 @@ impl CandleDenseEncoder {
         // Process output (Matryoshka + normalization)
         let final_embedding = self.process_output(pooled)?;
 
-        Ok(DenseEmbedding::new(final_embedding, text.to_string()))
+        DenseEmbedding::new(final_embedding, text.to_string())
     }
 
     /// Encodes multiple text inputs in batch.
@@ -719,20 +726,24 @@ impl CandleDenseEncoder {
         // batch_output shape: [batch_size, max_seq_len, hidden_dim]
         let mut results = Vec::with_capacity(batch_size);
 
+        // PERFORMANCE FIX: Move entire batch to CPU once (critical optimization)
+        // Previously moved each sample individually inside the loop (50-100x slower)
+        let batch_output_cpu = batch_output
+            .to_dtype(DType::F32)
+            .context("Converting batch to F32")?
+            .to_device(&Device::Cpu)
+            .context("Moving batch to CPU")?;
+
+        // Drop the GPU tensor explicitly to free GPU memory immediately
+        drop(batch_output);
+
         for i in 0..batch_size {
-            // Extract embeddings for this sample
-            let sample_output = batch_output
+            // Extract embeddings for this sample from CPU tensor
+            let sample_output = batch_output_cpu
                 .get(i)
                 .context("Extracting sample from batch")?;
 
-            // Move to CPU and convert
-            let embeddings_cpu = sample_output
-                .to_dtype(DType::F32)
-                .context("Converting to F32")?
-                .to_device(&Device::Cpu)
-                .context("Moving tensor to CPU")?;
-
-            let embeddings_vec = embeddings_cpu
+            let embeddings_vec = sample_output
                 .flatten_all()
                 .context("Flattening tensor")?
                 .to_vec1::<f32>()
@@ -746,7 +757,7 @@ impl CandleDenseEncoder {
             // Process output (Matryoshka + normalization)
             let final_embedding = self.process_output(pooled)?;
 
-            results.push(DenseEmbedding::new(final_embedding, texts[i].to_string()));
+            results.push(DenseEmbedding::new(final_embedding, texts[i].to_string())?);
         }
 
         Ok(results)

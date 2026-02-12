@@ -367,7 +367,9 @@ impl PyTesseraMultiVector {
     ///     >>> print(embeddings.shape)
     ///     (8, 128)
     fn encode(&self, py: Python<'_>, text: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embeddings = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
+        let embeddings = py
+            .allow_threads(|| self.inner.encode(text))
+            .map_err(tessera_error_to_pyerr)?;
         token_embeddings_to_pyarray(py, &embeddings)
     }
 
@@ -393,9 +395,8 @@ impl PyTesseraMultiVector {
         // Convert Vec<String> to Vec<&str> for the Rust API
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
 
-        let embeddings_vec = self
-            .inner
-            .encode_batch(&text_refs)
+        let embeddings_vec = py
+            .allow_threads(|| self.inner.encode_batch(&text_refs))
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -521,7 +522,9 @@ impl PyTesseraDense {
     ///     >>> print(embedding.shape)
     ///     (768,)
     fn encode(&self, py: Python<'_>, text: &str) -> PyResult<Py<PyArray1<f32>>> {
-        let embedding = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
+        let embedding = py
+            .allow_threads(|| self.inner.encode(text))
+            .map_err(tessera_error_to_pyerr)?;
         dense_embedding_to_pyarray(py, &embedding)
     }
 
@@ -543,9 +546,8 @@ impl PyTesseraDense {
     ///     2
     fn encode_batch(&self, py: Python<'_>, texts: Vec<String>) -> PyResult<Vec<Py<PyArray1<f32>>>> {
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings_vec = self
-            .inner
-            .encode_batch(&text_refs)
+        let embeddings_vec = py
+            .allow_threads(|| self.inner.encode_batch(&text_refs))
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -665,7 +667,9 @@ impl PyTesseraSparse {
         py: Python<'py>,
         text: &str,
     ) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
-        let embedding = self.inner.encode(text).map_err(tessera_error_to_pyerr)?;
+        let embedding = py
+            .allow_threads(|| self.inner.encode(text))
+            .map_err(tessera_error_to_pyerr)?;
         sparse_embedding_to_pyarrays(py, &embedding)
     }
 
@@ -692,9 +696,8 @@ impl PyTesseraSparse {
         texts: Vec<String>,
     ) -> PyResult<Vec<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)>> {
         let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
-        let embeddings_vec = self
-            .inner
-            .encode_batch(&text_refs)
+        let embeddings_vec = py
+            .allow_threads(|| self.inner.encode_batch(&text_refs))
             .map_err(tessera_error_to_pyerr)?;
 
         embeddings_vec
@@ -804,9 +807,8 @@ impl PyTesseraVision {
     ///     (1024, 128)
     #[allow(clippy::elidable_lifetime_names)]
     fn encode_document<'py>(&self, py: Python<'py>, path: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embedding = self
-            .inner
-            .encode_document(path)
+        let embedding = py
+            .allow_threads(|| self.inner.encode_document(path))
             .map_err(tessera_error_to_pyerr)?;
         vision_embedding_to_pyarray(py, &embedding)
     }
@@ -828,9 +830,8 @@ impl PyTesseraVision {
     ///     (8, 128)
     #[allow(clippy::elidable_lifetime_names)]
     fn encode_query<'py>(&self, py: Python<'py>, text: &str) -> PyResult<Py<PyArray2<f32>>> {
-        let embedding = self
-            .inner
-            .encode_query(text)
+        let embedding = py
+            .allow_threads(|| self.inner.encode_query(text))
             .map_err(tessera_error_to_pyerr)?;
         token_embeddings_to_pyarray(py, &embedding)
     }
@@ -1018,9 +1019,8 @@ impl PyTesseraTimeSeries {
         let tensor = pyarray2_to_tensor(context)?;
 
         // Generate forecast
-        let forecast_tensor = self
-            .inner
-            .forecast(&tensor)
+        let forecast_tensor = py
+            .allow_threads(|| self.inner.forecast(&tensor))
             .map_err(tessera_error_to_pyerr)?;
 
         // Convert back to PyArray2
@@ -1053,9 +1053,8 @@ impl PyTesseraTimeSeries {
         let tensor = pyarray2_to_tensor(context)?;
 
         // Generate quantile forecasts
-        let quantiles_tensor = self
-            .inner
-            .forecast_quantiles(&tensor)
+        let quantiles_tensor = py
+            .allow_threads(|| self.inner.forecast_quantiles(&tensor))
             .map_err(tessera_error_to_pyerr)?;
 
         // Convert back to PyArray3

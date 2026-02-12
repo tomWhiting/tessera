@@ -489,7 +489,7 @@ impl CandleSparseEncoder {
             .map(|(idx, &v)| (idx, v))
             .collect();
 
-        Ok(SparseEmbedding::new(sparse_values, self.vocab_size, text))
+        SparseEmbedding::new(sparse_values, self.vocab_size, text)
     }
 }
 

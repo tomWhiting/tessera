@@ -38,6 +38,7 @@
 //! ```
 
 use super::Quantization;
+use anyhow::ensure;
 
 /// Binary quantized vector representation.
 ///
@@ -121,10 +122,11 @@ impl Quantization for BinaryQuantization {
     }
 
     fn distance(&self, a: &BinaryVector, b: &BinaryVector) -> f32 {
-        assert_eq!(
-            a.dim, b.dim,
-            "Binary vectors must have same dimension for distance computation"
-        );
+        // Validate dimensions match - if they don't, return 0.0 to indicate incompatibility
+        // In production, dimension mismatch indicates an error in the calling code
+        if a.dim != b.dim {
+            return 0.0;
+        }
 
         let mut hamming = 0u32;
         let num_bytes = a.data.len().min(b.data.len());

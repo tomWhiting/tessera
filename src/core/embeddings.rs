@@ -49,6 +49,9 @@ impl TokenEmbeddings {
     ///
     /// # Returns
     /// A new `TokenEmbeddings` instance with validated dimensions
+    ///
+    /// # Errors
+    /// Returns an error if embeddings contain NaN or Inf values
     pub fn new(embeddings: Array2<f32>, text: String) -> Result<Self> {
         let shape = embeddings.shape();
         let num_tokens = shape[0];
@@ -61,6 +64,12 @@ impl TokenEmbeddings {
         anyhow::ensure!(
             embedding_dim > 0,
             "Embedding dimension must be greater than zero"
+        );
+
+        // Validate no NaN or Inf values
+        anyhow::ensure!(
+            embeddings.iter().all(|v| v.is_finite()),
+            "Token embeddings contain NaN or Inf values"
         );
 
         Ok(Self {
@@ -206,17 +215,23 @@ pub struct DenseEmbedding {
 }
 
 impl DenseEmbedding {
-    /// Creates a new dense embedding.
+    /// Creates a new dense embedding with validation.
     ///
     /// # Arguments
     /// * `embedding` - The embedding vector
     /// * `text` - The original input text
     ///
     /// # Returns
-    /// A new `DenseEmbedding` instance
-    #[must_use]
-    pub const fn new(embedding: Array1<f32>, text: String) -> Self {
-        Self { embedding, text }
+    /// A new `DenseEmbedding` instance, or error if embedding contains NaN/Inf
+    ///
+    /// # Errors
+    /// Returns an error if embedding contains non-finite values
+    pub fn new(embedding: Array1<f32>, text: String) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            embedding.iter().all(|v| v.is_finite()),
+            "Dense embedding contains NaN or Inf values"
+        );
+        Ok(Self { embedding, text })
     }
 
     /// Get the embedding dimension.
@@ -305,7 +320,7 @@ pub struct SparseEmbedding {
 }
 
 impl SparseEmbedding {
-    /// Creates a new sparse embedding.
+    /// Creates a new sparse embedding with validation.
     ///
     /// # Arguments
     /// * `weights` - Non-zero (index, weight) pairs
@@ -313,14 +328,36 @@ impl SparseEmbedding {
     /// * `text` - Original input text
     ///
     /// # Returns
-    /// A new `SparseEmbedding` instance
-    #[must_use]
-    pub const fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Self {
-        Self {
+    /// A new `SparseEmbedding` instance, or an error if validation fails
+    ///
+    /// # Errors
+    /// Returns an error if any weight index >= vocab_size or if any weight is NaN/Inf
+    pub fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Result<Self> {
+        // Validate all indices are within bounds
+        for &(idx, _) in &weights {
+            anyhow::ensure!(
+                idx < vocab_size,
+                "Sparse embedding index {} exceeds vocabulary size {}",
+                idx,
+                vocab_size
+            );
+        }
+
+        // Validate no NaN or Inf weights
+        for &(idx, weight) in &weights {
+            anyhow::ensure!(
+                weight.is_finite(),
+                "Sparse embedding weight at index {} is not finite: {}",
+                idx,
+                weight
+            );
+        }
+
+        Ok(Self {
             weights,
             vocab_size,
             text,
-        }
+        })
     }
 
     /// Get the number of non-zero dimensions.
