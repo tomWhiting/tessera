@@ -38,7 +38,6 @@
 //! ```
 
 use super::Quantization;
-use anyhow::ensure;
 
 /// Binary quantized vector representation.
 ///

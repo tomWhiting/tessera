@@ -56,13 +56,6 @@ enum BertVariant {
     JinaBertCode(candle_transformers::models::jina_bert_code::BertModel),
     XlmRoberta(candle_transformers::models::xlm_roberta::XLMRobertaModel),
     ModernBert(candle_transformers::models::modernbert::ModernBert),
-    /// Qwen2 model wrapped in Arc<Mutex> for thread-safe interior mutability.
-    /// Used for jina-code-embeddings and GTE-Qwen2 models.
-    /// Note: Mutex is needed because forward_embeddings clears KV cache which requires &mut self.
-    Qwen2(std::sync::Arc<std::sync::Mutex<candle_transformers::models::qwen2::Model>>),
-    /// Qwen3 model wrapped in Arc<Mutex> for thread-safe interior mutability.
-    /// Needed because forward_embeddings clears KV cache which requires &mut self.
-    Qwen3(std::sync::Arc<std::sync::Mutex<candle_transformers::models::qwen3::Model>>),
 }
 
 impl BertVariant {
@@ -95,16 +88,6 @@ impl BertVariant {
             Self::ModernBert(model) => model
                 .forward(token_ids, _attention_mask)
                 .context("ModernBERT forward pass"),
-            Self::Qwen2(model) => model
-                .lock()
-                .map_err(|e| anyhow::anyhow!("Failed to acquire Qwen2 model lock: {}", e))?
-                .forward_embeddings(token_ids)
-                .context("Qwen2 embedding forward pass"),
-            Self::Qwen3(model) => model
-                .lock()
-                .map_err(|e| anyhow::anyhow!("Failed to acquire Qwen3 model lock: {}", e))?
-                .forward_embeddings(token_ids)
-                .context("Qwen3 embedding forward pass"),
         }
     }
 }
@@ -230,8 +213,6 @@ impl CandleDenseEncoder {
             (true, "distilbert") => vb.pp("distilbert"),
             (true, "xlm-roberta") => vb.pp("roberta"), // XLM-RoBERTa uses "roberta" prefix
             (true, "modernbert") => vb,                // ModernBERT typically doesn't use prefix
-            (_, "qwen2") => vb,                        // Qwen2 handles "model." prefix internally
-            (_, "qwen3") => vb,                        // Qwen3 handles "model." prefix internally
             (true, _) => vb.pp("bert"),
             (false, _) => vb, // No prefix (e.g., BGE models)
         };
@@ -277,15 +258,6 @@ impl CandleDenseEncoder {
                 return Ok("xlm-roberta".to_string());
             } else if model_type_lower.contains("modernbert") || model_type_lower == "modernbert" {
                 return Ok("modernbert".to_string());
-            } else if model_type_lower.contains("qwen3") {
-                // Qwen3 embedding models use bidirectional attention via forward_embeddings
-                return Ok("qwen3".to_string());
-            } else if model_type_lower.contains("qwen2") {
-                // Qwen2 embedding models (jina-code-embeddings, GTE-Qwen2, etc.)
-                return Ok("qwen2".to_string());
-            } else if model_type_lower == "qwen" || model_type_lower.contains("qwen") {
-                // Generic Qwen - assume Qwen2 for embedding models
-                return Ok("qwen2".to_string());
             } else if model_type_lower.contains("bert") {
                 return Ok("bert".to_string());
             }
@@ -447,24 +419,6 @@ impl CandleDenseEncoder {
                 let model = candle_transformers::models::modernbert::ModernBert::load(vb, &config)
                     .context("Loading ModernBERT model")?;
                 Ok(BertVariant::ModernBert(model))
-            }
-            "qwen2" => {
-                let config: candle_transformers::models::qwen2::Config =
-                    serde_json::from_str(config_str).context("Parsing Qwen2 config")?;
-                let model = candle_transformers::models::qwen2::Model::new(&config, vb)
-                    .context("Loading Qwen2 model")?;
-                Ok(BertVariant::Qwen2(std::sync::Arc::new(
-                    std::sync::Mutex::new(model),
-                )))
-            }
-            "qwen3" => {
-                let config: candle_transformers::models::qwen3::Config =
-                    serde_json::from_str(config_str).context("Parsing Qwen3 config")?;
-                let model = candle_transformers::models::qwen3::Model::new(&config, vb)
-                    .context("Loading Qwen3 model")?;
-                Ok(BertVariant::Qwen3(std::sync::Arc::new(
-                    std::sync::Mutex::new(model),
-                )))
             }
             _ => {
                 let config: candle_transformers::models::bert::Config =

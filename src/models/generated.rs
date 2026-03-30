@@ -187,158 +187,6 @@ pub struct ModelInfo {
     pub description: &'static str,
 }
 
-/// miniCOIL v1
-///
-/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
-///
-/// - Organization: Qdrant
-/// - Release: 2024
-/// - Parameters: 66M
-/// - Embedding dim: 4
-/// - Context length: 512
-/// - Languages: 1
-pub const MINICOIL_V1: ModelInfo = ModelInfo {
-    id: "minicoil-v1",
-    model_type: ModelType::Sparse,
-    name: "miniCOIL v1",
-    huggingface_id: "Qdrant/minicoil-v1",
-    organization: "Qdrant",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "distilbert-base",
-    has_projection: true,
-    projection_dims: Some(4),
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(4),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.46,
-    ms_marco_mrr10: 0.35,
-    license: "Apache-2.0",
-    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
-};
-
-/// SPLADE v3
-///
-/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
-///
-/// - Organization: Naver Labs
-/// - Release: 2023
-/// - Parameters: 66M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_V3: ModelInfo = ModelInfo {
-    id: "splade-v3",
-    model_type: ModelType::Sparse,
-    name: "SPLADE v3",
-    huggingface_id: "naver/splade-v3",
-    organization: "Naver Labs",
-    release_date: "2023",
-    architecture_type: "bert",
-    architecture_variant: "distilbert-base",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "66M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16"],
-    beir_avg: 0.49,
-    ms_marco_mrr10: 0.38,
-    license: "CC-BY-NC-SA-4.0",
-    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
-};
-
-/// SPLADE++ EN v1
-///
-/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v1",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v1",
-    huggingface_id: "prithivida/Splade_PP_en_v1",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.3722,
-    license: "apache-2.0",
-    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
-};
-
-/// SPLADE++ EN v2
-///
-/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
-///
-/// - Organization: prithivida
-/// - Release: 2024
-/// - Parameters: 109M
-/// - Embedding dim: 30522
-/// - Context length: 512
-/// - Languages: 1
-pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
-    id: "splade-pp-en-v2",
-    model_type: ModelType::Sparse,
-    name: "SPLADE++ EN v2",
-    huggingface_id: "prithivida/Splade_PP_en_v2",
-    organization: "prithivida",
-    release_date: "2024",
-    architecture_type: "bert",
-    architecture_variant: "bert-base-uncased",
-    has_projection: false,
-    projection_dims: None,
-    pooling: None,
-    parameters: "109M",
-    embedding_dim: EmbeddingDimension::Fixed(30522),
-    hidden_dim: 768,
-    context_length: 512,
-    max_position_embeddings: 512,
-    vocab_size: 30522,
-    languages: &["en"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &[],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.378,
-    license: "apache-2.0",
-    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
-};
-
 /// BGE-M3 (Multi-Vector Mode)
 ///
 /// Unified embedding model supporting dense, sparse, and multi-vector representations. Supports 100+ languages with 8K context. 1024 dimensions per token in multi-vector mode.
@@ -725,50 +573,6 @@ pub const BGE_BASE_EN_V1_5: ModelInfo = ModelInfo {
     description: "Strong baseline English embedding model from BAAI. Fixed 768-dimensional embeddings with excellent performance.",
 };
 
-/// Pooling configuration for GTE-Qwen2-7B.
-pub const GTE_QWEN2_7B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::Mean,
-    normalize: true,
-};
-
-/// GTE-Qwen2-7B
-///
-/// State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.
-///
-/// - Organization: Alibaba
-/// - Release: 2024
-/// - Parameters: 7B
-/// - Embedding dim: 3584 (Matryoshka: 512-3584 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 3
-pub const GTE_QWEN2_7B: ModelInfo = ModelInfo {
-    id: "gte-qwen2-7b",
-    model_type: ModelType::Dense,
-    name: "GTE-Qwen2-7B",
-    huggingface_id: "Alibaba-NLP/gte-Qwen2-7B-instruct",
-    organization: "Alibaba",
-    release_date: "2024",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2-7b-decoder",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(GTE_QWEN2_7B_POOLING),
-    parameters: "7B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 3584, min: 512, max: 3584, supported: &[512, 1024, 2048, 3584], strategy: Some("truncate_pooled") },
-    hidden_dim: 3584,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "zh", "multilingual"],
-    modalities: &["text"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8", "int4"],
-    beir_avg: 0.62,
-    ms_marco_mrr10: 0.51,
-    license: "Apache-2.0",
-    description: "State-of-the-art dense retrieval model based on Qwen2-7B decoder with bidirectional attention. Supports Matryoshka dimensions from 512 to 3584.",
-};
-
 /// Pooling configuration for Jina Embeddings v2 Small EN.
 pub const JINA_EMBEDDINGS_V2_SMALL_EN_POOLING: PoolingConfig = PoolingConfig {
     strategy: PoolingStrategy::Mean,
@@ -901,50 +705,6 @@ pub const JINA_EMBEDDINGS_V2_BASE_CODE: ModelInfo = ModelInfo {
     description: "Code embedding model with 8K context via ALiBi positional encoding. 161M parameters with 768-dimensional embeddings. Trained for code search and retrieval tasks.",
 };
 
-/// Pooling configuration for Jina Code Embeddings 0.5B.
-pub const JINA_CODE_EMBEDDINGS_0_5B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::LastToken,
-    normalize: true,
-};
-
-/// Jina Code Embeddings 0.5B
-///
-/// Compact code embedding model based on Qwen2.5-Coder-0.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (64-896 dims). Lighter-weight alternative for code search and retrieval.
-///
-/// - Organization: Jina AI
-/// - Release: 2025
-/// - Parameters: 0.5B
-/// - Embedding dim: 896 (Matryoshka: 64-896 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 16
-pub const JINA_CODE_EMBEDDINGS_0_5B: ModelInfo = ModelInfo {
-    id: "jina-code-embeddings-0.5b",
-    model_type: ModelType::Dense,
-    name: "Jina Code Embeddings 0.5B",
-    huggingface_id: "jinaai/jina-code-embeddings-0.5b",
-    organization: "Jina AI",
-    release_date: "2025",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2.5-coder-0.5b",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_CODE_EMBEDDINGS_0_5B_POOLING),
-    parameters: "0.5B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 896, min: 64, max: 896, supported: &[64, 128, 256, 512, 768, 896], strategy: Some("truncate_pooled") },
-    hidden_dim: 896,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
-    modalities: &["text", "code"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Compact code embedding model based on Qwen2.5-Coder-0.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (64-896 dims). Lighter-weight alternative for code search and retrieval.",
-};
-
 /// Pooling configuration for Jina Embeddings v3.
 pub const JINA_EMBEDDINGS_V3_POOLING: PoolingConfig = PoolingConfig {
     strategy: PoolingStrategy::Mean,
@@ -987,50 +747,6 @@ pub const JINA_EMBEDDINGS_V3: ModelInfo = ModelInfo {
     ms_marco_mrr10: 0.0,
     license: "Apache-2.0",
     description: "Frontier multilingual embedding model with 570M parameters based on XLM-RoBERTa with 24 layers. Features task-specific LoRA adapters for retrieval, classification, and text-matching. Supports 89 languages with extended 8K context using RoPE. Ranks 2nd on MTEB English leaderboard for models under 1B parameters.",
-};
-
-/// Pooling configuration for Jina Code Embeddings 1.5B.
-pub const JINA_CODE_EMBEDDINGS_1_5B_POOLING: PoolingConfig = PoolingConfig {
-    strategy: PoolingStrategy::LastToken,
-    normalize: true,
-};
-
-/// Jina Code Embeddings 1.5B
-///
-/// Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.
-///
-/// - Organization: Jina AI
-/// - Release: 2025
-/// - Parameters: 1.5B
-/// - Embedding dim: 1536 (Matryoshka: 128-1536 [\truncate_pooled\])
-/// - Context length: 32768
-/// - Languages: 16
-pub const JINA_CODE_EMBEDDINGS_1_5B: ModelInfo = ModelInfo {
-    id: "jina-code-embeddings-1.5b",
-    model_type: ModelType::Dense,
-    name: "Jina Code Embeddings 1.5B",
-    huggingface_id: "jinaai/jina-code-embeddings-1.5b",
-    organization: "Jina AI",
-    release_date: "2025",
-    architecture_type: "qwen2",
-    architecture_variant: "qwen2.5-coder-1.5b",
-    has_projection: false,
-    projection_dims: None,
-    pooling: Some(JINA_CODE_EMBEDDINGS_1_5B_POOLING),
-    parameters: "1.5B",
-    embedding_dim: EmbeddingDimension::Matryoshka { default: 1536, min: 128, max: 1536, supported: &[128, 256, 512, 768, 1024, 1536], strategy: Some("truncate_pooled") },
-    hidden_dim: 1536,
-    context_length: 32768,
-    max_position_embeddings: 32768,
-    vocab_size: 151936,
-    languages: &["en", "python", "javascript", "java", "cpp", "rust", "go", "typescript", "csharp", "php", "ruby", "swift", "kotlin", "scala", "r", "shell"],
-    modalities: &["text", "code"],
-    multi_vector: false,
-    quantization: &["fp32", "fp16", "int8"],
-    beir_avg: 0.0,
-    ms_marco_mrr10: 0.0,
-    license: "Apache-2.0",
-    description: "Code embedding model based on Qwen2.5-Coder-1.5B with bidirectional attention. Supports 15+ programming languages, 32K context, and Matryoshka representations (128-1536 dims). Optimized for text-to-code, code-to-code, and code-to-text retrieval.",
 };
 
 /// Pooling configuration for Nomic Embed v1.5.
@@ -1197,14 +913,162 @@ pub const TIMESFM_1_0_200M: ModelInfo = ModelInfo {
     description: "Pre-trained time series foundation model using decoder-only transformer. Supports context of 512 time points with strong zero-shot forecasting.",
 };
 
+/// miniCOIL v1
+///
+/// Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.
+///
+/// - Organization: Qdrant
+/// - Release: 2024
+/// - Parameters: 66M
+/// - Embedding dim: 4
+/// - Context length: 512
+/// - Languages: 1
+pub const MINICOIL_V1: ModelInfo = ModelInfo {
+    id: "minicoil-v1",
+    model_type: ModelType::Sparse,
+    name: "miniCOIL v1",
+    huggingface_id: "Qdrant/minicoil-v1",
+    organization: "Qdrant",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: true,
+    projection_dims: Some(4),
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(4),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16", "int8"],
+    beir_avg: 0.46,
+    ms_marco_mrr10: 0.35,
+    license: "Apache-2.0",
+    description: "Compact sparse retrieval model with 4-dimensional term vectors. Highly efficient for inverted index storage with competitive performance.",
+};
+
+/// SPLADE v3
+///
+/// Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.
+///
+/// - Organization: Naver Labs
+/// - Release: 2023
+/// - Parameters: 66M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_V3: ModelInfo = ModelInfo {
+    id: "splade-v3",
+    model_type: ModelType::Sparse,
+    name: "SPLADE v3",
+    huggingface_id: "naver/splade-v3",
+    organization: "Naver Labs",
+    release_date: "2023",
+    architecture_type: "bert",
+    architecture_variant: "distilbert-base",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "66M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &["fp32", "fp16"],
+    beir_avg: 0.49,
+    ms_marco_mrr10: 0.38,
+    license: "CC-BY-NC-SA-4.0",
+    description: "Sparse lexical retrieval using learned term expansion. Vocabulary-sized vectors with 99.82% sparsity for efficient inverted index storage.",
+};
+
+/// SPLADE++ EN v1
+///
+/// SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V1: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v1",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v1",
+    huggingface_id: "prithivida/Splade_PP_en_v1",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.3722,
+    license: "apache-2.0",
+    description: "SPLADE++ efficient sparse embedding model with automatic token expansion for retrieval tasks. Uses BERT-base with MLM head and restrictive FLOPS schedule (doc:128, query:24 tokens).",
+};
+
+/// SPLADE++ EN v2
+///
+/// Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.
+///
+/// - Organization: prithivida
+/// - Release: 2024
+/// - Parameters: 109M
+/// - Embedding dim: 30522
+/// - Context length: 512
+/// - Languages: 1
+pub const SPLADE_PP_EN_V2: ModelInfo = ModelInfo {
+    id: "splade-pp-en-v2",
+    model_type: ModelType::Sparse,
+    name: "SPLADE++ EN v2",
+    huggingface_id: "prithivida/Splade_PP_en_v2",
+    organization: "prithivida",
+    release_date: "2024",
+    architecture_type: "bert",
+    architecture_variant: "bert-base-uncased",
+    has_projection: false,
+    projection_dims: None,
+    pooling: None,
+    parameters: "109M",
+    embedding_dim: EmbeddingDimension::Fixed(30522),
+    hidden_dim: 768,
+    context_length: 512,
+    max_position_embeddings: 512,
+    vocab_size: 30522,
+    languages: &["en"],
+    modalities: &["text"],
+    multi_vector: false,
+    quantization: &[],
+    beir_avg: 0.0,
+    ms_marco_mrr10: 0.378,
+    license: "apache-2.0",
+    description: "Improved SPLADE++ v2 with middle-trained BERT-base (MLM loss) for better corpus awareness. Achieves 37.8 MRR@10 with efficient token budget and 48.81ms retrieval latency.",
+};
+
 /// Complete model registry containing all available models.
 ///
 /// This is generated at compile time from models.json.
 pub const MODEL_REGISTRY: &[ModelInfo] = &[
-    MINICOIL_V1,
-    SPLADE_V3,
-    SPLADE_PP_EN_V1,
-    SPLADE_PP_EN_V2,
     BGE_M3_MULTI,
     COLBERT_SMALL,
     COLBERT_V2,
@@ -1215,17 +1079,18 @@ pub const MODEL_REGISTRY: &[ModelInfo] = &[
     JINA_COLBERT_V2_96,
     JINA_COLBERT_V2,
     BGE_BASE_EN_V1_5,
-    GTE_QWEN2_7B,
     JINA_EMBEDDINGS_V2_SMALL_EN,
     JINA_EMBEDDINGS_V2_BASE_EN,
     JINA_EMBEDDINGS_V2_BASE_CODE,
-    JINA_CODE_EMBEDDINGS_0_5B,
     JINA_EMBEDDINGS_V3,
-    JINA_CODE_EMBEDDINGS_1_5B,
     NOMIC_EMBED_V1_5,
     SNOWFLAKE_ARCTIC_L,
     CHRONOS_BOLT_SMALL,
     TIMESFM_1_0_200M,
+    MINICOIL_V1,
+    SPLADE_V3,
+    SPLADE_PP_EN_V1,
+    SPLADE_PP_EN_V2,
 ];
 
 

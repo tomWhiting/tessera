@@ -71,18 +71,7 @@ impl Tokenizer {
     /// # Returns
     /// - `Some(base_model_id)` if the model is a known fine-tune without bundled tokenizer
     /// - `None` if no redirect is needed (model has its own tokenizer or is unknown)
-    fn get_base_model_tokenizer(model_name: &str) -> Option<&'static str> {
-        let name_lower = model_name.to_lowercase();
-
-        // Jina Code Embeddings are fine-tuned from Qwen2.5-Coder (identical tokenizer)
-        if name_lower.contains("jina-code-embeddings") {
-            if name_lower.contains("0.5b") {
-                return Some("Qwen/Qwen2.5-Coder-0.5B");
-            } else if name_lower.contains("1.5b") {
-                return Some("Qwen/Qwen2.5-Coder-1.5B");
-            }
-        }
-
+    fn get_base_model_tokenizer(_model_name: &str) -> Option<&'static str> {
         None
     }
 
