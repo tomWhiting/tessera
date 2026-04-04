@@ -632,9 +632,7 @@ impl TesseraDense {
 
         // Process in chunks with optional yielding
         let mut all_embeddings = Vec::with_capacity(texts.len());
-        let yield_duration = self
-            .yield_ms
-            .map(std::time::Duration::from_millis);
+        let yield_duration = self.yield_ms.map(std::time::Duration::from_millis);
 
         for (chunk_idx, chunk) in texts.chunks(batch_size).enumerate() {
             // Yield between batches (not before the first one)

@@ -52,8 +52,8 @@ enum BertVariant {
     Bert(candle_transformers::models::bert::BertModel),
     DistilBert(candle_transformers::models::distilbert::DistilBertModel),
     JinaBert(candle_transformers::models::jina_bert::BertModel),
-    /// JinaBERT Code model variant (different FFN structure from standard JinaBERT)
-    JinaBertCode(candle_transformers::models::jina_bert_code::BertModel),
+    /// JinaBERT Code model variant (uses same architecture as standard JinaBERT)
+    JinaBertCode(candle_transformers::models::jina_bert::BertModel),
     XlmRoberta(candle_transformers::models::xlm_roberta::XLMRobertaModel),
     ModernBert(candle_transformers::models::modernbert::ModernBert),
 }
@@ -398,11 +398,10 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::JinaBert(model))
             }
             "jinabert-code" => {
-                let config: candle_transformers::models::jina_bert_code::Config =
+                let config: candle_transformers::models::jina_bert::Config =
                     serde_json::from_str(config_str).context("Parsing JinaBERT Code config")?;
-                let model =
-                    candle_transformers::models::jina_bert_code::BertModel::new(vb, &config)
-                        .context("Loading JinaBERT Code model")?;
+                let model = candle_transformers::models::jina_bert::BertModel::new(vb, &config)
+                    .context("Loading JinaBERT Code model")?;
                 Ok(BertVariant::JinaBertCode(model))
             }
             "xlm-roberta" => {
