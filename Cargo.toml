@@ -1,18 +1,21 @@
 [package]
 name = "tessera-embeddings"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
+rust-version = "1.97"
 license = "Apache-2.0"
-description = "Multi-paradigm embedding library for dense, sparse, multi-vector, and vision-language retrieval"
+description = "Experimental embedding library for dense, sparse, multi-vector, and vision-language retrieval"
 repository = "https://github.com/tomWhiting/tessera"
 homepage = "https://github.com/tomWhiting/tessera"
 documentation = "https://docs.rs/tessera-embeddings"
 keywords = ["embeddings", "colbert", "semantic-search", "ml", "nlp"]
 categories = ["science", "text-processing"]
 exclude = [
+    "/.cargo/**",
     "/CODE_QUALITY_REPORT.md",
     "/OPTIMIZATION_PLAN.md",
     "/PUBLICATION_SUMMARY.md",
+    "/scripts/**",
     "/docs/archive/**",
     "/docs/vision_board/**",
     "/docs/ARCHITECTURE_REVIEW.md",
@@ -40,7 +43,7 @@ name = "tessera"
 path = "src/main.rs"
 
 [features]
-default = ["pdf"]  # PDF support enabled by default for ColPali document processing
+default = []
 metal = [
     "candle-core/metal",
     "candle-nn/metal",
@@ -48,9 +51,8 @@ metal = [
     "dep:candle-metal-kernels",
 ]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
-pdf = ["pdf2image"]  # PDF rendering support for ColPali document processing
-python = ["dep:pyo3", "dep:numpy"]  # PyO3 bindings over supported embedding models
-wasm = []    # WebAssembly bindings (TODO: add wasm-bindgen when implementing)
+pdf = ["dep:pdf2image"]  # Opt-in PDF rendering; requires a system Poppler installation
+python = ["dep:pyo3", "dep:numpy"]  # PyO3 bindings over experimental embedding adapters
 timeseries = []  # Generic time-series types only; the legacy Chronos runtime is quarantined
 
 [dependencies]
@@ -60,18 +62,15 @@ candle-metal-kernels = { version = "0.11.0", optional = true }
 candle-nn = "0.11.0"
 candle-transformers = "0.11.0"
 clap = { version = "4.5.49", features = ["derive"] }
-hf-hub = { version = "0.4.3", default-features = false, features = ["tokio", "rustls-tls", "ureq"] }
+hf-hub = { version = "0.4.3", default-features = false, features = ["ureq"] }
 ndarray = "0.16.1"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-safetensors = "0.6"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 thiserror = "2.0.17"
-tokenizers = { version = "0.22.1", features = ["http"] }
+tokenizers = "0.22.1"  # Artifacts are fetched by the pinned ModelFileResolver
 
-# Vision/Image Processing (Phase 3.1 - ColPali)
+# Vision and image processing
 image = "0.25"              # Image loading, format conversion, and resizing for vision models
-imageproc = "0.25"          # Advanced image processing operations (filtering, transformations)
 pdf2image = { version = "0.1.2", optional = true }  # PDF to image rendering (uses Poppler)
 pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
 numpy = { version = "0.22", optional = true }
@@ -81,8 +80,7 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 
 [lints.rust]
-# Note: unsafe is allowed in specific backend code for FFI (candle, Metal)
-# unsafe_code = "forbid"
+# Memory-mapped model loading contains narrowly scoped unsafe blocks.
 missing_docs = "warn"   # Warn on missing documentation
 
 [lints.clippy]
@@ -91,16 +89,14 @@ all = "warn"
 pedantic = "warn"
 nursery = "warn"
 
-# =============================================================================
-# Build Profiles - Critical for GPU Performance
-# =============================================================================
+# Balanced release profiles for native binaries and Python extension builds.
 
 [profile.release]
-opt-level = 3          # Maximum optimization
-lto = "fat"            # Link-time optimization - critical for GPU code inlining
-codegen-units = 1      # Single codegen unit for better optimization
+opt-level = 3          # Optimize runtime hot paths
+lto = "thin"           # Balanced link-time optimization without fat-LTO memory use
+codegen-units = 8      # Preserve parallel code generation for bounded build times
 strip = "symbols"      # Strip symbols for smaller binary
-panic = "abort"        # Abort on panic (no unwinding overhead)
+panic = "unwind"       # Let Rust and PyO3 boundaries report recoverable failures
 
 [profile.dev]
 opt-level = 1          # Some optimization even in dev for faster iteration

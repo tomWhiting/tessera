@@ -1,33 +1,18 @@
 use super::ColPaliEncoder;
 use crate::core::{TokenEmbeddings, VisionEmbedding};
+use crate::runtime::{ModelDType, ResourcePolicy, TransformerProfile};
 use anyhow::{Context, Result};
-use candle_core::{DType, Device, IndexOp, Module, Tensor};
+use candle_core::{DType, Device, Module, Tensor};
 #[cfg(feature = "pdf")]
 use image::DynamicImage;
 use std::path::Path;
 
 impl ColPaliEncoder {
-    /// Encode an image into patch embeddings.
-    ///
-    /// # Arguments
-    ///
-    /// * `image_path` - Path to image file (JPEG, PNG, etc.)
-    ///
-    /// # Returns
-    ///
-    /// `VisionEmbedding` with patch-level embeddings
-    ///
-    /// # Errors
-    ///
-    /// Returns error if:
-    /// - Image file cannot be loaded
-    /// - Image format is unsupported
-    /// - Inference fails
+    /// Encodes an image as one normalized vector per visual patch.
     pub fn encode_image(&self, image_path: &Path) -> Result<VisionEmbedding> {
-        // Preprocess image to tensor [3, H, W]. The tensor-based helper also
-        // serves rendered PDF pages without a temporary PNG round trip.
         let image_tensor = self
-            .image_processor
+            .processor
+            .image_processor()
             .preprocess_from_path(image_path, &self.device)
             .context("Failed to preprocess image")?;
 
@@ -44,7 +29,8 @@ impl ColPaliEncoder {
         source: Option<String>,
     ) -> Result<VisionEmbedding> {
         let image_tensor = self
-            .image_processor
+            .processor
+            .image_processor()
             .preprocess_image(image, &self.device)
             .context("Failed to preprocess image")?;
 
@@ -56,214 +42,231 @@ impl ColPaliEncoder {
         image_tensor: Tensor,
         source: Option<String>,
     ) -> Result<VisionEmbedding> {
-        // 2. Add batch dimension [1, 3, H, W]
+        let prompt_ids = self.processor.image_prompt_token_ids();
+        let expected_sequence = self
+            .num_patches
+            .checked_add(prompt_ids.len())
+            .context("ColPali image sequence length overflowed")?;
+        validate_forward_resources(
+            &self.resource_policy,
+            self.transformer_profile,
+            self.dtype,
+            expected_sequence,
+            "ColPali image",
+        )?;
+
         let batched_image = image_tensor
             .unsqueeze(0)
-            .context("Failed to add batch dimension")?;
+            .context("Failed to add image batch dimension")?;
+        let prompt_tensor = token_ids_tensor(prompt_ids, &self.device)
+            .context("Failed to create ColPali image prompt tensor")?;
 
-        // 3. Create dummy input_ids for setup (PaliGemma requires both images and text)
-        // We use a minimal token sequence just to get the image features
-        let dummy_input_ids = Tensor::new(&[0u32], &self.device)?.unsqueeze(0)?; // [1, 1]
-
-        // 4. Acquire global inference admission before the model-specific lock.
         let inference_permit = crate::runtime::acquire_inference_permit()
             .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
         let mut model = self
             .model
             .lock()
-            .map_err(|e| anyhow::anyhow!("Failed to acquire model lock: {}", e))?;
-
-        // 5. Extract the image features in one pass. Calling `setup` first would
-        // run the complete vision tower and language model twice while discarding
-        // the first result.
+            .map_err(|error| anyhow::anyhow!("Failed to acquire model lock: {error}"))?;
         let image_features = model
-            .setup_without_projection(&batched_image, &dummy_input_ids)
-            .context("Failed to extract image features")?;
+            .setup_without_projection(&batched_image, &prompt_tensor)
+            .context("Failed to encode image and ColPali document prompt")?;
         drop(model);
 
-        // 6. The output is [batch_size, seq_len, hidden_dim]
-        // For images, seq_len = num_patches (e.g., 1024 for 448x448)
-        // We need to extract just the image patches (excluding text tokens)
-        let patch_embeddings = image_features
-            .i((.., ..self.num_patches, ..))
-            .context("Failed to extract patch embeddings")?;
-
-        // 7. Remove batch dimension and convert to Vec<Vec<f32>>
-        let patch_embeddings = patch_embeddings
+        validate_tensor_shape(
+            &image_features,
+            &[1, expected_sequence, self.hidden_dim],
+            "PaliGemma image output",
+        )?;
+        let document_states = image_features
             .squeeze(0)
-            .context("Failed to squeeze batch dimension")?;
-
-        // 8. Apply custom text projection to image embeddings (2048 -> 128)
-        // Note: In ColPali v1.2-merged, the same projection layer is used for both
-        // text and vision embeddings to project from PaliGemma's hidden size (2048)
-        // to ColPali's embedding dimension (128) for efficient late interaction.
-        let projected = self
-            .custom_text_projection
-            .forward(&patch_embeddings)
-            .context("Failed to apply projection to image embeddings")?;
-
-        // 9. Apply L2 normalization
-        let norms = projected
-            .sqr()?
-            .sum_keepdim(1)? // Sum over embedding dimension
-            .sqrt()?;
-        let normalized = projected
-            .broadcast_div(&norms)
-            .context("Failed to normalize image embeddings")?;
-
-        // 10. Convert to CPU and extract as Vec<Vec<f32>>
-        let embeddings = self
-            .tensor_to_vec2(&normalized)
-            .context("Failed to convert patch embeddings to Vec<Vec<f32>>")?;
+            .context("Failed to remove image batch dimension")?;
+        let normalized = self.project_and_normalize(
+            &document_states,
+            expected_sequence,
+            "image document projection",
+        )?;
+        let embeddings = normalized
+            .chunks_exact(self.embedding_dim)
+            .map(<[f32]>::to_vec)
+            .collect();
         drop(inference_permit);
 
-        // 11. Create VisionEmbedding with correct embedding dimension (128)
-        Ok(VisionEmbedding::new(
-            embeddings,
-            self.num_patches,
-            self.embedding_dim,
-            source,
-        ))
+        VisionEmbedding::new(embeddings, self.num_patches, self.embedding_dim, source)
+            .context("Failed to validate projected image embedding")
     }
 
-    /// Encode text query into token embeddings.
-    ///
-    /// Uses the language model component of `PaliGemma` to encode text
-    /// for retrieval against image embeddings using `MaxSim`.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - Text query string
-    ///
-    /// # Returns
-    ///
-    /// `TokenEmbeddings` compatible with `MaxSim` scoring
-    ///
-    /// # Errors
-    ///
-    /// Returns error if:
-    /// - Tokenization fails
-    /// - Text encoding fails
+    /// Encodes a query using ColPali's retrieval prompt and augmentation tokens.
     pub fn encode_text(&self, text: &str) -> Result<TokenEmbeddings> {
-        // 1. Tokenize text
-        let (token_ids, _attention_mask) = self
-            .tokenizer
-            .encode(text, true)
-            .with_context(|| format!("Failed to tokenize text ({} UTF-8 bytes)", text.len()))?;
+        let token_ids = self.processor.tokenize_query(text, &self.tokenizer)?;
+        validate_forward_resources(
+            &self.resource_policy,
+            self.transformer_profile,
+            self.dtype,
+            token_ids.len(),
+            "ColPali query",
+        )?;
+        let token_ids_tensor = token_ids_tensor(&token_ids, &self.device)
+            .context("Failed to create ColPali query token tensor")?;
 
-        // 2. Convert token IDs to tensor [1, seq_len]
-        let token_ids_i64: Vec<i64> = token_ids.iter().map(|&id| i64::from(id)).collect();
-        let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
-            .context("Failed to create token IDs tensor")?;
-
-        // 3. Acquire global inference admission before the model-specific lock.
         let inference_permit = crate::runtime::acquire_inference_permit()
             .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
         let mut model = self
             .model
             .lock()
-            .map_err(|e| anyhow::anyhow!("Failed to acquire model lock: {}", e))?;
-
-        // 4. For text-only encoding, we use forward_without_projection
-        // This gives us the language model embeddings without image context
+            .map_err(|error| anyhow::anyhow!("Failed to acquire model lock: {error}"))?;
         let token_embeddings = model
             .forward_without_projection(&token_ids_tensor)
-            .context("Failed to encode text through language model")?;
+            .context("Failed to encode the ColPali query prompt")?;
         drop(model);
 
-        // 5. Remove batch dimension [seq_len, hidden_dim]
+        validate_tensor_shape(
+            &token_embeddings,
+            &[1, token_ids.len(), self.hidden_dim],
+            "PaliGemma query output",
+        )?;
         let token_embeddings = token_embeddings
             .squeeze(0)
-            .context("Failed to squeeze batch dimension")?;
-
-        // 6. Apply custom text projection (2048 -> 128)
-        let projected = self
-            .custom_text_projection
-            .forward(&token_embeddings)
-            .context("Failed to apply custom text projection")?;
-
-        // 7. Apply L2 normalization
-        // Sum over last dimension (embedding dim), keep dimension for broadcasting
-        let norms = projected
-            .sqr()?
-            .sum_keepdim(1)? // Sum over embedding dimension
-            .sqrt()?;
-        let normalized = projected
-            .broadcast_div(&norms)
-            .context("Failed to normalize embeddings")?;
-
-        // 8. Convert to ndarray::Array2<f32>
-        let embeddings = self
-            .tensor_to_array2(&normalized)
-            .context("Failed to convert token embeddings to Array2")?;
+            .context("Failed to remove query batch dimension")?;
+        let normalized = self.project_and_normalize(
+            &token_embeddings,
+            token_ids.len(),
+            "query token projection",
+        )?;
+        let embeddings =
+            ndarray::Array2::from_shape_vec((token_ids.len(), self.embedding_dim), normalized)
+                .context("Failed to create query embedding matrix")?;
         drop(inference_permit);
 
-        // 9. Create TokenEmbeddings
         TokenEmbeddings::new(embeddings, text.to_string())
-            .context("Failed to create TokenEmbeddings")
+            .context("Failed to validate projected query embedding")
     }
 
-    /// Helper: Convert Candle Tensor to Vec<Vec<f32>>
-    pub(super) fn tensor_to_vec2(&self, tensor: &Tensor) -> Result<Vec<Vec<f32>>> {
-        // Ensure tensor is on CPU and F32
-        let tensor_cpu = tensor
-            .to_dtype(DType::F32)
-            .context("Failed to convert tensor to F32")?
-            .to_device(&Device::Cpu)
-            .context("Failed to move tensor to CPU")?;
+    fn project_and_normalize(
+        &self,
+        hidden_states: &Tensor,
+        expected_rows: usize,
+        kind: &str,
+    ) -> Result<Vec<f32>> {
+        validate_tensor_shape(
+            hidden_states,
+            &[expected_rows, self.hidden_dim],
+            &format!("{kind} input"),
+        )?;
+        let projected = self
+            .custom_text_projection
+            .forward(hidden_states)
+            .with_context(|| format!("Failed to apply {kind}"))?;
+        validate_tensor_shape(&projected, &[expected_rows, self.embedding_dim], kind)?;
 
-        let shape = tensor_cpu.dims();
-        if shape.len() != 2 {
-            anyhow::bail!("Expected 2D tensor, got shape {shape:?}");
-        }
-
-        let num_rows = shape[0];
-        let num_cols = shape[1];
-
-        // Flatten and convert to Vec<f32>
-        let flat_data = tensor_cpu
-            .flatten_all()
-            .context("Failed to flatten tensor")?
-            .to_vec1::<f32>()
-            .context("Failed to convert tensor to Vec<f32>")?;
-
-        // Reshape to Vec<Vec<f32>>
-        let mut result = Vec::with_capacity(num_rows);
-        for i in 0..num_rows {
-            let start = i * num_cols;
-            let end = start + num_cols;
-            result.push(flat_data[start..end].to_vec());
-        }
-
-        Ok(result)
-    }
-
-    /// Helper: Convert Candle Tensor to `ndarray::Array2`<f32>
-    pub(super) fn tensor_to_array2(&self, tensor: &Tensor) -> Result<ndarray::Array2<f32>> {
-        // Ensure tensor is on CPU and F32
-        let tensor_cpu = tensor
-            .to_dtype(DType::F32)
-            .context("Failed to convert tensor to F32")?
-            .to_device(&Device::Cpu)
-            .context("Failed to move tensor to CPU")?;
-
-        let shape = tensor_cpu.dims();
-        if shape.len() != 2 {
-            anyhow::bail!("Expected 2D tensor, got shape {shape:?}");
-        }
-
-        let num_rows = shape[0];
-        let num_cols = shape[1];
-
-        // Flatten and convert to Vec<f32>
-        let flat_data = tensor_cpu
-            .flatten_all()
-            .context("Failed to flatten tensor")?
-            .to_vec1::<f32>()
-            .context("Failed to convert tensor to Vec<f32>")?;
-
-        // Convert to ndarray
-        ndarray::Array2::from_shape_vec((num_rows, num_cols), flat_data)
-            .context("Failed to create Array2 from flattened data")
+        let mut values =
+            tensor_to_finite_flat(&projected, expected_rows, self.embedding_dim, kind)?;
+        normalize_rows(&mut values, expected_rows, self.embedding_dim, kind)?;
+        Ok(values)
     }
 }
+
+fn validate_forward_resources(
+    policy: &ResourcePolicy,
+    profile: TransformerProfile,
+    dtype: ModelDType,
+    sequence_tokens: usize,
+    kind: &str,
+) -> Result<()> {
+    policy
+        .validate_sequence(sequence_tokens)
+        .map_err(|error| anyhow::anyhow!("{kind} sequence preflight failed: {error}"))?;
+    policy
+        .validate_batch(1, sequence_tokens)
+        .map_err(|error| anyhow::anyhow!("{kind} batch preflight failed: {error}"))?;
+    policy
+        .validate_transformer_activations(profile, 1, sequence_tokens, dtype)
+        .map_err(|error| anyhow::anyhow!("{kind} activation preflight failed: {error}"))?;
+    Ok(())
+}
+
+fn token_ids_tensor(token_ids: &[u32], device: &Device) -> Result<Tensor> {
+    anyhow::ensure!(!token_ids.is_empty(), "ColPali token layout is empty");
+    let token_ids: Vec<i64> = token_ids.iter().copied().map(i64::from).collect();
+    let sequence_length = token_ids.len();
+    Tensor::from_vec(token_ids, (1, sequence_length), device).map_err(Into::into)
+}
+
+fn validate_tensor_shape(tensor: &Tensor, expected: &[usize], kind: &str) -> Result<()> {
+    let measured = tensor.dims();
+    anyhow::ensure!(
+        measured == expected,
+        "{kind} has shape {measured:?}; expected {expected:?}"
+    );
+    Ok(())
+}
+
+fn tensor_to_finite_flat(
+    tensor: &Tensor,
+    expected_rows: usize,
+    expected_columns: usize,
+    kind: &str,
+) -> Result<Vec<f32>> {
+    validate_tensor_shape(tensor, &[expected_rows, expected_columns], kind)?;
+    let values = tensor
+        .to_dtype(DType::F32)
+        .with_context(|| format!("Failed to convert {kind} to F32"))?
+        .to_device(&Device::Cpu)
+        .with_context(|| format!("Failed to move {kind} to CPU"))?
+        .flatten_all()
+        .with_context(|| format!("Failed to flatten {kind}"))?
+        .to_vec1::<f32>()
+        .with_context(|| format!("Failed to extract {kind}"))?;
+    if let Some((index, value)) = values
+        .iter()
+        .copied()
+        .enumerate()
+        .find(|(_, value)| !value.is_finite())
+    {
+        let row = index / expected_columns;
+        let column = index % expected_columns;
+        anyhow::bail!("{kind} contains non-finite value {value} at row {row}, column {column}");
+    }
+    Ok(values)
+}
+
+fn normalize_rows(
+    values: &mut [f32],
+    expected_rows: usize,
+    expected_columns: usize,
+    kind: &str,
+) -> Result<()> {
+    let expected_values = expected_rows
+        .checked_mul(expected_columns)
+        .context("Projected embedding element count overflowed")?;
+    anyhow::ensure!(
+        values.len() == expected_values,
+        "{kind} contains {} values; expected {expected_values}",
+        values.len()
+    );
+    for (row_index, row) in values.chunks_exact_mut(expected_columns).enumerate() {
+        let squared_norm = row.iter().try_fold(0.0_f32, |sum, &value| {
+            let next = value.mul_add(value, sum);
+            anyhow::ensure!(
+                next.is_finite(),
+                "{kind} row {row_index} has a non-finite squared norm"
+            );
+            Ok::<f32, anyhow::Error>(next)
+        })?;
+        let norm = squared_norm.sqrt();
+        anyhow::ensure!(
+            norm.is_finite() && norm > 0.0,
+            "{kind} row {row_index} has invalid L2 norm {norm}"
+        );
+        for (column_index, value) in row.iter_mut().enumerate() {
+            *value /= norm;
+            anyhow::ensure!(
+                value.is_finite(),
+                "{kind} produced a non-finite normalized value at row {row_index}, column {column_index}"
+            );
+        }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

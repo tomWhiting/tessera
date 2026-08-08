@@ -14,11 +14,3 @@
 pub mod dense;
 pub mod sparse;
 pub mod vision;
-
-// Re-exports for convenience
-pub use dense::CandleDenseEncoder;
-pub use sparse::CandleSparseEncoder;
-pub use vision::ColPaliEncoder;
-
-#[allow(deprecated)]
-pub use sparse::SparseEncoding;

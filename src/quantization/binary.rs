@@ -1,30 +1,20 @@
-//! Binary (1-bit) quantization for maximum compression.
+//! Binary (1-bit) sign quantization.
 //!
 //! Implements binary quantization where each dimension is represented
 //! as a single bit (sign of the original value):
 //!
-//! - **Encoding**: `sign(x) → {0, 1}` where 1 = positive, 0 = negative
+//! - **Encoding**: `sign(x) → {0, 1}` where 1 = positive, 0 = zero/negative
 //! - **Storage**: Pack bits into u8 bytes (8 dimensions per byte)
 //! - **Distance**: Hamming-based similarity via XOR + popcount
 //!
 //! # Compression
 //!
 //! - Original: 4 bytes per dimension (float32)
-//! - Binary: 1 bit per dimension (32x compression)
+//! - Binary payload: 1 bit per dimension, rounded up to a whole byte
 //! - 768-dim embedding: 3072 bytes → 96 bytes
 //!
-//! # Performance
-//!
-//! - Distance computation: O(n) XOR operations + popcount
-//! - Cache-friendly: 32x more embeddings fit in memory
-//! - Fast bit manipulation operations
-//!
-//! # Accuracy
-//!
-//! Despite aggressive compression, binary embeddings maintain:
-//! - 95-97% of original ranking accuracy
-//! - Preserved relative ordering for most queries
-//! - Suitable for initial filtering + reranking workflows
+//! Distance uses one XOR and popcount per packed byte. Retrieval quality is
+//! model- and dataset-dependent and must be measured for the target workload.
 //!
 //! # Example
 //!
@@ -33,11 +23,12 @@
 //!
 //! let quantizer = BinaryQuantization::new();
 //! let vector = vec![0.5, -0.3, 0.8, -0.1];
-//! let binary = quantizer.quantize_vector(&vector);
-//! let restored = quantizer.dequantize_vector(&binary);
+//! let binary = quantizer.quantize_vector(&vector)?;
+//! let restored = quantizer.dequantize_vector(&binary)?;
 //! ```
 
 use super::Quantization;
+use crate::error::{Result, TesseraError};
 
 /// Binary quantized vector representation.
 ///
@@ -46,16 +37,62 @@ use super::Quantization;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BinaryVector {
     /// Packed bits (8 dimensions per byte)
-    pub data: Vec<u8>,
+    data: Vec<u8>,
     /// Original dimension (before packing)
-    pub dim: usize,
+    dim: usize,
 }
 
 impl BinaryVector {
+    /// Construct a binary vector from an existing packed representation.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when the dimension is zero, the packed length does
+    /// not exactly match the dimension, or unused padding bits are set.
+    pub fn from_packed(data: Vec<u8>, dim: usize) -> Result<Self> {
+        if dim == 0 {
+            return Err(quantization_error(
+                "Binary vector dimension must be greater than zero",
+            ));
+        }
+
+        let expected_bytes = dim.div_ceil(8);
+        if data.len() != expected_bytes {
+            return Err(quantization_error(format!(
+                "Binary vector with dimension {dim} requires {expected_bytes} bytes, got {}",
+                data.len()
+            )));
+        }
+
+        let used_bits_in_last_byte = dim % 8;
+        if used_bits_in_last_byte != 0 {
+            let valid_mask = (1_u8 << used_bits_in_last_byte) - 1;
+            if data.last().is_some_and(|byte| byte & !valid_mask != 0) {
+                return Err(quantization_error(
+                    "Binary vector has non-zero bits outside its declared dimension",
+                ));
+            }
+        }
+
+        Ok(Self { data, dim })
+    }
+
+    /// Return the packed bit payload.
+    #[must_use]
+    pub fn packed(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// Return the original vector dimension.
+    #[must_use]
+    pub const fn dim(&self) -> usize {
+        self.dim
+    }
+
     /// Calculate memory usage in bytes.
     ///
-    /// Returns the size of the packed bit data only, excluding Rust struct overhead.
-    /// This provides an accurate measure of the data compression ratio.
+    /// Returns the size of the packed bit data only, excluding Rust struct
+    /// overhead and metadata.
     ///
     /// # Returns
     ///
@@ -91,23 +128,38 @@ impl Default for BinaryQuantization {
 impl Quantization for BinaryQuantization {
     type Output = BinaryVector;
 
-    fn quantize_vector(&self, vector: &[f32]) -> BinaryVector {
+    fn quantize_vector(&self, vector: &[f32]) -> Result<BinaryVector> {
+        if vector.is_empty() {
+            return Err(quantization_error(
+                "Cannot quantize a vector with zero dimensions",
+            ));
+        }
+        if let Some((index, value)) = vector
+            .iter()
+            .enumerate()
+            .find(|(_, value)| !value.is_finite())
+        {
+            return Err(quantization_error(format!(
+                "Cannot quantize non-finite value {value} at dimension {index}"
+            )));
+        }
+
         let dim = vector.len();
         let num_bytes = dim.div_ceil(8); // Round up to nearest byte
         let mut data = vec![0u8; num_bytes];
 
         for (i, &val) in vector.iter().enumerate() {
-            if val >= 0.0 {
+            if val > 0.0 {
                 let byte_idx = i / 8;
                 let bit_idx = i % 8;
                 data[byte_idx] |= 1 << bit_idx;
             }
         }
 
-        BinaryVector { data, dim }
+        Ok(BinaryVector { data, dim })
     }
 
-    fn dequantize_vector(&self, quantized: &BinaryVector) -> Vec<f32> {
+    fn dequantize_vector(&self, quantized: &BinaryVector) -> Result<Vec<f32>> {
         let mut result = vec![0.0; quantized.dim];
 
         for i in 0..quantized.dim {
@@ -117,165 +169,39 @@ impl Quantization for BinaryQuantization {
             result[i] = if bit == 1 { 1.0 } else { -1.0 };
         }
 
-        result
+        Ok(result)
     }
 
-    fn distance(&self, a: &BinaryVector, b: &BinaryVector) -> f32 {
-        // Validate dimensions match - if they don't, return 0.0 to indicate incompatibility
-        // In production, dimension mismatch indicates an error in the calling code
+    #[allow(clippy::cast_precision_loss)]
+    fn distance(&self, a: &BinaryVector, b: &BinaryVector) -> Result<f32> {
         if a.dim != b.dim {
-            return 0.0;
+            return Err(TesseraError::DimensionMismatch {
+                expected: a.dim,
+                actual: b.dim,
+            });
         }
 
-        let mut hamming = 0u32;
-        let num_bytes = a.data.len().min(b.data.len());
-
-        for i in 0..num_bytes {
-            let xor = a.data[i] ^ b.data[i];
-            hamming += xor.count_ones();
-        }
+        let hamming = a
+            .data
+            .iter()
+            .zip(&b.data)
+            .try_fold(0_u64, |total, (left, right)| {
+                total
+                    .checked_add(u64::from((left ^ right).count_ones()))
+                    .ok_or_else(|| quantization_error("Binary Hamming distance overflowed"))
+            })?;
 
         // Convert Hamming distance to similarity (lower distance = higher similarity)
         // For MaxSim, we want higher values for similar vectors
         // Similarity = dimension - hamming_distance
-        let max_hamming = a.dim as f32;
-        max_hamming - hamming as f32
+        Ok(a.dim as f32 - hamming as f32)
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "binary/tests.rs"]
+mod tests;
 
-    fn assert_close(actual: f32, expected: f32) {
-        assert!((actual - expected).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn test_binary_quantization_single_vector() {
-        let quantizer = BinaryQuantization::new();
-        let vector = vec![0.5, -0.3, 0.8, -0.1];
-
-        let binary = quantizer.quantize_vector(&vector);
-        assert_eq!(binary.dim, 4);
-
-        // Verify bits: [+, -, +, -] -> [1, 0, 1, 0]
-        let deq = quantizer.dequantize_vector(&binary);
-        assert_eq!(deq, vec![1.0, -1.0, 1.0, -1.0]);
-    }
-
-    #[test]
-    fn test_binary_hamming_distance() {
-        let quantizer = BinaryQuantization::new();
-        let v1 = vec![1.0, 1.0, -1.0, -1.0];
-        let v2 = vec![1.0, -1.0, -1.0, 1.0];
-
-        let b1 = quantizer.quantize_vector(&v1);
-        let b2 = quantizer.quantize_vector(&v2);
-
-        let dist = quantizer.distance(&b1, &b2);
-        // Hamming distance = 2 (differ in positions 1 and 3)
-        // Similarity = 4 - 2 = 2
-        assert_close(dist, 2.0);
-    }
-
-    #[test]
-    fn test_binary_identical_vectors() {
-        let quantizer = BinaryQuantization::new();
-        let vector = vec![0.5, -0.3, 0.8, -0.1, 0.2];
-
-        let b1 = quantizer.quantize_vector(&vector);
-        let b2 = quantizer.quantize_vector(&vector);
-
-        let dist = quantizer.distance(&b1, &b2);
-        // Identical vectors should have zero Hamming distance
-        // Similarity = 5 - 0 = 5
-        assert_close(dist, 5.0);
-    }
-
-    #[test]
-    fn test_binary_opposite_vectors() {
-        let quantizer = BinaryQuantization::new();
-        let v1 = vec![1.0, 1.0, 1.0, 1.0];
-        let v2 = vec![-1.0, -1.0, -1.0, -1.0];
-
-        let b1 = quantizer.quantize_vector(&v1);
-        let b2 = quantizer.quantize_vector(&v2);
-
-        let dist = quantizer.distance(&b1, &b2);
-        // Completely opposite: Hamming distance = 4
-        // Similarity = 4 - 4 = 0
-        assert_close(dist, 0.0);
-    }
-
-    #[test]
-    fn test_multi_vector_quantization() {
-        use crate::quantization::quantize_multi;
-
-        let quantizer = BinaryQuantization::new();
-        let vectors = vec![vec![0.5, -0.3], vec![0.8, 0.2], vec![-0.1, -0.9]];
-
-        let packed_vectors = quantize_multi(&quantizer, &vectors);
-        assert_eq!(packed_vectors.len(), 3);
-        assert_eq!(packed_vectors[0].dim, 2);
-        assert_eq!(packed_vectors[1].dim, 2);
-        assert_eq!(packed_vectors[2].dim, 2);
-    }
-
-    #[test]
-    fn test_multi_vector_distance() {
-        use crate::quantization::{multi_vector_distance, quantize_multi};
-
-        let quantizer = BinaryQuantization::new();
-
-        // Query: 2 vectors
-        let query = vec![vec![1.0, 1.0], vec![-1.0, 1.0]];
-        // Document: 2 vectors
-        let document = vec![vec![1.0, -1.0], vec![-1.0, 1.0]];
-
-        let q_quant = quantize_multi(&quantizer, &query);
-        let d_quant = quantize_multi(&quantizer, &document);
-
-        let score = multi_vector_distance(&quantizer, &q_quant, &d_quant);
-
-        // Query vector 0 [1, 1] vs Doc vectors:
-        //   vs [1, -1]: Hamming=1, Sim=2-1=1
-        //   vs [-1, 1]: Hamming=1, Sim=2-1=1
-        //   Max = 1
-        // Query vector 1 [-1, 1] vs Doc vectors:
-        //   vs [1, -1]: Hamming=2, Sim=2-2=0
-        //   vs [-1, 1]: Hamming=0, Sim=2-0=2
-        //   Max = 2
-        // Total = 1 + 2 = 3
-        assert_close(score, 3.0);
-    }
-
-    #[test]
-    fn test_binary_large_dimension() {
-        let quantizer = BinaryQuantization::new();
-        let vector: Vec<f32> = (0..128)
-            .map(|i| if i % 2 == 0 { 1.0 } else { -1.0 })
-            .collect();
-
-        let binary = quantizer.quantize_vector(&vector);
-        assert_eq!(binary.dim, 128);
-        assert_eq!(binary.data.len(), 16); // 128 bits = 16 bytes
-
-        let restored = quantizer.dequantize_vector(&binary);
-        assert_eq!(restored.len(), 128);
-    }
-
-    #[test]
-    fn test_binary_non_multiple_of_8() {
-        let quantizer = BinaryQuantization::new();
-        let vector = vec![0.5, -0.3, 0.8]; // 3 dimensions
-
-        let binary = quantizer.quantize_vector(&vector);
-        assert_eq!(binary.dim, 3);
-        assert_eq!(binary.data.len(), 1); // Rounds up to 1 byte
-
-        let restored = quantizer.dequantize_vector(&binary);
-        assert_eq!(restored.len(), 3);
-        assert_eq!(restored, vec![1.0, -1.0, 1.0]);
-    }
+fn quantization_error(message: impl Into<String>) -> TesseraError {
+    TesseraError::QuantizationError(message.into())
 }

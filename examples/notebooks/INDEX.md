@@ -27,9 +27,10 @@ after the user checks the explicit `HIGH MEMORY` opt-in. This set is not a claim
 that every catalog entry is runnable; catalog-only models are rejected by the
 active builders when no compatible runtime adapter exists.
 
-The opted-in simultaneous comparison has a meaningful memory cost. Resource
-limits protect individual loads and requests, not the total of three resident
-models plus Python and visualization allocations. Keep the checkbox clear on
+The opted-in simultaneous comparison has a meaningful memory cost. Tessera
+admits the aggregate estimated parameter bytes for its retained encoders, but
+that estimate does not cover activations, Python and visualization objects,
+allocator overhead, or total process memory. Keep the checkbox clear on
 constrained machines.
 
 ## Quarantined notebook

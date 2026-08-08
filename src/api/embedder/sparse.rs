@@ -2,6 +2,7 @@ use crate::api::TesseraSparseBuilder;
 use crate::core::{Encoder, SparseEmbedding};
 use crate::encoding::sparse::CandleSparseEncoder;
 use crate::error::{Result, TesseraError};
+use crate::runtime::{ContextWindowConfig, JobTracker, ModelDType, ResourcePolicy};
 
 /// Sparse embedder for SPLADE-style vocabulary-sized embeddings.
 ///
@@ -15,6 +16,8 @@ pub struct TesseraSparse {
     encoder: CandleSparseEncoder,
     /// Model identifier from registry
     model_id: String,
+    /// Whole-job and collected-output limits.
+    resource_policy: ResourcePolicy,
 }
 
 impl TesseraSparse {
@@ -77,8 +80,16 @@ impl TesseraSparse {
     }
 
     /// Internal constructor used by builder.
-    pub(crate) const fn from_encoder(encoder: CandleSparseEncoder, model_id: String) -> Self {
-        Self { encoder, model_id }
+    pub(crate) const fn from_encoder(
+        encoder: CandleSparseEncoder,
+        model_id: String,
+        resource_policy: ResourcePolicy,
+    ) -> Self {
+        Self {
+            encoder,
+            model_id,
+            resource_policy,
+        }
     }
 
     /// Encode a single text into a sparse embedding.
@@ -107,18 +118,55 @@ impl TesseraSparse {
     /// println!("Sparsity: {:.2}%", embedding.sparsity() * 100.0);
     /// ```
     pub fn encode(&self, text: &str) -> Result<SparseEmbedding> {
-        <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
-            TesseraError::EncodingError {
-                context: format!("Failed to encode text ({} UTF-8 bytes)", text.len()),
-                source: e,
-            }
-        })
+        let mut tracker = JobTracker::new(self.resource_policy);
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Sparse input exceeds job limits", error))?;
+        let embedding =
+            <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
+                TesseraError::EncodingError {
+                    context: format!("Failed to encode text ({} UTF-8 bytes)", text.len()),
+                    source: e,
+                }
+            })?;
+        tracker
+            .retain_output(sparse_output_bytes(embedding.nnz()))
+            .map_err(|error| resource_error("Sparse output exceeds collection limit", error))?;
+        Ok(embedding)
+    }
+
+    /// Encodes a long input in bounded windows and max-merges sparse weights.
+    pub fn encode_windowed(
+        &self,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<SparseEmbedding> {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Sparse windowed input exceeds job limits", error))?;
+        let embedding = self
+            .encoder
+            .encode_windowed(text, config)
+            .map_err(|source| TesseraError::EncodingError {
+                context: format!(
+                    "Failed to encode windowed sparse text ({} UTF-8 bytes)",
+                    text.len()
+                ),
+                source,
+            })?;
+        tracker
+            .retain_output(sparse_output_bytes(embedding.nnz()))
+            .map_err(|error| resource_error("Sparse output exceeds collection limit", error))?;
+        Ok(embedding)
     }
 
     /// Encode multiple texts in a batch.
     ///
-    /// Uses the encoder's batch path. Measure throughput on the target device;
-    /// the default trait implementation may process inputs sequentially.
+    /// Processes inputs sequentially so each result is admitted against the
+    /// cumulative output budget before Tessera retains it. Use
+    /// [`Self::encode_stream`] when the complete result set need not be held in
+    /// memory.
     ///
     /// # Arguments
     ///
@@ -141,12 +189,47 @@ impl TesseraSparse {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<SparseEmbedding>> {
-        <CandleSparseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(|e| {
-            TesseraError::EncodingError {
-                context: format!("Failed to encode batch of {} texts", texts.len()),
-                source: e,
-            }
+        collect_sparse_batch(texts, self.resource_policy, |item_index, text| {
+            <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|source| {
+                TesseraError::EncodingError {
+                    context: format!(
+                        "Failed to encode sparse batch item {item_index} ({} UTF-8 bytes)",
+                        text.len()
+                    ),
+                    source,
+                }
+            })
         })
+    }
+
+    /// Encodes inputs sequentially and yields each sparse result without collection.
+    pub fn encode_stream<'a, I, F>(&self, texts: I, mut consume: F) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        F: FnMut(SparseEmbedding) -> Result<()>,
+    {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        for text in texts {
+            tracker
+                .admit_input(text.len())
+                .map_err(|error| resource_error("Sparse stream input exceeds job limits", error))?;
+            let embedding = <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(
+                |source| TesseraError::EncodingError {
+                    context: format!(
+                        "Failed to encode sparse stream item ({} UTF-8 bytes)",
+                        text.len()
+                    ),
+                    source,
+                },
+            )?;
+            tracker
+                .validate_streamed_output(sparse_output_bytes(embedding.nnz()))
+                .map_err(|error| {
+                    resource_error("Sparse streamed output exceeds per-item limit", error)
+                })?;
+            consume(embedding)?;
+        }
+        Ok(())
     }
 
     /// Compute dot product similarity between two texts.
@@ -180,7 +263,7 @@ impl TesseraSparse {
         let emb_a = self.encode(text_a)?;
         let emb_b = self.encode(text_b)?;
 
-        Ok(sorted_sparse_dot(&emb_a.weights, &emb_b.weights))
+        Ok(sorted_sparse_dot(emb_a.entries(), emb_b.entries()))
     }
 
     /// Get the vocabulary size (embedding dimension).
@@ -209,6 +292,51 @@ impl TesseraSparse {
     pub fn model(&self) -> &str {
         &self.model_id
     }
+
+    /// Parameter dtype selected for this model instance.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.encoder.model_dtype()
+    }
+}
+
+const fn sparse_output_bytes(entries: usize) -> usize {
+    entries.saturating_mul(std::mem::size_of::<(usize, f32)>())
+}
+
+fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> TesseraError {
+    TesseraError::EncodingError {
+        context: context.to_string(),
+        source: anyhow::Error::new(error),
+    }
+}
+
+fn collect_sparse_batch<F>(
+    texts: &[&str],
+    resource_policy: ResourcePolicy,
+    mut encode: F,
+) -> Result<Vec<SparseEmbedding>>
+where
+    F: FnMut(usize, &str) -> Result<SparseEmbedding>,
+{
+    let mut tracker = JobTracker::new(resource_policy);
+    for text in texts {
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Sparse batch input exceeds job limits", error))?;
+    }
+
+    let mut embeddings = Vec::with_capacity(texts.len());
+    for (item_index, text) in texts.iter().copied().enumerate() {
+        let embedding = encode(item_index, text)?;
+        tracker
+            .retain_output(sparse_output_bytes(embedding.nnz()))
+            .map_err(|error| {
+                resource_error("Sparse batch output exceeds collection limit", error)
+            })?;
+        embeddings.push(embedding);
+    }
+    Ok(embeddings)
 }
 
 fn sorted_sparse_dot(left: &[(usize, f32)], right: &[(usize, f32)]) -> f32 {
@@ -228,15 +356,5 @@ fn sorted_sparse_dot(left: &[(usize, f32)], right: &[(usize, f32)]) -> f32 {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::sorted_sparse_dot;
-
-    #[test]
-    fn sparse_dot_merges_sorted_indices() {
-        let left = [(1, 2.0), (4, 3.0), (9, -1.0)];
-        let right = [(0, 8.0), (4, 5.0), (7, 2.0), (9, 4.0)];
-
-        assert!((sorted_sparse_dot(&left, &right) - 11.0).abs() < f32::EPSILON);
-        assert!(sorted_sparse_dot(&[], &right).abs() < f32::EPSILON);
-    }
-}
+#[path = "sparse/tests.rs"]
+mod tests;

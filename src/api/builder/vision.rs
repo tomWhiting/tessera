@@ -3,7 +3,7 @@ use crate::api::TesseraVision;
 use crate::encoding::vision::ColPaliEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::{registry, ModelConfig};
-use crate::runtime::{resolve_registry_policy, ResourcePolicy};
+use crate::runtime::{resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy};
 use candle_core::Device;
 
 #[cfg(test)]
@@ -14,6 +14,7 @@ pub struct TesseraVisionBuilder {
     model_id: Option<String>,
     device: Option<Device>,
     resource_policy: Option<ResourcePolicy>,
+    dtype: ModelDType,
 }
 
 impl TesseraVisionBuilder {
@@ -24,6 +25,7 @@ impl TesseraVisionBuilder {
             model_id: None,
             device: None,
             resource_policy: None,
+            dtype: ModelDType::F32,
         }
     }
 
@@ -50,6 +52,13 @@ impl TesseraVisionBuilder {
     #[must_use]
     pub const fn resource_policy(mut self, resource_policy: ResourcePolicy) -> Self {
         self.resource_policy = Some(resource_policy);
+        self
+    }
+
+    /// Selects the model parameter dtype.
+    #[must_use]
+    pub const fn dtype(mut self, dtype: ModelDType) -> Self {
+        self.dtype = dtype;
         self
     }
 
@@ -82,10 +91,11 @@ impl TesseraVisionBuilder {
             )));
         }
 
-        let resource_policy = resolve_registry_policy(
+        let resource_policy = resolve_registry_policy_with_dtype(
             self.resource_policy,
             model_info.context_length,
             model_info.parameters,
+            self.dtype,
         )
         .map_err(|error| {
             TesseraError::ConfigError(format!(
@@ -103,9 +113,18 @@ impl TesseraVisionBuilder {
         let config = ModelConfig::from_registry(&model_id)?;
 
         // Create encoder
-        let encoder = ColPaliEncoder::new_with_resource_policy(config, device, resource_policy)?;
+        let encoder = ColPaliEncoder::new_with_dtype_and_resource_policy(
+            config,
+            device,
+            self.dtype,
+            resource_policy,
+        )?;
 
-        Ok(TesseraVision::from_encoder(encoder, model_id))
+        Ok(TesseraVision::from_encoder(
+            encoder,
+            model_id,
+            resource_policy,
+        ))
     }
 }
 

@@ -3,7 +3,9 @@
 //! Provides page-by-page rendering of PDF documents to images
 //! for processing with vision models like `ColPali`.
 //!
-//! Uses pdf2image (Poppler-based) for reliable cross-platform PDF rendering.
+//! Uses the opt-in `pdf2image` wrapper around a system Poppler installation.
+//! Supported formats and platform behavior therefore depend on that external
+//! installation.
 
 use anyhow::{Context, Result};
 use image::DynamicImage;

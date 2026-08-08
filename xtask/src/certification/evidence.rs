@@ -6,9 +6,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
 
 use super::artifacts::VerifiedArtifact;
-use super::spec::{CertResult, LoadedSpec, ProcessLimits, ResourceLimits};
+use super::reference::ReferenceComparison;
+use super::spec::{CapabilityScope, CertResult, LoadedSpec, ProcessLimits, ResourceLimits};
 
-pub(crate) const EVIDENCE_SCHEMA_VERSION: u32 = 1;
+pub(crate) const EVIDENCE_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct CheckEvidence {
@@ -39,6 +40,7 @@ pub(crate) struct ChildOutcome {
     pub(crate) error: Option<String>,
     pub(crate) verified_artifacts: Vec<VerifiedArtifact>,
     pub(crate) observation: Option<SmokeObservation>,
+    pub(crate) reference_comparison: ReferenceComparison,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -59,6 +61,7 @@ pub(crate) struct EvidenceRecord {
     pub(crate) spec_sha256: String,
     pub(crate) profile: String,
     pub(crate) device: String,
+    pub(crate) capability: CapabilityScope,
     pub(crate) repetition: usize,
     pub(crate) status: String,
     pub(crate) error: Option<String>,
@@ -75,6 +78,7 @@ pub(crate) struct EvidenceRecord {
     pub(crate) peak_rss: PeakRssEvidence,
     pub(crate) verified_artifacts: Vec<VerifiedArtifact>,
     pub(crate) observation: Option<SmokeObservation>,
+    pub(crate) reference_comparison: ReferenceComparison,
 }
 
 pub(crate) struct RecordInput<'a> {
@@ -101,7 +105,8 @@ pub(crate) fn build_record(
         revision: input.loaded.spec.model.revision.clone(),
         spec_sha256: input.loaded.sha256.clone(),
         profile: input.profile.to_string(),
-        device: "cpu".to_string(),
+        device: profile.capability.device.label().to_string(),
+        capability: profile.capability.clone(),
         repetition: input.repetition,
         status: input.outcome.status,
         error: input.outcome.error,
@@ -120,6 +125,7 @@ pub(crate) fn build_record(
         peak_rss: input.peak_rss,
         verified_artifacts: input.outcome.verified_artifacts,
         observation: input.outcome.observation,
+        reference_comparison: input.outcome.reference_comparison,
     })
 }
 

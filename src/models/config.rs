@@ -192,8 +192,8 @@ impl ModelConfig {
 
     /// Creates a configuration for `ColBERT` Small.
     ///
-    /// A smaller, faster `ColBERT` variant.
-    /// Recommended for development and testing due to faster download and inference.
+    /// This is a compact experimental adapter, suitable for explicit local
+    /// evaluation rather than a production compatibility promise.
     ///
     /// Model: answerdotai/answerai-colbert-small-v1
     /// Size: ~130MB (33M parameters)
@@ -215,10 +215,9 @@ impl ModelConfig {
 impl Default for ModelConfig {
     /// Returns the default configuration (`ColBERT` Small).
     ///
-    /// `ColBERT` Small is recommended as the default because:
-    /// - It's a real `ColBERT` model optimized for retrieval
-    /// - Small size (~130MB) means faster downloads
-    /// - Based on a compact BERT encoder for good performance
+    /// This default is retained for API compatibility. `ColBERT` Small is an
+    /// experimental registry entry and must still pass the model certification
+    /// contract before Tessera treats it as supported.
     fn default() -> Self {
         Self::colbert_small()
     }

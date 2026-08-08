@@ -4,8 +4,6 @@
 //! tests stop at validation paths that must run before device selection,
 //! artifact lookup, or model allocation.
 
-use candle_core::Device;
-use tessera::encoding::dense::CandleDenseEncoder;
 use tessera::model_registry::{get_model, runnable_models, SupportTier, MODEL_REGISTRY};
 use tessera::{
     ModelConfig, ResourcePolicy, TesseraDenseBuilder, TesseraMultiVectorBuilder,
@@ -197,17 +195,22 @@ fn typed_builders_reject_over_context_policies() {
                 .resource_policy(over_context)
                 .build(),
         ),
-        error_message(
-            TesseraVisionBuilder::new()
-                .model("colpali-v1.2")
-                .resource_policy(over_context)
-                .build(),
-        ),
     ];
 
     for message in messages {
         assert_contains_all(&message, &["sequence token limit 513", "context limit 512"]);
     }
+
+    let vision_message = error_message(
+        TesseraVisionBuilder::new()
+            .model("colpali-v1.2")
+            .resource_policy(ResourcePolicy::default().with_max_sequence_tokens(8193))
+            .build(),
+    );
+    assert_contains_all(
+        &vision_message,
+        &["sequence token limit 8193", "context limit 8192"],
+    );
 }
 
 #[test]
@@ -237,16 +240,4 @@ fn resource_and_builder_options_fail_before_model_loading() {
             .build(),
     );
     assert_contains_all(&batch_error, &["Batch size", "greater than zero"]);
-}
-
-#[test]
-fn dense_encoder_requires_pooling_before_artifact_lookup() {
-    let mut config = ModelConfig::from_registry("bge-base-en-v1.5").expect("runnable config");
-    config.pooling_strategy = None;
-
-    let error = match CandleDenseEncoder::new(config, Device::Cpu) {
-        Ok(_) => panic!("validation unexpectedly reached model construction"),
-        Err(error) => error.to_string(),
-    };
-    assert_contains_all(&error, &["pooling_strategy", "bge-base-en-v1.5"]);
 }

@@ -10,6 +10,7 @@ use thiserror::Error;
 /// Provides structured errors for common failure modes with context-rich
 /// error messages to aid debugging and programmatic error handling.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum TesseraError {
     /// Model with the specified ID was not found in the registry.
     #[error("Model '{model_id}' not found in registry")]

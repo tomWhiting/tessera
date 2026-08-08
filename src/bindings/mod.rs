@@ -5,8 +5,6 @@
 //!
 //! - **Python** (requires `python` feature): typed PyO3 facades for dense,
 //!   sparse, multi-vector, and vision-language encoders.
-//! - **WebAssembly** (requires `wasm` feature): a reserved placeholder; no
-//!   JavaScript runtime API is implemented yet.
 //!
 //! Bindings expose the high-level API from [`crate::api`] with
 //! language-appropriate idioms and error handling.
@@ -26,11 +24,6 @@
 //! embeddings = embedder.encode("What is ML?")
 //! ```
 //!
-//! # WebAssembly Bindings
-//!
-//! The `wasm` feature currently compiles a placeholder only. It deliberately
-//! makes no npm package or browser-runtime claim.
-//!
 //! # Building Bindings
 //!
 //! Python:
@@ -38,11 +31,6 @@
 //! cargo build --release --features python
 //! maturin develop
 //! ```
-//!
-//! WebAssembly bindings need a separate implementation before they are usable.
 
 #[cfg(feature = "python")]
 pub mod python;
-
-#[cfg(feature = "wasm")]
-pub mod wasm;

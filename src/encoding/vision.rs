@@ -5,7 +5,7 @@
 //!
 //! `ColPali` extends `ColBERT`'s late interaction approach to visual documents:
 //! - Images are divided into patches (typically 32×32 grid from 448×448 images)
-//! - Each patch gets embedded into a vector (multi-vector representation)
+//! - Patch and conditioned document-prompt states are retained as vectors
 //! - Text queries use token-level embeddings
 //! - `MaxSim` is computed between query tokens and image patches
 //! - Enables fine-grained visual question answering and document retrieval
@@ -26,23 +26,26 @@
 //! # Example
 //!
 //! ```no_run
-//! use tessera::encoding::ColPaliEncoder;
-//! use tessera::models::ModelConfig;
-//! use tessera::ResourcePolicy;
-//! use tessera::core::{Encoder, VisionEncoder};
-//! use candle_core::Device;
+//! use tessera::{ResourcePolicy, TesseraVision};
 //!
-//! let config = ModelConfig::from_registry("colpali-v1.2").unwrap();
-//! let device = Device::Cpu;
 //! let policy = ResourcePolicy::default()
+//!     .with_max_sequence_tokens(2_048)
+//!     .with_max_batch_items(1)
+//!     .with_max_batch_tokens(2_048)
+//!     .with_max_attention_cells(4_194_304)
+//!     .with_max_activation_bytes(1024 * 1024 * 1024)
 //!     .with_max_model_bytes(12 * 1024 * 1024 * 1024);
-//! let encoder = ColPaliEncoder::new_with_resource_policy(config, device, policy).unwrap();
+//! let encoder = TesseraVision::builder()
+//!     .model("colpali-v1.2")
+//!     .resource_policy(policy)
+//!     .build()?;
 //!
 //! // Encode image
-//! let image_embedding = encoder.encode("path/to/image.jpg").unwrap();
+//! let image_embedding = encoder.encode_document("path/to/image.jpg")?;
 //!
 //! // Encode text query (for retrieval)
-//! let query_embedding = encoder.encode_text("What is shown in this document?").unwrap();
+//! let query_embedding = encoder.encode_query("What is shown in this document?")?;
+//! # Ok::<(), tessera::TesseraError>(())
 //! ```
 
 mod construction;
@@ -51,7 +54,8 @@ mod inference;
 mod pdf;
 
 use crate::core::{Encoder, Tokenizer, VisionEmbedding, VisionEncoder};
-use crate::vision::ImageProcessor;
+use crate::runtime::{ModelDType, ModelResidencyPermit, ResourcePolicy, TransformerProfile};
+use crate::vision::ColPaliProcessor;
 use anyhow::Result;
 use candle_core::Device;
 use candle_nn::Linear;
@@ -70,14 +74,17 @@ pub struct ColPaliEncoder {
     /// Tokenizer for text encoding
     tokenizer: Tokenizer,
 
-    /// Image preprocessor
-    image_processor: ImageProcessor,
+    /// Checkpoint-driven image and prompt processor.
+    processor: ColPaliProcessor,
 
     /// Device for tensor operations
     device: Device,
 
     /// Embedding dimension per patch (typically 128)
     embedding_dim: usize,
+
+    /// Language-model hidden dimension before ColPali projection.
+    hidden_dim: usize,
 
     /// Number of patches per image (typically 1024 for 448×448)
     num_patches: usize,
@@ -88,6 +95,18 @@ pub struct ColPaliEncoder {
     /// Custom text projection layer (2048 -> 128)
     /// Projects text embeddings from `PaliGemma`'s hidden size to `ColPali`'s embedding dimension
     custom_text_projection: Linear,
+
+    /// Parameter dtype selected at load time.
+    dtype: ModelDType,
+
+    /// Per-forward sequence, batch, and memory limits.
+    resource_policy: ResourcePolicy,
+
+    /// Architecture dimensions used for per-forward scratch estimates.
+    transformer_profile: TransformerProfile,
+
+    /// Process-wide admission retained until the model tensors are dropped.
+    _residency: ModelResidencyPermit<'static>,
 }
 
 impl Encoder for ColPaliEncoder {
@@ -116,5 +135,13 @@ impl VisionEncoder for ColPaliEncoder {
 
     fn image_resolution(&self) -> (u32, u32) {
         self.image_resolution
+    }
+}
+
+impl ColPaliEncoder {
+    /// Parameter dtype selected when this model was loaded.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.dtype
     }
 }

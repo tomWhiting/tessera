@@ -9,7 +9,7 @@ cargo fmt --all -- --check
 cargo metadata --locked --offline --format-version 1 >/dev/null
 cargo run --locked --offline -p tessera-xtask -- all
 cargo clippy --locked --offline --workspace --all-targets --no-default-features -- -D warnings
-cargo clippy --locked --offline --workspace --all-targets -- -D warnings
+cargo clippy --locked --offline --workspace --all-targets --no-default-features --features pdf -- -D warnings
 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features timeseries -- -D warnings
 PYO3_PYTHON=/usr/bin/python3 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features python -- -D warnings
 cargo clippy --locked --offline -p tessera-xtask --all-targets --features certification -- -D warnings

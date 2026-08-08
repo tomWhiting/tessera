@@ -3,7 +3,7 @@ use crate::api::TesseraDense;
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::{registry, ModelConfig};
-use crate::runtime::{resolve_registry_policy, ResourcePolicy};
+use crate::runtime::{resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy};
 use candle_core::Device;
 use std::num::NonZeroUsize;
 
@@ -28,6 +28,8 @@ pub struct TesseraDenseBuilder {
     yield_ms: Option<u64>,
     /// Hard limits for model loading and text tensor allocation
     resource_policy: Option<ResourcePolicy>,
+    /// Explicit parameter dtype; F32 by default.
+    dtype: ModelDType,
 }
 
 impl TesseraDenseBuilder {
@@ -43,6 +45,7 @@ impl TesseraDenseBuilder {
             batch_size: None,
             yield_ms: None,
             resource_policy: None,
+            dtype: ModelDType::F32,
         }
     }
 
@@ -173,6 +176,13 @@ impl TesseraDenseBuilder {
         self
     }
 
+    /// Selects the model parameter dtype.
+    #[must_use]
+    pub const fn dtype(mut self, dtype: ModelDType) -> Self {
+        self.dtype = dtype;
+        self
+    }
+
     /// Build the configured dense embedder.
     ///
     /// This method:
@@ -254,10 +264,11 @@ impl TesseraDenseBuilder {
             }
         }
 
-        let resource_policy = resolve_registry_policy(
+        let resource_policy = resolve_registry_policy_with_dtype(
             self.resource_policy,
             model_info.context_length,
             model_info.parameters,
+            self.dtype,
         )
         .map_err(|error| {
             TesseraError::ConfigError(format!(
@@ -302,11 +313,16 @@ impl TesseraDenseBuilder {
         };
 
         // Create dense encoder
-        let encoder = CandleDenseEncoder::new_with_resource_policy(config, device, resource_policy)
-            .map_err(|e| TesseraError::ModelLoadError {
-                model_id: model_id.clone(),
-                source: e,
-            })?;
+        let encoder = CandleDenseEncoder::new_with_dtype_and_resource_policy(
+            config,
+            device,
+            self.dtype,
+            resource_policy,
+        )
+        .map_err(|e| TesseraError::ModelLoadError {
+            model_id: model_id.clone(),
+            source: e,
+        })?;
 
         // Create TesseraDense instance with batch options
         Ok(TesseraDense::from_encoder_with_options(
@@ -314,6 +330,7 @@ impl TesseraDenseBuilder {
             model_id,
             batch_size,
             self.yield_ms,
+            resource_policy,
         ))
     }
 }

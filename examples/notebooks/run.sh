@@ -16,7 +16,7 @@ if [ $# -eq 0 ]; then
     echo ""
     echo "Available notebooks:"
     echo "  1) embedding     - Embedding Paradigm Comparison"
-    echo "  2) timeseries    - Probabilistic Time Series Forecasting"
+    echo "  2) timeseries    - Legacy time-series quarantine note"
     echo "  3) both          - Open both notebooks"
     echo ""
     echo "Examples:"
@@ -33,7 +33,7 @@ case "$1" in
         uv run marimo edit examples/notebooks/embedding_comparison.py
         ;;
     timeseries|2)
-        echo "🚀 Launching Time Series Forecasting notebook..."
+        echo "🚀 Opening the legacy time-series quarantine note..."
         uv run marimo edit examples/notebooks/timeseries_forecasting.py
         ;;
     both|3)

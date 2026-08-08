@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "model_id": "contract-vision",
+  "repository": "example/contract-vision",
+  "revision": "dddddddddddddddddddddddddddddddddddddddd",
+  "profile": "smoke",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "vision_document",
+    "max_sequence_tokens": 8,
+    "context_window_tokens": 8
+  },
+  "provenance": {
+    "producer": "model-free contract fixture",
+    "framework": "reference-fixture",
+    "framework_version": "1",
+    "source_repository": "example/contract-vision",
+    "source_revision": "dddddddddddddddddddddddddddddddddddddddd"
+  },
+  "probe": {
+    "kind": "image",
+    "path": "contract/reference-page.ppm",
+    "sha256": "064ea70c5ca111e4e9b50fb256594110f669a1339c4ccf067aa6f3970a827976",
+    "query": "canonical image probe",
+    "query_token_count": 3
+  },
+  "tolerance": { "absolute": 0.001, "relative": 0.001, "minimum_cosine": 0.999 },
+  "expected": {
+    "representation": "vision",
+    "rows": 2,
+    "columns": 2,
+    "values": [0.8, 0.6, 0.0, 1.0]
+  }
+}

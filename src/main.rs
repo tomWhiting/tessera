@@ -6,12 +6,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 
-use tessera::{
-    backends::candle::{get_device, CandleBertEncoder},
-    core::TokenEmbedder,
-    models::ModelConfig,
-    utils::similarity::max_sim,
-};
+use tessera::TesseraMultiVector;
 
 #[derive(Parser, Debug)]
 #[command(name = "tessera")]
@@ -38,59 +33,46 @@ fn main() -> Result<()> {
     println!("Query:    {}", args.query);
     println!("Document: {}\n", args.document);
 
-    // Create a config only for explicitly audited CLI paths.
-    let config = match args.model.as_str() {
-        // ColBERT models (recommended)
-        "colbert-small" => ModelConfig::colbert_small(),
-        "colbert-v2" => ModelConfig::colbert_v2(),
-        // Retain an actionable migration error for the old CLI spelling.
-        "jina-colbert-v2" => ModelConfig::jina_colbert_v2()?,
-
-        other => anyhow::bail!(
-            "Unknown or unaudited CLI model '{other}'. Choose colbert-small or colbert-v2"
-        ),
-    };
-
-    // Run with Candle backend
-    run_candle(&args.query, &args.document, config)?;
+    anyhow::ensure!(
+        matches!(args.model.as_str(), "colbert-small" | "colbert-v2"),
+        "Unknown or unaudited CLI model '{}'. Choose colbert-small or colbert-v2",
+        args.model
+    );
+    run_colbert(&args.query, &args.document, &args.model)?;
 
     Ok(())
 }
 
-fn run_candle(query: &str, document: &str, config: ModelConfig) -> Result<()> {
-    println!("Backend: Candle");
-    println!("---------------");
-
-    // Get device
-    let device = get_device().context("Getting compute device")?;
-    println!(
-        "Device: {}",
-        tessera::backends::candle::device_description(&device)
-    );
-
-    // Create encoder
-    println!("Loading model: {}...", config.model_name);
-    let encoder = CandleBertEncoder::new(config, device).context("Creating Candle encoder")?;
+fn run_colbert(query: &str, document: &str, model: &str) -> Result<()> {
+    println!("Loading model: {model}...");
+    let embedder = TesseraMultiVector::new(model).context("Creating ColBERT embedder")?;
+    println!("Parameter dtype: {:?}", embedder.model_dtype());
 
     // Encode query
     println!("Encoding query...");
-    let query_emb = encoder.encode(query).context("Encoding query")?;
+    let query_emb = embedder.encode_query(query).context("Encoding query")?;
     println!(
         "Query tokens: {}, dims: {}",
-        query_emb.num_tokens, query_emb.embedding_dim
+        query_emb.num_tokens(),
+        query_emb.embedding_dim()
     );
 
     // Encode document
     println!("Encoding document...");
-    let doc_emb = encoder.encode(document).context("Encoding document")?;
+    let doc_emb = embedder
+        .encode_document(document)
+        .context("Encoding document")?;
     println!(
         "Document tokens: {}, dims: {}",
-        doc_emb.num_tokens, doc_emb.embedding_dim
+        doc_emb.num_tokens(),
+        doc_emb.embedding_dim()
     );
 
     // Compute similarity
     println!("Computing MaxSim similarity...");
-    let score = max_sim(&query_emb, &doc_emb).context("Computing similarity")?;
+    let score = embedder
+        .search(&query_emb, &doc_emb)
+        .context("Computing similarity")?;
 
     println!("\nSimilarity Score: {score:.4}");
 

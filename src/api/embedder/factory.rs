@@ -23,14 +23,15 @@ use crate::models::registry::{get_model, ModelType};
 /// // Auto-detects sparse model -> creates Sparse variant
 /// let splade = Tessera::new("splade-pp-en-v1")?;
 ///
-/// // Vision is also a factory variant. The current 3B F32 adapter requires an
-/// // explicit model-memory policy, so construct it with TesseraVisionBuilder.
+/// // Vision is also a factory variant. The current 3B F32 adapter requires
+/// // explicit visual-sequence, activation, and model-memory limits, so
+/// // construct it with TesseraVisionBuilder.
 ///
 /// // Pattern match to use specific API
 /// match colbert {
 ///     Tessera::MultiVector(mv) => {
 ///         let embeddings = mv.encode("query")?;
-///         println!("Got {} tokens", embeddings.num_tokens);
+///         println!("Got {} tokens", embeddings.num_tokens());
 ///     }
 ///     Tessera::Dense(d) => {
 ///         let embedding = d.encode("query")?;
@@ -42,10 +43,12 @@ use crate::models::registry::{get_model, ModelType};
 ///     }
 ///     Tessera::Vision(v) => {
 ///         let doc_emb = v.encode_document("invoice.jpg")?;
-///         println!("Got {} patches", doc_emb.num_patches);
+///         println!("Got {} patches", doc_emb.num_patches());
 ///     }
+///     _ => unreachable!("future Tessera variants are not selected by this example"),
 /// }
 /// ```
+#[non_exhaustive]
 pub enum Tessera {
     /// Dense single-vector embedder
     Dense(TesseraDense),

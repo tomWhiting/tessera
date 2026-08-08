@@ -1,18 +1,29 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "model": { "id": "snowflake-arctic-l", "repository": "Snowflake/snowflake-arctic-embed-l-v2.0", "revision": "ac6544c8a46e00af67e330e85a9028c66b8cfd9a", "representation": "dense" },
   "artifacts": [
     { "path": "config.json", "size_bytes": 818, "sha256": "706f5d1eb9ddf64b5d3067c562b893b80ad1022db7f68c20eb07ff24d33b6c15" },
     { "path": "tokenizer.json", "size_bytes": 17083074, "sha256": "39feb9863a378165ab9c5c689047203d789422966c0c58721c5309fd039a8edc" },
     { "path": "model.safetensors", "size_bytes": 2271064456, "sha256": "21bf1a120b1c6562aeec379dfa9039b0d360591c784cb1c6786e87256b738ee1" }
   ],
-  "profiles": { "smoke": {
-    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 2500000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 1800, "max_artifact_bytes": 2500000000, "min_free_disk_bytes": 6000000000, "max_peak_rss_bytes": 5000000000 }
+  "profiles": {
+  "smoke": {
+    "kind": "smoke",
+    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "query", "max_sequence_tokens": 128, "context_window_tokens": 8192 },
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 2500000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768, "max_job_items": 2, "max_job_input_bytes": 131072, "max_output_bytes": 16777216, "max_activation_bytes": 2400000000 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 1800, "max_artifact_bytes": 2500000000, "min_free_disk_bytes": 6000000000, "max_peak_rss_bytes": 5000000000 },
+    "official_reference": null
+  },
+  "long-context-8k": {
+    "kind": "long_context",
+    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "document", "max_sequence_tokens": 8192, "context_window_tokens": 8192 },
+    "resource_policy": { "max_sequence_tokens": 8192, "max_batch_items": 1, "max_batch_tokens": 8192, "max_model_bytes": 2500000000, "max_input_bytes_per_sequence": 1048576, "max_attention_cells": 67108864, "max_job_items": 1, "max_job_input_bytes": 1048576, "max_output_bytes": 16777216, "max_activation_bytes": 9000000000 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 10800, "max_artifact_bytes": 2500000000, "min_free_disk_bytes": 6000000000, "max_peak_rss_bytes": 12000000000 },
+    "official_reference": null
   } },
   "smoke": {
     "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
     "expected_dimension": 1024, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
   },
-  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+  "promotion": { "minimum_successful_runs": 2, "required_profiles": ["smoke", "long-context-8k"], "require_clean_source": true, "require_enforced_rss": true }
 }

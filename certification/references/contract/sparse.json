@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "model_id": "contract-sparse",
+  "repository": "example/contract-sparse",
+  "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "profile": "smoke",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "sparse_query",
+    "max_sequence_tokens": 8,
+    "context_window_tokens": 8
+  },
+  "provenance": {
+    "producer": "model-free contract fixture",
+    "framework": "reference-fixture",
+    "framework_version": "1",
+    "source_repository": "example/contract-sparse",
+    "source_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+  },
+  "probe": { "kind": "text", "text": "canonical sparse probe", "token_count": 3 },
+  "tolerance": { "absolute": 0.001, "relative": 0.001, "minimum_cosine": 0.999 },
+  "expected": {
+    "representation": "sparse",
+    "vocabulary_size": 8,
+    "indices": [1, 4, 7],
+    "values": [0.5, 1.5, 2.0]
+  }
+}

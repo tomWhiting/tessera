@@ -10,13 +10,12 @@ certification tool.
 
 ## Development environment
 
-Create a virtual environment, install the development dependencies and Maturin,
-then build the extension in place:
+Create a virtual environment, install the locked development dependencies, and
+then build the extension in place. The `dev` extra includes Maturin:
 
 ```bash
 uv venv
 uv sync --extra dev
-uv pip install "maturin>=1.7,<2.0"
 uv run maturin develop
 ```
 
@@ -95,14 +94,24 @@ Policies are immutable:
 ```python
 from tessera import ResourcePolicy, TesseraVision
 
-vision_policy = ResourcePolicy().with_max_model_bytes(12_000_000_000)
+vision_policy = (
+    ResourcePolicy()
+    .with_max_sequence_tokens(2_048)
+    .with_max_batch_items(1)
+    .with_max_batch_tokens(2_048)
+    .with_max_attention_cells(4_194_304)
+    .with_max_activation_bytes(1024 * 1024 * 1024)
+    .with_max_model_bytes(12 * 1024 * 1024 * 1024)
+)
 vision = TesseraVision("colpali-v1.2", resource_policy=vision_policy)
 ```
 
-The larger model budget only passes the parameter preflight. It is not a peak
-memory estimate and does not make the ColPali path safe on a given machine.
-Likewise, raising the sequence and attention limits for an 8K model does not
-account for heads, layers, temporary tensors, or allocator overhead.
+ColPali retains 1,024 visual positions plus prompt tokens, so this is an
+explicit high-memory opt-in for its sequence, batch, attention, activation,
+and model-parameter preflights. Passing those estimated ceilings is not a peak
+memory measurement and does not make the path safe on a given machine. The
+estimator cannot account for every temporary tensor, allocator, driver, or
+other process allocation.
 
 ## Adding or changing a wrapper
 

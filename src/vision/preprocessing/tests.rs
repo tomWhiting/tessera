@@ -39,13 +39,14 @@ fn image_processor_creation_uses_paligemma_defaults() {
     assert_eq!(processor.target_size, (448, 448));
     assert_eq!(processor.mean.len(), 3);
     assert_eq!(processor.std.len(), 3);
+    assert!((processor.rescale_factor - 1.0 / 255.0).abs() < f32::EPSILON);
 }
 
 #[test]
-fn normalization_values_match_siglip() {
+fn normalization_values_match_paligemma() {
     let processor = ImageProcessor::new();
-    assert!((processor.mean[0] - 0.481_454_66).abs() < 1e-6);
-    assert!((processor.std[0] - 0.268_629_54).abs() < 1e-6);
+    assert!((processor.mean[0] - 0.5).abs() < f32::EPSILON);
+    assert!((processor.std[0] - 0.5).abs() < f32::EPSILON);
 }
 
 #[test]

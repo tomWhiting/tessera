@@ -60,8 +60,6 @@ pub const {}: ModelInfo = ModelInfo {{
     modalities: &[{}],
     multi_vector: {},
     quantization: &[{}],
-    beir_avg: {},
-    ms_marco_mrr10: {},
     license: "{}",
     description: "{}",
 }};"#,
@@ -104,8 +102,6 @@ pub const {}: ModelInfo = ModelInfo {{
         modalities,
         model.capabilities.multi_vector,
         quantization,
-        format_float(model.performance.beir_avg),
-        format_float(model.performance.ms_marco_mrr10),
         model.license,
         model.description,
     )
@@ -191,14 +187,6 @@ fn embedding_dimension(model: &ModelMetadata) -> (String, String) {
                 ),
             )
         }
-    }
-}
-
-fn format_float(value: f64) -> String {
-    if value.fract() == 0.0 && value.abs() < 1e10 {
-        format!("{value:.1}")
-    } else {
-        value.to_string()
     }
 }
 

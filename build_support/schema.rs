@@ -39,7 +39,6 @@ pub struct ModelMetadata {
     pub specs: Specs,
     pub files: Files,
     pub capabilities: Capabilities,
-    pub performance: Performance,
     pub license: String,
     pub description: String,
 }
@@ -139,10 +138,4 @@ pub struct Capabilities {
 pub struct PoolingConfig {
     pub strategy: String,
     pub normalize: bool,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Performance {
-    pub beir_avg: f64,
-    pub ms_marco_mrr10: f64,
 }

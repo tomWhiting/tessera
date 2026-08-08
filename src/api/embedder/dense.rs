@@ -2,6 +2,9 @@ use crate::api::TesseraDenseBuilder;
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
+use crate::runtime::{
+    f32_output_bytes, ContextWindowConfig, JobTracker, ModelDType, ResourcePolicy,
+};
 use std::num::NonZeroUsize;
 
 /// Dense single-vector embedder for traditional sentence embeddings.
@@ -20,6 +23,8 @@ pub struct TesseraDense {
     batch_size: Option<NonZeroUsize>,
     /// Milliseconds to sleep between batches
     yield_ms: Option<u64>,
+    /// Whole-job and collected-output limits.
+    resource_policy: ResourcePolicy,
 }
 
 impl TesseraDense {
@@ -85,12 +90,13 @@ impl TesseraDense {
 
     /// Internal constructor used by builder (legacy, no batch options).
     #[allow(dead_code)]
-    pub(crate) const fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
+    pub(crate) fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
         Self {
             encoder,
             model_id,
             batch_size: None,
             yield_ms: None,
+            resource_policy: ResourcePolicy::default(),
         }
     }
 
@@ -100,12 +106,14 @@ impl TesseraDense {
         model_id: String,
         batch_size: Option<NonZeroUsize>,
         yield_ms: Option<u64>,
+        resource_policy: ResourcePolicy,
     ) -> Self {
         Self {
             encoder,
             model_id,
             batch_size,
             yield_ms,
+            resource_policy,
         }
     }
 
@@ -134,12 +142,49 @@ impl TesseraDense {
     /// println!("Encoded to {} dimensions", embedding.dim());
     /// ```
     pub fn encode(&self, text: &str) -> Result<DenseEmbedding> {
-        <CandleDenseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
-            TesseraError::EncodingError {
-                context: format!("Failed to encode text ({} UTF-8 bytes)", text.len()),
-                source: e,
-            }
-        })
+        let mut tracker = JobTracker::new(self.resource_policy);
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Dense input exceeds job limits", error))?;
+        let embedding =
+            <CandleDenseEncoder as Encoder>::encode(&self.encoder, text).map_err(|e| {
+                TesseraError::EncodingError {
+                    context: format!("Failed to encode text ({} UTF-8 bytes)", text.len()),
+                    source: e,
+                }
+            })?;
+        tracker
+            .retain_output(f32_output_bytes(embedding.dim()))
+            .map_err(|error| resource_error("Dense output exceeds collection limit", error))?;
+        Ok(embedding)
+    }
+
+    /// Encodes a long input through bounded overlapping windows.
+    ///
+    /// This is a weighted aggregation mode, not native full-context attention.
+    pub fn encode_windowed(
+        &self,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<DenseEmbedding> {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Dense windowed input exceeds job limits", error))?;
+        let embedding = self
+            .encoder
+            .encode_windowed(text, config)
+            .map_err(|source| TesseraError::EncodingError {
+                context: format!(
+                    "Failed to encode windowed text ({} UTF-8 bytes)",
+                    text.len()
+                ),
+                source,
+            })?;
+        tracker
+            .retain_output(f32_output_bytes(embedding.dim()))
+            .map_err(|error| resource_error("Dense output exceeds collection limit", error))?;
+        Ok(embedding)
     }
 
     /// Encode multiple texts in a batch.
@@ -172,15 +217,14 @@ impl TesseraDense {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<DenseEmbedding>> {
-        // If no batch_size configured, process all at once (original behavior)
-        let Some(batch_size) = self.batch_size else {
-            return <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, texts).map_err(
-                |e| TesseraError::EncodingError {
-                    context: format!("Failed to encode batch of {} texts", texts.len()),
-                    source: e,
-                },
-            );
-        };
+        let mut tracker = JobTracker::new(self.resource_policy);
+        for text in texts {
+            tracker
+                .admit_input(text.len())
+                .map_err(|error| resource_error("Dense batch input exceeds job limits", error))?;
+        }
+
+        let batch_size = self.batch_size.unwrap_or(NonZeroUsize::MIN);
 
         // Process in chunks with optional yielding
         let mut all_embeddings = Vec::with_capacity(texts.len());
@@ -207,10 +251,81 @@ impl TesseraDense {
                     },
                 )?;
 
+            for embedding in &chunk_embeddings {
+                tracker
+                    .retain_output(f32_output_bytes(embedding.dim()))
+                    .map_err(|error| {
+                        resource_error("Dense batch output exceeds collection limit", error)
+                    })?;
+            }
+
             all_embeddings.extend(chunk_embeddings);
         }
 
         Ok(all_embeddings)
+    }
+
+    /// Encodes a logical job in bounded chunks and yields each result to a callback.
+    ///
+    /// Streamed outputs are not accumulated by Tessera, so the output limit is
+    /// applied to each individual result. Item and aggregate input-byte limits
+    /// still apply to the complete job.
+    pub fn encode_stream<'a, I, F>(&self, texts: I, mut consume: F) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        F: FnMut(DenseEmbedding) -> Result<()>,
+    {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        let chunk_size = self.batch_size.unwrap_or(NonZeroUsize::MIN).get();
+        let mut chunk = Vec::with_capacity(chunk_size);
+        let mut chunk_index = 0_usize;
+
+        for text in texts {
+            tracker
+                .admit_input(text.len())
+                .map_err(|error| resource_error("Dense stream input exceeds job limits", error))?;
+            chunk.push(text);
+            if chunk.len() == chunk_size {
+                self.consume_dense_chunk(&chunk, chunk_index, &tracker, &mut consume)?;
+                chunk.clear();
+                chunk_index = chunk_index.saturating_add(1);
+            }
+        }
+        if !chunk.is_empty() {
+            self.consume_dense_chunk(&chunk, chunk_index, &tracker, &mut consume)?;
+        }
+        Ok(())
+    }
+
+    fn consume_dense_chunk<F>(
+        &self,
+        chunk: &[&str],
+        chunk_index: usize,
+        tracker: &JobTracker,
+        consume: &mut F,
+    ) -> Result<()>
+    where
+        F: FnMut(DenseEmbedding) -> Result<()>,
+    {
+        if chunk_index > 0 {
+            if let Some(duration) = self.yield_ms.map(std::time::Duration::from_millis) {
+                std::thread::sleep(duration);
+            }
+        }
+        let embeddings = <CandleDenseEncoder as Encoder>::encode_batch(&self.encoder, chunk)
+            .map_err(|source| TesseraError::EncodingError {
+                context: format!("Failed to encode dense stream chunk {chunk_index}"),
+                source,
+            })?;
+        for embedding in embeddings {
+            tracker
+                .validate_streamed_output(f32_output_bytes(embedding.dim()))
+                .map_err(|error| {
+                    resource_error("Dense streamed output exceeds per-item limit", error)
+                })?;
+            consume(embedding)?;
+        }
+        Ok(())
     }
 
     /// Compute cosine similarity between two texts.
@@ -247,9 +362,9 @@ impl TesseraDense {
 
         // Compute cosine similarity (dot product for normalized embeddings)
         let dot_product: f32 = emb_a
-            .embedding
+            .values()
             .iter()
-            .zip(emb_b.embedding.iter())
+            .zip(emb_b.values().iter())
             .map(|(a, b)| a * b)
             .sum();
 
@@ -280,5 +395,18 @@ impl TesseraDense {
     /// ```
     pub fn model(&self) -> &str {
         &self.model_id
+    }
+
+    /// Parameter dtype selected for this model instance.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.encoder.model_dtype()
+    }
+}
+
+fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> TesseraError {
+    TesseraError::EncodingError {
+        context: context.to_string(),
+        source: anyhow::Error::new(error),
     }
 }

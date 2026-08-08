@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::certification::evidence::ChildOutcome;
+use crate::certification::reference::ReferenceComparison;
 
 use super::{apply_launcher_result, outcome_path, rss_method, RSS_SAMPLE_INTERVAL_MS};
 
@@ -22,6 +23,7 @@ fn launcher_failure_overrides_a_child_written_pass() {
         error: None,
         verified_artifacts: Vec::new(),
         observation: None,
+        reference_comparison: ReferenceComparison::not_configured(),
     };
 
     apply_launcher_result(
@@ -42,6 +44,7 @@ fn launcher_failure_preserves_both_monitor_and_child_errors() {
         error: Some("smoke contract failed".to_string()),
         verified_artifacts: Vec::new(),
         observation: None,
+        reference_comparison: ReferenceComparison::not_configured(),
     };
 
     apply_launcher_result(

@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use candle_core::{DType, Device};
+use candle_core::Device;
 use candle_nn::VarBuilder;
 
 use super::{BertVariant, CandleDenseEncoder, ModelTypeDetector};
@@ -7,44 +7,27 @@ use crate::core::{PoolingStrategy, Tokenizer};
 use crate::error::TesseraError;
 use crate::models::loader::ModelFileResolver;
 use crate::models::{registry::ModelType, ModelConfig};
-use crate::runtime::{preflight_registered_model, ResourcePolicy};
+use crate::runtime::{
+    preflight_and_reserve_registered_model_with_dtype, ModelDType, ResourcePolicy,
+    TransformerProfile,
+};
 
 impl CandleDenseEncoder {
-    /// Creates a new Candle-based dense encoder.
-    ///
-    /// Automatically detects the model type (BERT, `DistilBERT`, `JinaBERT`) from config.json
-    /// and loads the appropriate model variant.
-    ///
-    /// # Arguments
-    /// * `model_config` - Configuration for the model (must have `pooling_strategy` set)
-    /// * `device` - Device to run the model on (CPU or Metal)
-    ///
-    /// # Returns
-    /// A new `CandleDenseEncoder` instance with the loaded model
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - Pooling strategy is not configured (required for dense models)
-    /// - Model files cannot be downloaded or loaded
-    /// - Model type cannot be detected
-    pub fn new(model_config: ModelConfig, device: Device) -> Result<Self> {
-        let resource_policy = ResourcePolicy::for_model_context(model_config.max_seq_length);
-        Self::new_with_resource_policy(model_config, device, resource_policy)
-    }
-
-    /// Creates a dense encoder with explicit resource limits.
-    pub fn new_with_resource_policy(
+    /// Creates a dense encoder with an explicit parameter dtype and limits.
+    pub fn new_with_dtype_and_resource_policy(
         model_config: ModelConfig,
         device: Device,
+        dtype: ModelDType,
         resource_policy: ResourcePolicy,
     ) -> Result<Self> {
         let model_name = &model_config.model_name;
 
-        let model_info = preflight_registered_model(
+        let (model_info, residency) = preflight_and_reserve_registered_model_with_dtype(
             model_name,
             model_config.max_seq_length,
             ModelType::Dense,
             &device,
+            dtype,
             &resource_policy,
         )?;
 
@@ -76,6 +59,19 @@ impl CandleDenseEncoder {
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
+        let profile = TransformerProfile::from_config_json(&config_str)
+            .context("Reading transformer dimensions for resource estimation")?;
+        let estimated_batch = resource_policy
+            .conservative_batch_size()
+            .map_or(1, std::num::NonZeroUsize::get);
+        resource_policy
+            .validate_transformer_activations(
+                profile,
+                estimated_batch,
+                resource_policy.max_sequence_tokens(),
+                dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Dense activation preflight failed: {error}"))?;
 
         // Detect model type
         let detector: ModelTypeDetector =
@@ -101,11 +97,15 @@ impl CandleDenseEncoder {
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
             unsafe {
-                VarBuilder::from_mmaped_safetensors(&[weights_path.clone()], DType::F32, &device)
-                    .context("Loading model from safetensors")?
+                VarBuilder::from_mmaped_safetensors(
+                    &[weights_path.clone()],
+                    dtype.candle_dtype(),
+                    &device,
+                )
+                .context("Loading model from safetensors")?
             }
         } else {
-            VarBuilder::from_pth(&weights_path, DType::F32, &device)
+            VarBuilder::from_pth(&weights_path, dtype.candle_dtype(), &device)
                 .context("Loading model from pytorch_model.bin")?
         };
 
@@ -138,6 +138,10 @@ impl CandleDenseEncoder {
             pooling_strategy,
             normalize,
             supports_padded_batch,
+            dtype,
+            resource_policy,
+            transformer_profile: profile,
+            _residency: residency,
         })
     }
 

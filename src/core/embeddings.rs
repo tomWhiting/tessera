@@ -39,13 +39,13 @@ pub use vision::{VisionEmbedding, VisionEncoder};
 #[derive(Debug, Clone)]
 pub struct TokenEmbeddings {
     /// The embedding matrix (`num_tokens` x `embedding_dim`)
-    pub embeddings: Array2<f32>,
+    embeddings: Array2<f32>,
     /// The original input text
-    pub text: String,
+    text: String,
     /// Number of tokens in the sequence
-    pub num_tokens: usize,
+    num_tokens: usize,
     /// Dimensionality of each embedding vector
-    pub embedding_dim: usize,
+    embedding_dim: usize,
 }
 
 impl TokenEmbeddings {
@@ -92,6 +92,36 @@ impl TokenEmbeddings {
     #[must_use]
     pub const fn shape(&self) -> (usize, usize) {
         (self.num_tokens, self.embedding_dim)
+    }
+
+    /// Borrow the token embedding matrix.
+    #[must_use]
+    pub const fn matrix(&self) -> &Array2<f32> {
+        &self.embeddings
+    }
+
+    /// Consume the embedding and return its matrix.
+    #[must_use]
+    pub fn into_matrix(self) -> Array2<f32> {
+        self.embeddings
+    }
+
+    /// Borrow the original input text.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
+    /// Return the number of token vectors.
+    #[must_use]
+    pub const fn num_tokens(&self) -> usize {
+        self.num_tokens
+    }
+
+    /// Return the per-token embedding dimension.
+    #[must_use]
+    pub const fn embedding_dim(&self) -> usize {
+        self.embedding_dim
     }
 }
 
@@ -216,9 +246,9 @@ pub trait MultiVectorEncoder: Encoder<Output = TokenEmbeddings> {
 #[derive(Debug, Clone)]
 pub struct DenseEmbedding {
     /// The embedding vector
-    pub embedding: Array1<f32>,
+    embedding: Array1<f32>,
     /// Original input text
-    pub text: String,
+    text: String,
 }
 
 impl DenseEmbedding {
@@ -232,8 +262,12 @@ impl DenseEmbedding {
     /// A new `DenseEmbedding` instance, or error if embedding contains NaN/Inf
     ///
     /// # Errors
-    /// Returns an error if embedding contains non-finite values
+    /// Returns an error if the embedding is empty or contains non-finite values
     pub fn new(embedding: Array1<f32>, text: String) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            !embedding.is_empty(),
+            "Dense embedding dimension must be greater than zero"
+        );
         anyhow::ensure!(
             embedding.iter().all(|v| v.is_finite()),
             "Dense embedding contains NaN or Inf values"
@@ -245,6 +279,24 @@ impl DenseEmbedding {
     #[must_use]
     pub fn dim(&self) -> usize {
         self.embedding.len()
+    }
+
+    /// Borrow the embedding values.
+    #[must_use]
+    pub const fn values(&self) -> &Array1<f32> {
+        &self.embedding
+    }
+
+    /// Consume the embedding and return its values.
+    #[must_use]
+    pub fn into_values(self) -> Array1<f32> {
+        self.embedding
+    }
+
+    /// Borrow the original input text.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
     }
 }
 
@@ -281,6 +333,7 @@ pub trait DenseEncoder: Encoder<Output = DenseEmbedding> {
 ///
 /// Determines how token-level embeddings are aggregated into a single vector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PoolingStrategy {
     /// Use the `[CLS]` token embedding (first token).
     ///
@@ -317,13 +370,13 @@ pub struct SparseEmbedding {
     ///
     /// Only non-zero dimensions are stored. Indices correspond to
     /// vocabulary token IDs.
-    pub weights: Vec<(usize, f32)>,
+    weights: Vec<(usize, f32)>,
 
     /// Total vocabulary size (dimension of full dense vector).
-    pub vocab_size: usize,
+    vocab_size: usize,
 
     /// Original input text
-    pub text: String,
+    text: String,
 }
 
 impl SparseEmbedding {
@@ -338,26 +391,40 @@ impl SparseEmbedding {
     /// A new `SparseEmbedding` instance, or an error if validation fails
     ///
     /// # Errors
-    /// Returns an error if any weight index >= vocab_size or if any weight is NaN/Inf
+    /// Returns an error if the vocabulary is empty, an index is out of range,
+    /// indices are not unique and increasing, or a weight is zero/non-finite
     pub fn new(weights: Vec<(usize, f32)>, vocab_size: usize, text: String) -> Result<Self> {
-        // Validate all indices are within bounds
-        for &(idx, _) in &weights {
+        anyhow::ensure!(
+            vocab_size > 0,
+            "Sparse embedding vocabulary size must be greater than zero"
+        );
+
+        let mut previous_index = None;
+        for &(idx, weight) in &weights {
             anyhow::ensure!(
                 idx < vocab_size,
                 "Sparse embedding index {} exceeds vocabulary size {}",
                 idx,
                 vocab_size
             );
-        }
-
-        // Validate no NaN or Inf weights
-        for &(idx, weight) in &weights {
             anyhow::ensure!(
                 weight.is_finite(),
                 "Sparse embedding weight at index {} is not finite: {}",
                 idx,
                 weight
             );
+            anyhow::ensure!(
+                weight.abs() > 0.0,
+                "Sparse embedding weight at index {} must be non-zero",
+                idx
+            );
+            if let Some(previous) = previous_index {
+                anyhow::ensure!(
+                    idx > previous,
+                    "Sparse embedding indices must be unique and strictly increasing"
+                );
+            }
+            previous_index = Some(idx);
         }
 
         Ok(Self {
@@ -373,12 +440,34 @@ impl SparseEmbedding {
         self.weights.len()
     }
 
+    /// Borrow the canonical `(vocabulary index, weight)` entries.
+    #[must_use]
+    pub fn entries(&self) -> &[(usize, f32)] {
+        &self.weights
+    }
+
+    /// Return the full vocabulary dimension.
+    #[must_use]
+    pub const fn vocab_size(&self) -> usize {
+        self.vocab_size
+    }
+
+    /// Borrow the original input text.
+    #[must_use]
+    pub fn text(&self) -> &str {
+        &self.text
+    }
+
     /// Calculate the sparsity level (0.0 = dense, 1.0 = all zeros).
     #[must_use]
     pub fn sparsity(&self) -> f32 {
         1.0 - (self.nnz() as f32 / self.vocab_size as f32)
     }
 }
+
+#[cfg(test)]
+#[path = "embeddings/tests.rs"]
+mod tests;
 
 /// Sparse encoder producing vocabulary-space embeddings (SPLADE-style).
 ///

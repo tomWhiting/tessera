@@ -204,6 +204,49 @@ fn runnable_models_excludes_catalog_only_entries() {
 }
 
 #[test]
+fn catalog_descriptions_are_claim_neutral() {
+    const UNSOURCED_CLAIM_MARKERS: &[&str] = &[
+        "benchmark",
+        "beir",
+        "ms marco",
+        "ms-marco",
+        "mrr",
+        "ndcg",
+        "leaderboard",
+        "latency",
+        "faster",
+        "fast inference",
+        "compression",
+        "competitive",
+        "strong",
+        "excellent",
+        "frontier",
+        "high-performance",
+        "quality",
+        "efficient",
+        "improved",
+        "recommended",
+        "suitable",
+    ];
+
+    for model in MODEL_REGISTRY {
+        assert!(
+            !model.description.trim().is_empty(),
+            "{} description",
+            model.id
+        );
+        let description = model.description.to_ascii_lowercase();
+        for marker in UNSOURCED_CLAIM_MARKERS {
+            assert!(
+                !description.contains(marker),
+                "{} description contains unsourced claim marker {marker:?}",
+                model.id
+            );
+        }
+    }
+}
+
+#[test]
 fn corrected_checkpoint_metadata_is_exposed() {
     assert_eq!(COLBERT_SMALL.architecture_type, "bert");
     assert_eq!(COLBERT_SMALL.hidden_dim, 384);
@@ -245,6 +288,8 @@ fn corrected_checkpoint_metadata_is_exposed() {
         colpali.safetensors_file,
         Some("model.safetensors.index.json")
     );
+    assert_eq!(colpali.context_length, 8192);
+    assert_eq!(colpali.max_position_embeddings, 8192);
 
     for (id, huggingface_id, dimension) in [
         ("jina-colbert-v2-64", "jinaai/jina-colbert-v2-64", 64),

@@ -7,16 +7,11 @@ fn embeddings(num_tokens: usize, embedding_dim: usize, seed: usize) -> TokenEmbe
         (value as f32 - 50.0) / 17.0
     });
 
-    TokenEmbeddings {
-        embeddings: values,
-        text: String::new(),
-        num_tokens,
-        embedding_dim,
-    }
+    TokenEmbeddings::from_parts_unchecked(values, String::new(), num_tokens, embedding_dim)
 }
 
 fn full_matrix_max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> f32 {
-    let similarity_matrix = query.embeddings.dot(&document.embeddings.t());
+    let similarity_matrix = query.matrix().dot(&document.matrix().t());
     let max_sims = similarity_matrix.map_axis(Axis(1), |row| {
         row.fold(f32::NEG_INFINITY, |acc, &score| acc.max(score))
     });
@@ -24,14 +19,6 @@ fn full_matrix_max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> f
 }
 
 fn assert_scores_match(actual: f32, expected: f32, shape: (usize, usize, usize)) {
-    if expected.is_infinite() {
-        assert!(
-            actual.is_infinite() && actual.is_sign_negative() == expected.is_sign_negative(),
-            "score mismatch for shape {shape:?}: tiled={actual}, full={expected}"
-        );
-        return;
-    }
-
     let tolerance = 1e-5 * expected.abs().max(1.0);
     assert!(
         (actual - expected).abs() <= tolerance,
@@ -68,6 +55,25 @@ fn test_cosine_similarity_dimension_mismatch() {
     let a = array![1.0, 2.0];
     let b = array![1.0, 2.0, 3.0];
     assert!(cosine_similarity(&a, &b).is_err());
+}
+
+#[test]
+fn vector_metrics_reject_empty_and_non_finite_inputs() {
+    let empty = Array1::zeros(0);
+    let finite = array![1.0];
+    let nan = array![f32::NAN];
+
+    assert!(cosine_similarity(&empty, &empty).is_err());
+    assert!(dot_product(&nan, &finite).is_err());
+    assert!(euclidean_distance(&finite, &nan).is_err());
+}
+
+#[test]
+fn vector_metrics_reject_non_finite_results() {
+    let huge = array![f32::MAX, f32::MAX];
+
+    assert!(dot_product(&huge, &huge).is_err());
+    assert!(euclidean_distance(&huge, &array![-f32::MAX, -f32::MAX]).is_err());
 }
 
 #[test]
@@ -161,17 +167,38 @@ fn test_max_sim_tiled_matches_full_reference_across_shapes() {
 }
 
 #[test]
-fn test_max_sim_empty_inputs_match_full_reference_behavior() {
+fn test_max_sim_rejects_empty_inputs() {
     let shapes = [(0, 3, 5), (3, 0, 5), (0, 0, 5)];
 
-    for (case, shape @ (query_tokens, document_tokens, dimension)) in shapes.into_iter().enumerate()
-    {
+    for (case, (query_tokens, document_tokens, dimension)) in shapes.into_iter().enumerate() {
         let query = embeddings(query_tokens, dimension, case + 1);
         let document = embeddings(document_tokens, dimension, case + 7);
-        let expected = full_matrix_max_sim(&query, &document);
-        let actual = max_sim(&query, &document).unwrap();
-        assert_scores_match(actual, expected, shape);
+        assert!(max_sim(&query, &document).is_err());
     }
+}
+
+#[test]
+fn test_max_sim_rejects_malformed_metadata_and_values() {
+    let valid = embeddings(1, 2, 1);
+    let malformed_tokens =
+        TokenEmbeddings::from_parts_unchecked(valid.matrix().clone(), String::new(), 2, 2);
+    assert!(max_sim(&malformed_tokens, &valid).is_err());
+
+    let malformed_dim =
+        TokenEmbeddings::from_parts_unchecked(valid.matrix().clone(), String::new(), 1, 3);
+    assert!(max_sim(&valid, &malformed_dim).is_err());
+
+    let non_finite =
+        TokenEmbeddings::from_parts_unchecked(array![[f32::NAN, 1.0]], String::new(), 1, 2);
+    assert!(max_sim(&non_finite, &valid).is_err());
+}
+
+#[test]
+fn test_max_sim_rejects_non_finite_result() {
+    let query = TokenEmbeddings::new(array![[f32::MAX]], String::new()).unwrap();
+    let document = TokenEmbeddings::new(array![[f32::MAX]], String::new()).unwrap();
+
+    assert!(max_sim(&query, &document).is_err());
 }
 
 #[test]

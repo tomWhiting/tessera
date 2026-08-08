@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use super::artifacts;
 use super::evidence::{self, ChildOutcome, PeakRssEvidence, RecordInput};
+use super::reference::{self, LoadedReference, ReferenceComparison};
 use super::spec::{self, CertResult, LoadedSpec};
 
 const RSS_SAMPLE_INTERVAL_MS: u64 = 50;
@@ -106,8 +107,14 @@ fn launch_one(
         profile.process.max_peak_rss_bytes,
     )?;
     let completed_unix_ms = evidence::now_unix_ms()?;
-    let mut outcome = read_outcome(&outcome_path, &monitor)
-        .unwrap_or_else(|error| failed_outcome(format!("child outcome was unreadable: {error}")));
+    let official_reference = reference::load_optional(repository, &loaded.spec, &options.profile)?;
+    let mut outcome = read_outcome(&outcome_path, &monitor, official_reference.as_ref())
+        .unwrap_or_else(|error| {
+            failed_outcome(
+                format!("child outcome was unreadable: {error}"),
+                official_reference.as_ref(),
+            )
+        });
     let _ = fs::remove_file(&outcome_path);
     apply_launcher_result(
         &mut outcome,
@@ -216,7 +223,11 @@ fn monitor_child(
     }
 }
 
-fn read_outcome(path: &Path, monitor: &MonitorResult) -> CertResult<ChildOutcome> {
+fn read_outcome(
+    path: &Path,
+    monitor: &MonitorResult,
+    official_reference: Option<&LoadedReference>,
+) -> CertResult<ChildOutcome> {
     if path.exists() {
         return Ok(serde_json::from_slice(&fs::read(path)?)?);
     }
@@ -227,6 +238,7 @@ fn read_outcome(path: &Path, monitor: &MonitorResult) -> CertResult<ChildOutcome
                 monitor.status
             )
         }),
+        official_reference,
     ))
 }
 
@@ -253,12 +265,16 @@ fn apply_launcher_result(
     }
 }
 
-fn failed_outcome(error: String) -> ChildOutcome {
+fn failed_outcome(error: String, official_reference: Option<&LoadedReference>) -> ChildOutcome {
     ChildOutcome {
         status: "failed".to_string(),
         error: Some(error),
         verified_artifacts: Vec::new(),
         observation: None,
+        reference_comparison: official_reference
+            .map_or_else(ReferenceComparison::not_configured, |reference| {
+                ReferenceComparison::not_run(reference, "child produced no comparison")
+            }),
     }
 }
 

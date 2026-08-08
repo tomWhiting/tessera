@@ -1,21 +1,17 @@
 /// Quantization configuration for embeddings.
 ///
-/// Enables compression of embeddings for reduced memory footprint and
-/// faster distance computation with minimal accuracy loss.
+/// Enables an alternative compressed embedding representation. Quantization
+/// changes the scoring metric; evaluate retrieval quality and performance on
+/// the target model and corpus before relying on it.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub enum QuantizationConfig {
     /// No quantization (full precision float32)
     None,
-    /// Binary quantization (1-bit, 32x compression, 95%+ accuracy)
+    /// Binary quantization (one sign bit per floating-point dimension).
     ///
-    /// Converts each dimension to a single bit (sign of the value).
-    /// Provides maximum compression with acceptable accuracy for most
-    /// retrieval tasks. Ideal for initial filtering + reranking workflows.
+    /// The packed payload is up to 32 times smaller than an equivalent F32
+    /// payload, excluding byte padding and container overhead. No fixed
+    /// ranking-retention or speedup claim is made without a checked benchmark.
     Binary,
-    /// Int8 quantization (8-bit, 4x compression) - Phase 2
-    #[allow(dead_code)]
-    Int8,
-    /// Int4 quantization (4-bit, 8x compression) - Phase 2
-    #[allow(dead_code)]
-    Int4,
 }

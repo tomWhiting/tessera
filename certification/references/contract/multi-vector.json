@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "model_id": "contract-multi-vector",
+  "repository": "example/contract-multi-vector",
+  "revision": "cccccccccccccccccccccccccccccccccccccccc",
+  "profile": "smoke",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "late_interaction_query",
+    "max_sequence_tokens": 8,
+    "context_window_tokens": 8
+  },
+  "provenance": {
+    "producer": "model-free contract fixture",
+    "framework": "reference-fixture",
+    "framework_version": "1",
+    "source_repository": "example/contract-multi-vector",
+    "source_revision": "cccccccccccccccccccccccccccccccccccccccc"
+  },
+  "probe": { "kind": "text", "text": "canonical multi vector probe", "token_count": 4 },
+  "tolerance": { "absolute": 0.001, "relative": 0.001, "minimum_cosine": 0.999 },
+  "expected": {
+    "representation": "multi_vector",
+    "rows": 2,
+    "columns": 2,
+    "values": [1.0, 0.0, 0.0, 1.0]
+  }
+}

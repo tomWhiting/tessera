@@ -36,7 +36,8 @@ const MAX_SIM_DOCUMENT_BLOCK_SIZE: usize = 64;
 /// Cosine similarity score in [-1, 1]
 ///
 /// # Errors
-/// Returns an error if vectors have different lengths or if norms are zero
+/// Returns an error if vectors are empty, have different lengths, contain
+/// non-finite values, or the calculation overflows. Zero vectors return 0.0.
 ///
 /// # Example
 /// ```
@@ -53,21 +54,21 @@ const MAX_SIM_DOCUMENT_BLOCK_SIZE: usize = 64;
 /// assert!((sim - 0.0).abs() < 1e-6);  // Orthogonal vectors
 /// ```
 pub fn cosine_similarity(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
-    anyhow::ensure!(
-        a.len() == b.len(),
-        "Vectors must have same length (got {} and {})",
-        a.len(),
-        b.len()
-    );
+    validate_vector_pair(a, b)?;
 
-    let dot = dot_product(a, b)?;
+    let dot = a.dot(b);
     let norm_a = l2_norm(a);
     let norm_b = l2_norm(b);
 
     if norm_a == 0.0 || norm_b == 0.0 {
         Ok(0.0)
     } else {
-        Ok(dot / (norm_a * norm_b))
+        let similarity = dot / (norm_a * norm_b);
+        anyhow::ensure!(
+            similarity.is_finite(),
+            "Cosine similarity exceeded the finite f32 range"
+        );
+        Ok(similarity)
     }
 }
 
@@ -86,7 +87,8 @@ pub fn cosine_similarity(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// Dot product similarity score
 ///
 /// # Errors
-/// Returns an error if vectors have different lengths
+/// Returns an error if vectors are empty, have different lengths, contain
+/// non-finite values, or the calculation overflows
 ///
 /// # Example
 /// ```
@@ -100,13 +102,13 @@ pub fn cosine_similarity(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// assert!((dot - 32.0).abs() < 1e-6);
 /// ```
 pub fn dot_product(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
+    validate_vector_pair(a, b)?;
+    let score = a.dot(b);
     anyhow::ensure!(
-        a.len() == b.len(),
-        "Vectors must have same length (got {} and {})",
-        a.len(),
-        b.len()
+        score.is_finite(),
+        "Dot product exceeded the finite f32 range"
     );
-    Ok(a.dot(b))
+    Ok(score)
 }
 
 /// Euclidean distance between two vectors.
@@ -124,7 +126,8 @@ pub fn dot_product(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// Euclidean distance (0 = identical, higher = more different)
 ///
 /// # Errors
-/// Returns an error if vectors have different lengths
+/// Returns an error if vectors are empty, have different lengths, contain
+/// non-finite values, or the calculation overflows
 ///
 /// # Example
 /// ```
@@ -138,14 +141,14 @@ pub fn dot_product(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// assert!((dist - 5.0).abs() < 1e-6);
 /// ```
 pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
-    anyhow::ensure!(
-        a.len() == b.len(),
-        "Vectors must have same length (got {} and {})",
-        a.len(),
-        b.len()
-    );
+    validate_vector_pair(a, b)?;
     let diff = a - b;
-    Ok(diff.dot(&diff).sqrt())
+    let distance = diff.dot(&diff).sqrt();
+    anyhow::ensure!(
+        distance.is_finite(),
+        "Euclidean distance exceeded the finite f32 range"
+    );
+    Ok(distance)
 }
 
 /// Computes `MaxSim` similarity between query and document embeddings.
@@ -169,7 +172,8 @@ pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// `MaxSim` similarity score (higher = more similar)
 ///
 /// # Errors
-/// Returns an error if embedding dimensions don't match
+/// Returns an error if either embedding is empty, metadata or dimensions do
+/// not match, values are non-finite, or the calculation overflows
 ///
 /// # Example
 /// ```ignore
@@ -188,15 +192,17 @@ pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 /// # }
 /// ```
 pub fn max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f32> {
+    validate_token_embeddings("Query", query)?;
+    validate_token_embeddings("Document", document)?;
     anyhow::ensure!(
-        query.embedding_dim == document.embedding_dim,
+        query.embedding_dim() == document.embedding_dim(),
         "Query and document embedding dimensions must match (query: {}, document: {})",
-        query.embedding_dim,
-        document.embedding_dim
+        query.embedding_dim(),
+        document.embedding_dim()
     );
 
-    let query_matrix = &query.embeddings;
-    let doc_matrix = &document.embeddings;
+    let query_matrix = query.matrix();
+    let doc_matrix = document.matrix();
 
     // Retain only one running maximum per query token and a fixed-size block of
     // document scores. This avoids materializing either the full Q x D matrix
@@ -212,14 +218,71 @@ pub fn max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f3
         for (query_index, query_row) in query_matrix.outer_iter().enumerate() {
             general_mat_vec_mul(1.0, &document_block, &query_row, 0.0, &mut active_scores);
 
-            let block_max = active_scores
-                .iter()
-                .fold(f32::NEG_INFINITY, |acc, &score| acc.max(score));
+            let mut block_max = f32::NEG_INFINITY;
+            for &score in &active_scores {
+                anyhow::ensure!(
+                    score.is_finite(),
+                    "MaxSim dot product exceeded the finite f32 range"
+                );
+                block_max = block_max.max(score);
+            }
             max_sims[query_index] = max_sims[query_index].max(block_max);
         }
     }
 
-    Ok(max_sims.sum())
+    let score = max_sims.sum();
+    anyhow::ensure!(
+        score.is_finite(),
+        "MaxSim score exceeded the finite f32 range"
+    );
+    Ok(score)
+}
+
+fn validate_vector_pair(a: &Array1<f32>, b: &Array1<f32>) -> Result<()> {
+    anyhow::ensure!(!a.is_empty(), "Vectors must not be empty");
+    anyhow::ensure!(
+        a.len() == b.len(),
+        "Vectors must have same length (got {} and {})",
+        a.len(),
+        b.len()
+    );
+    anyhow::ensure!(
+        a.iter().all(|value| value.is_finite()),
+        "First vector contains NaN or Inf values"
+    );
+    anyhow::ensure!(
+        b.iter().all(|value| value.is_finite()),
+        "Second vector contains NaN or Inf values"
+    );
+    Ok(())
+}
+
+fn validate_token_embeddings(label: &str, embeddings: &TokenEmbeddings) -> Result<()> {
+    let actual_tokens = embeddings.matrix().nrows();
+    let actual_dim = embeddings.matrix().ncols();
+    anyhow::ensure!(
+        actual_tokens > 0,
+        "{label} embeddings must contain at least one token"
+    );
+    anyhow::ensure!(
+        actual_dim > 0,
+        "{label} embedding dimension must be greater than zero"
+    );
+    anyhow::ensure!(
+        embeddings.num_tokens() == actual_tokens,
+        "{label} token metadata mismatch: declared {}, actual {actual_tokens}",
+        embeddings.num_tokens()
+    );
+    anyhow::ensure!(
+        embeddings.embedding_dim() == actual_dim,
+        "{label} dimension metadata mismatch: declared {}, actual {actual_dim}",
+        embeddings.embedding_dim()
+    );
+    anyhow::ensure!(
+        embeddings.matrix().iter().all(|value| value.is_finite()),
+        "{label} embeddings contain NaN or Inf values"
+    );
+    Ok(())
 }
 
 #[cfg(test)]

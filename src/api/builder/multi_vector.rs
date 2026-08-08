@@ -1,10 +1,11 @@
 use super::{ensure_runnable_model, QuantizationConfig};
 use crate::api::TesseraMultiVector;
+use crate::backends::candle::encoder::ColbertConfig;
 use crate::backends::CandleBertEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::{registry, ModelConfig};
 use crate::quantization::BinaryQuantization;
-use crate::runtime::{resolve_registry_policy, ResourcePolicy};
+use crate::runtime::{resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy};
 use candle_core::Device;
 
 #[cfg(test)]
@@ -26,6 +27,12 @@ pub struct TesseraMultiVectorBuilder {
     quantization: Option<QuantizationConfig>,
     /// Hard limits for model loading and text tensor allocation
     resource_policy: Option<ResourcePolicy>,
+    /// Fixed query length after ColBERT mask augmentation
+    query_max_length: Option<usize>,
+    /// Maximum document length including ColBERT framing tokens
+    document_max_length: Option<usize>,
+    /// Explicit parameter dtype; F32 by default.
+    dtype: ModelDType,
 }
 
 impl TesseraMultiVectorBuilder {
@@ -40,6 +47,9 @@ impl TesseraMultiVectorBuilder {
             dimension: None,
             quantization: None,
             resource_policy: None,
+            query_max_length: None,
+            document_max_length: None,
+            dtype: ModelDType::F32,
         }
     }
 
@@ -122,7 +132,7 @@ impl TesseraMultiVectorBuilder {
     /// ```ignore
     /// use tessera::{QuantizationConfig, TesseraMultiVectorBuilder};
     ///
-    /// // Enable binary quantization (32x compression)
+    /// // Enable a packed one-bit representation
     /// let builder = TesseraMultiVectorBuilder::new()
     ///     .model("colbert-v2")
     ///     .quantization(QuantizationConfig::Binary);
@@ -137,6 +147,29 @@ impl TesseraMultiVectorBuilder {
     #[must_use]
     pub const fn resource_policy(mut self, resource_policy: ResourcePolicy) -> Self {
         self.resource_policy = Some(resource_policy);
+        self
+    }
+
+    /// Selects the model parameter dtype.
+    #[must_use]
+    pub const fn dtype(mut self, dtype: ModelDType) -> Self {
+        self.dtype = dtype;
+        self
+    }
+
+    /// Sets the fixed ColBERT query length, including framing and `[MASK]`
+    /// augmentation. The reference default is 32 tokens.
+    #[must_use]
+    pub const fn query_max_length(mut self, query_max_length: usize) -> Self {
+        self.query_max_length = Some(query_max_length);
+        self
+    }
+
+    /// Sets the maximum ColBERT document length, including `[CLS]`, `[D]`, and
+    /// `[SEP]`. The reference default is 180 tokens.
+    #[must_use]
+    pub const fn document_max_length(mut self, document_max_length: usize) -> Self {
+        self.document_max_length = Some(document_max_length);
         self
     }
 
@@ -204,14 +237,26 @@ impl TesseraMultiVectorBuilder {
             }
         }
 
-        let resource_policy = resolve_registry_policy(
+        let resource_policy = resolve_registry_policy_with_dtype(
             self.resource_policy,
             model_info.context_length,
             model_info.parameters,
+            self.dtype,
         )
         .map_err(|error| {
             TesseraError::ConfigError(format!(
                 "Invalid resource policy for model '{model_id}': {error}"
+            ))
+        })?;
+
+        let colbert_config = ColbertConfig::resolve(
+            self.query_max_length,
+            self.document_max_length,
+            &resource_policy,
+        )
+        .map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Invalid ColBERT role lengths for model '{model_id}': {error}"
             ))
         })?;
 
@@ -241,21 +286,22 @@ impl TesseraMultiVectorBuilder {
         };
 
         // Create encoder
-        let encoder = CandleBertEncoder::new_with_resource_policy(config, device, resource_policy)
-            .map_err(|e| TesseraError::ModelLoadError {
-                model_id: model_id.clone(),
-                source: e,
-            })?;
+        let encoder = CandleBertEncoder::new_with_dtype_and_colbert_config(
+            config,
+            device,
+            self.dtype,
+            resource_policy,
+            colbert_config,
+        )
+        .map_err(|e| TesseraError::ModelLoadError {
+            model_id: model_id.clone(),
+            source: e,
+        })?;
 
         // Create quantizer if requested
         let quantizer = match self.quantization.unwrap_or(QuantizationConfig::None) {
             QuantizationConfig::Binary => Some(BinaryQuantization::new()),
             QuantizationConfig::None => None,
-            QuantizationConfig::Int8 | QuantizationConfig::Int4 => {
-                return Err(TesseraError::QuantizationError(
-                    "Int8/Int4 quantization not yet implemented (Phase 2)".to_string(),
-                ))
-            }
         };
 
         // Create TesseraMultiVector instance
@@ -264,6 +310,7 @@ impl TesseraMultiVectorBuilder {
             model_id,
             quantizer,
             resource_policy.conservative_batch_size(),
+            resource_policy,
         ))
     }
 }

@@ -27,9 +27,11 @@ remote checkpoint has a golden-output or quality guarantee.
 > the user checks the conspicuous `HIGH MEMORY` checkbox. That mode retains
 > three model objects, three embedding sets, and three UMAP reducers. Tessera's
 > resource policy preflights individual raw inputs, request shapes, attention
-> cells, and estimated parameter bytes, but it does not impose an aggregate or
-> peak-memory budget across them. Leave the checkbox clear unless the target
-> machine has been monitored with this workload.
+> cells, and estimated parameter bytes, including an aggregate estimated-model
+> admission budget across retained Tessera encoders. That ledger is not a peak
+> process-memory budget and does not include embedding collections, UMAP,
+> allocator overhead, or other applications. Leave the checkbox clear unless
+> the target machine has been monitored with this workload.
 
 ## Install and launch
 

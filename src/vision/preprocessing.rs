@@ -21,35 +21,50 @@ pub struct ImageProcessor {
     /// Target image size (width, height) - typically (448, 448)
     pub target_size: (u32, u32),
 
-    /// Normalization mean values [R, G, B]
-    /// SigLIP/ImageNet: [0.48145466, 0.4578275, 0.40821073]
+    /// Normalization mean values [R, G, B].
+    /// The pinned PaliGemma processor publishes `[0.5, 0.5, 0.5]`.
     pub mean: [f32; 3],
 
-    /// Normalization std values [R, G, B]
-    /// SigLIP/ImageNet: [0.26862954, 0.26130258, 0.27577711]
+    /// Normalization std values [R, G, B].
+    /// The pinned PaliGemma processor publishes `[0.5, 0.5, 0.5]`.
     pub std: [f32; 3],
+
+    /// Scale applied to each byte-valued channel before normalization.
+    pub rescale_factor: f32,
 }
 
 impl ImageProcessor {
     /// Create new image processor with `PaliGemma` defaults.
     ///
-    /// Uses 448×448 target size and `SigLIP` normalization parameters.
+    /// Uses the published `PaliGemma` 448 defaults.
     #[must_use]
     pub const fn new() -> Self {
         Self {
             target_size: (448, 448),
-            mean: [0.481_454_66, 0.457_827_5, 0.408_210_73],
-            std: [0.268_629_54, 0.261_302_6, 0.275_777_1],
+            mean: [0.5; 3],
+            std: [0.5; 3],
+            rescale_factor: 1.0 / 255.0,
         }
     }
 
     /// Create processor with custom parameters.
     #[must_use]
+    #[cfg(test)]
     pub const fn with_config(target_size: (u32, u32), mean: [f32; 3], std: [f32; 3]) -> Self {
         Self {
             target_size,
             mean,
             std,
+            rescale_factor: 1.0 / 255.0,
+        }
+    }
+
+    pub(crate) fn from_preprocessor_config(config: &super::ColPaliPreprocessorConfig) -> Self {
+        Self {
+            target_size: config.target_size(),
+            mean: config.image_mean(),
+            std: config.image_std(),
+            rescale_factor: config.rescale_factor(),
         }
     }
 
@@ -178,7 +193,7 @@ impl ImageProcessor {
 
     /// Normalize image pixels using mean/std.
     ///
-    /// Formula: `normalized = (pixel / 255.0 - mean) / std`
+    /// Formula: `normalized = (pixel * rescale_factor - mean) / std`
     ///
     /// # Arguments
     ///
@@ -197,8 +212,7 @@ impl ImageProcessor {
         // Process channels separately (channels-first layout)
         for channel in 0..3 {
             for pixel in img.pixels() {
-                // Convert to [0, 1]
-                let value = f32::from(pixel[channel]) / 255.0;
+                let value = f32::from(pixel[channel]) * self.rescale_factor;
 
                 // Apply normalization
                 let normed = (value - self.mean[channel]) / self.std[channel];

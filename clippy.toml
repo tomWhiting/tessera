@@ -1,8 +1,8 @@
 # Tessera - Clippy linting configuration
 
 # Strictness
-msrv = "1.75"  # Minimum Rust version
+msrv = "1.97"  # Matches the tested package rust-version
 
 # Deny these lints
-# (will be enforced in CI)
+# (enforced by the local repository gate)
 warn-on-all-wildcard-imports = true

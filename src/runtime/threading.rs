@@ -31,6 +31,7 @@ impl CpuThreadConfig {
 
 /// Failure to establish process-global Candle CPU thread limits.
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[non_exhaustive]
 pub enum CpuThreadConfigError {
     /// The requested default ceiling was zero.
     #[error("CPU thread ceiling must be greater than zero")]
@@ -78,8 +79,8 @@ fn initialize_cpu_threads(
     let candle_override =
         read_override("CANDLE_NUM_THREADS")?.map(|threads| cap_threads(threads, max_threads));
     let available = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
-    let default_threads = NonZeroUsize::new(available.get().min(max_threads.get()))
-        .expect("minimum of positive thread counts remains positive");
+    let default_threads =
+        NonZeroUsize::new(available.get().min(max_threads.get())).unwrap_or(NonZeroUsize::MIN);
     let shared_threads = rayon_override
         .or(candle_override)
         .unwrap_or(default_threads);
@@ -96,8 +97,7 @@ fn initialize_cpu_threads(
 }
 
 fn cap_threads(threads: NonZeroUsize, ceiling: NonZeroUsize) -> NonZeroUsize {
-    NonZeroUsize::new(threads.get().min(ceiling.get()))
-        .expect("minimum of positive thread counts remains positive")
+    NonZeroUsize::new(threads.get().min(ceiling.get())).unwrap_or(NonZeroUsize::MIN)
 }
 
 fn read_override(name: &'static str) -> Result<Option<NonZeroUsize>, CpuThreadConfigError> {

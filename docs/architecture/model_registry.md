@@ -17,6 +17,10 @@ models.json
 No JSON parsing or registry file access occurs at runtime. Build failures catch
 invalid metadata before generated code is compiled.
 
+Catalog descriptions are limited to architecture, artifact, dimension, and
+capability facts represented by the registry itself. The registry does not
+publish benchmark, quality, latency, or compression scores.
+
 ## Support is explicit
 
 Every entry has a non-empty support note and one of three tiers:

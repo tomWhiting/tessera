@@ -12,6 +12,42 @@ fn conservative_defaults_are_stable() {
     assert_eq!(policy.max_model_bytes(), 2 * 1024 * 1024 * 1024);
     assert_eq!(policy.max_input_bytes_per_sequence(), 1024 * 1024);
     assert_eq!(policy.max_attention_cells(), 1_048_576);
+    assert_eq!(policy.max_job_items(), 1024);
+    assert_eq!(policy.max_job_input_bytes(), 64 * 1024 * 1024);
+    assert_eq!(policy.max_output_bytes(), 64 * 1024 * 1024);
+    assert_eq!(policy.max_activation_bytes(), 512 * 1024 * 1024);
+}
+
+#[test]
+fn logical_job_and_collected_output_limits_are_independent() {
+    let policy = ResourcePolicy::default()
+        .with_max_job_items(2)
+        .with_max_job_input_bytes(10)
+        .with_max_output_bytes(16);
+
+    assert_eq!(policy.validate_job(2, 10), Ok(()));
+    assert_eq!(policy.validate_output_bytes(16), Ok(()));
+    assert_eq!(
+        policy.validate_job(3, 10),
+        Err(ResourcePolicyError::JobItems {
+            measured: 3,
+            allowed: 2,
+        })
+    );
+    assert_eq!(
+        policy.validate_job(2, 11),
+        Err(ResourcePolicyError::JobInputBytes {
+            measured: 11,
+            allowed: 10,
+        })
+    );
+    assert_eq!(
+        policy.validate_output_bytes(17),
+        Err(ResourcePolicyError::OutputBytes {
+            measured: 17,
+            allowed: 16,
+        })
+    );
 }
 
 #[test]

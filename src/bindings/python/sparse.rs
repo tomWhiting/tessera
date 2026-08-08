@@ -3,7 +3,11 @@
 #![allow(clippy::useless_conversion)]
 
 use super::conversion::{sparse_embedding_to_pyarrays, tessera_error_to_pyerr};
-use super::resource_policy::{effective_policy_for_model, extract_text_batch, PyResourcePolicy};
+use super::dtype::{model_dtype_name, parse_model_dtype};
+use super::resource_policy::{
+    effective_policy_for_model, extract_text_batch, validated_text_input, validated_text_pair,
+    PyResourcePolicy,
+};
 use crate::api::TesseraSparseBuilder;
 use crate::runtime::ResourcePolicy;
 use numpy::PyArray1;
@@ -22,14 +26,22 @@ pub struct PyTesseraSparse {
 impl PyTesseraSparse {
     /// Create a sparse embedder for a registered model.
     #[new]
-    #[pyo3(signature = (model_id, *, resource_policy=None))]
-    fn new(model_id: &str, resource_policy: Option<PyRef<'_, PyResourcePolicy>>) -> PyResult<Self> {
+    #[pyo3(signature = (model_id, *, resource_policy=None, dtype="f32"))]
+    fn new(
+        py: Python<'_>,
+        model_id: &str,
+        resource_policy: Option<PyRef<'_, PyResourcePolicy>>,
+        dtype: &str,
+    ) -> PyResult<Self> {
+        let dtype = parse_model_dtype(dtype)?;
         let resource_policy = resource_policy.map(|policy| policy.inner());
-        let mut builder = TesseraSparseBuilder::new().model(model_id);
+        let mut builder = TesseraSparseBuilder::new().model(model_id).dtype(dtype);
         if let Some(policy) = resource_policy {
             builder = builder.resource_policy(policy);
         }
-        let inner = builder.build().map_err(tessera_error_to_pyerr)?;
+        let inner = py
+            .allow_threads(move || builder.build())
+            .map_err(tessera_error_to_pyerr)?;
         Ok(Self {
             inner,
             resource_policy: effective_policy_for_model(model_id, resource_policy),
@@ -38,8 +50,9 @@ impl PyTesseraSparse {
 
     /// Encode one string as `(indices, values)` NumPy arrays.
     fn encode(&self, py: Python<'_>, text: &str) -> PyResult<SparseArrays> {
+        let text = validated_text_input(text, "text", self.resource_policy)?;
         let embedding = py
-            .allow_threads(|| self.inner.encode(text))
+            .allow_threads(|| self.inner.encode(&text))
             .map_err(tessera_error_to_pyerr)?;
         sparse_embedding_to_pyarrays(py, &embedding)
     }
@@ -62,9 +75,10 @@ impl PyTesseraSparse {
     }
 
     /// Compute sparse dot-product similarity between two strings.
-    fn similarity(&self, text_a: &str, text_b: &str) -> PyResult<f32> {
-        self.inner
-            .similarity(text_a, text_b)
+    fn similarity(&self, py: Python<'_>, text_a: &str, text_b: &str) -> PyResult<f32> {
+        let (text_a, text_b) =
+            validated_text_pair(text_a, "text_a", text_b, "text_b", self.resource_policy)?;
+        py.allow_threads(|| self.inner.similarity(&text_a, &text_b))
             .map_err(tessera_error_to_pyerr)
     }
 
@@ -76,6 +90,11 @@ impl PyTesseraSparse {
     /// Return the registered model identifier.
     fn model(&self) -> PyResult<String> {
         Ok(self.inner.model().to_string())
+    }
+
+    /// Return the parameter dtype selected for this loaded model.
+    fn dtype(&self) -> &'static str {
+        model_dtype_name(self.inner.model_dtype())
     }
 
     fn __repr__(&self) -> PyResult<String> {

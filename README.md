@@ -22,7 +22,8 @@ checked certification evidence contract.
 - Sparse SPLADE-style vocabulary vectors for hybrid and lexical retrieval
 - Multi-vector ColBERT-style embeddings with bounded-memory MaxSim scoring
 - Vision-language patch embeddings from image inputs
-- Conservative input, attention, and model-load preflights plus a two-worker CPU default
+- Bounded input, job, output, activation, model-load, and inference admission
+  plus a two-worker CPU default
 - Rust and Python APIs backed by the same model registry
 
 Time-series forecasting is not an active runtime. The retained Chronos code
@@ -32,8 +33,10 @@ for the exact incompatibilities and reactivation criteria.
 
 ## Build locally
 
-The checked-in toolchain and lockfile are part of the reproducible build. Run
-the complete model-free repository gate locally before committing:
+The checked-in Rust 1.97.1 toolchain and lockfile are part of the reproducible
+build. The package declares Rust 1.97 as its minimum because lower toolchains
+are not part of the tested release contract. From a full repository checkout,
+run the complete model-free gate locally before committing:
 
 ```bash
 ./scripts/check
@@ -41,21 +44,27 @@ the complete model-free repository gate locally before committing:
 
 The script checks formatting, generated-registry and 500-line policies, strict
 Clippy, model-free Rust tests, documentation tests, and the Python lockfile
-without downloading model artifacts.
+without downloading model artifacts. The script and unpublished `tessera-xtask`
+runner are repository tooling and are not included in the crates.io archive.
 
 Optional acceleration and bindings are feature-gated:
 
 ```bash
+cargo build --locked                        # Core library; no default features
 cargo build --locked --features metal       # Apple Metal
 cargo build --locked --features cuda        # NVIDIA CUDA
 cargo build --locked --features python      # PyO3 extension module
-cargo build --locked --no-default-features  # Core library without PDF plumbing
+cargo build --locked --features pdf         # PDF plumbing; requires Poppler
 ```
+
+PDF rendering is deliberately opt-in because it adds a native Poppler runtime
+dependency. It is not needed for image inputs or the Python wheel.
 
 For local Python development, use Maturin so the extension and Python package
 are built together:
 
 ```bash
+uv sync --extra dev
 uv run maturin develop
 uv run pytest tests/python/test_python_bindings.py
 ```
@@ -93,9 +102,14 @@ fn main() -> tessera::Result<()> {
     let token_vectors = multi.encode("late interaction retrieval")?;
     let term_weights = sparse.encode("learned lexical expansion")?;
 
-    // The current public vision façade accepts image paths, not PDF paths.
-    // Its 3B F32 parameter estimate requires an explicit large-model opt-in.
+    // ColPali combines 1,024 visual positions with prompt tokens. These
+    // illustrative F32 ceilings are an explicit high-memory opt-in.
     let vision_policy = ResourcePolicy::default()
+        .with_max_sequence_tokens(2_048)
+        .with_max_batch_items(1)
+        .with_max_batch_tokens(2_048)
+        .with_max_attention_cells(4_194_304)
+        .with_max_activation_bytes(1024 * 1024 * 1024)
         .with_max_model_bytes(12 * 1024 * 1024 * 1024);
     let vision = TesseraVision::builder()
         .model("colpali-v1.2")
@@ -105,7 +119,7 @@ fn main() -> tessera::Result<()> {
 
     println!(
         "{} token vectors, {} sparse terms, {} image patches",
-        token_vectors.num_tokens,
+        token_vectors.num_tokens(),
         term_weights.nnz(),
         page_vectors.num_patches()
     );
@@ -114,12 +128,15 @@ fn main() -> tessera::Result<()> {
 ```
 
 All three checkpoints in this example are currently `Experimental`. ColPali is
-a large F32 load and is rejected by the default model-memory budget; see the
-resource policy below before attempting it.
+a large F32 load whose visual sequence, attention, activation estimate, and
+model parameters exceed conservative defaults. The example only demonstrates
+the required opt-in shape; it is not evidence that the model fits a particular
+machine.
 
 ## Resource policy
 
-Tessera validates work before model input tensors are allocated. The default
+Tessera's high-level builders preflight registered-model and request-shape
+limits before their main model input tensors are allocated. The default
 `ResourcePolicy` is intentionally conservative:
 
 | Limit | Default |
@@ -129,10 +146,19 @@ Tessera validates work before model input tensors are allocated. The default
 | Items in one batch | 16 |
 | Padded token cells (`batch items × longest sequence`) | 2,048 |
 | Attention cells (`batch items × longest sequence²`) | 1,048,576 |
-| Estimated F32 model parameter bytes | 2 GiB |
+| Inputs in one logical encode job, across all chunks | 1,024 |
+| Aggregate UTF-8 input bytes in one logical job | 64 MiB |
+| Retained embedding values from one collecting API | 64 MiB |
+| Estimated live inference scratch bytes per forward pass | 512 MiB |
+| Estimated resident model parameter bytes (default F32) | 2 GiB |
 
-These are safety limits, not model capabilities. A registered 8K model still
-uses the 512-token default until the caller opts in. Limits can be raised only
+The batch limits apply to one tensor forward pass; the job and output limits
+also bound work accumulated across internal chunks. The activation limit is a
+conservative estimate derived from the pinned transformer configuration and
+load dtype, not a measurement of total process or accelerator memory.
+
+These limits are not model capabilities. A registered 8K model still uses the
+512-token default until the caller opts in. Sequence limits can be raised only
 up to the selected model's registered context window:
 
 ```rust,no_run
@@ -143,7 +169,8 @@ fn main() -> tessera::Result<()> {
         .with_max_sequence_tokens(8_192)
         .with_max_batch_items(1)
         .with_max_batch_tokens(8_192)
-        .with_max_attention_cells(67_108_864);
+        .with_max_attention_cells(67_108_864)
+        .with_max_activation_bytes(8 * 1024 * 1024 * 1024);
 
     let embedder = TesseraDense::builder()
         .model("jina-embeddings-v2-small-en")
@@ -160,16 +187,18 @@ fn main() -> tessera::Result<()> {
 > not evidence that 8K inference is safe on the target machine. Full attention
 > is quadratic in sequence length. The 67,108,864-cell allowance above is for
 > one 8,192 × 8,192 matrix before attention heads, model layers, temporary
-> tensors, allocator overhead, and other process memory are considered. Even a
+> tensors, allocator overhead, and other process memory are considered. The
+> 8 GiB scratch allowance is illustrative, not a certification result. Even a
 > one-item 8K request can exhaust CPU, GPU, or Metal shared memory. Measure the
 > selected model on the target hardware and raise the limit only when that risk
 > is acceptable.
 
-Raise `max_model_bytes` separately when deliberately loading a model whose F32
-parameter estimate exceeds 2 GiB. For example, a 3B-parameter vision checkpoint
-has an approximately 12 GB F32 parameter estimate before allocator overhead;
-do not raise that limit casually. A resource policy prevents accidental loads,
-but it is not a full peak-memory estimator.
+`max_model_bytes` bounds both one model and the prospective aggregate estimated
+parameter bytes retained by Tessera encoders. Raise it deliberately when
+loading a model whose selected dtype exceeds 2 GiB or when admitting multiple
+distinct models. For example, a 3B-parameter checkpoint has an approximately
+12 GB F32 parameter estimate before allocator overhead. This admission budget
+prevents accidental loads, but it is not a full peak-memory estimator.
 
 ### CPU worker ceiling
 
@@ -207,13 +236,28 @@ thread, allocation, or accelerator operation in the process.
 
 Tessera admits only one Candle forward pass at a time across dense, sparse,
 multi-vector, and vision encoders in the process, including calls arriving
-through separate Python instances. Concurrent callers wait at this exclusive
-gate, which prevents overlapping forward-pass peaks. It does not deduplicate or
-cache model instances: multiple embedders can still load and retain separate
-copies of the same weights. The resource policy also limits each request, not
-the total bytes of embeddings a caller retains after inference; model lifetime,
-duplicate loads, and accumulated outputs still require application-level
-budgets.
+through separate Python instances. By default, at most 16 callers may wait and
+each may wait for at most 30 seconds; excess callers and expired waits return
+structured errors. Call `tessera::runtime::configure_inference_gate` before the
+first forward pass to choose different process-wide bounds. The exclusive gate
+prevents overlapping Tessera forward passes, but it does not govern allocations
+made by other libraries in the process.
+
+### Model residency
+
+Each dense, sparse, multi-vector, or vision constructor atomically reserves its
+estimated parameter bytes before tokenizer, Hub, or artifact I/O. Reservations
+are keyed by the immutable model revision, physical Candle device, and model
+dtype. A second retained instance with the same key is rejected with guidance
+to reuse or drop the existing embedder; Tessera does not currently share model
+tensors between instances.
+
+A different key is admitted only when its estimate plus existing Tessera
+reservations fits the requesting policy's `max_model_bytes`. Giving that request
+a higher policy deliberately raises its prospective aggregate ceiling. The
+reservation is released automatically if construction fails and after the
+encoder's tensors are dropped. Registry parameter counts remain estimates and
+do not include every allocator, activation, driver, or non-Tessera allocation.
 
 ## Model catalog
 
@@ -274,8 +318,9 @@ vocabulary vector to the host.
 
 Patch embeddings from document page images and text-query embeddings for
 late-interaction retrieval. The public `TesseraVision` façade currently accepts
-an image path. The default `pdf` feature provides PDF rendering plumbing used by
-lower layers, but it is not yet a high-level PDF-document API.
+an image path. The opt-in `pdf` feature provides PDF rendering plumbing used by
+lower layers, but it is not yet a high-level PDF-document API and requires a
+system Poppler installation.
 
 ## Python
 
@@ -311,4 +356,13 @@ evidence is required before any entry can move from `Experimental` to
 
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
+Tessera's source code and repository documentation are licensed under the
+Apache License, Version 2.0. See [LICENSE](LICENSE).
+
+That license does **not** grant rights to third-party model checkpoints. The
+crate and Python package do not bundle model weights; checkpoints obtained from
+Hugging Face or another provider remain subject to their upstream licenses and
+terms. The catalog includes permissive, non-commercial, and model-specific
+licenses, so check the pinned model repository before downloading or deploying
+a checkpoint. The `license` value in `models.json` is discovery metadata; the
+upstream model card and license files are authoritative.

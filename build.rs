@@ -102,6 +102,7 @@ fn generate_pooling_types() -> String {
 ///
 /// Determines how token-level embeddings are aggregated into a single vector.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum PoolingStrategy {
     /// Use the `[CLS]` token embedding (first token).
     ///
@@ -133,6 +134,7 @@ pub enum PoolingStrategy {
 /// Specifies how token-level embeddings should be pooled into a single
 /// vector representation, and whether the result should be normalized.
 #[derive(Debug, Clone, Copy)]
+#[non_exhaustive]
 pub struct PoolingConfig {
     /// The pooling strategy to use
     pub strategy: PoolingStrategy,
@@ -145,6 +147,7 @@ pub struct PoolingConfig {
 fn generate_embedding_dimension_enum() -> String {
     r#"/// Embedding dimension specification supporting fixed and Matryoshka dimensions.
 #[derive(Debug, Clone, PartialEq)]
+#[non_exhaustive]
 pub enum EmbeddingDimension {
     /// Fixed dimension size
     Fixed(usize),
@@ -227,6 +230,7 @@ fn generate_model_type_enum(registry: &ModelRegistry) -> String {
     let mut code = String::from(
         r"/// Type of embedding model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ModelType {
 ",
     );
@@ -248,6 +252,7 @@ pub enum ModelType {
 fn generate_support_tier_enum() -> String {
     r"/// Runtime support level for a catalog entry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum SupportTier {
     /// The model path has passed the project's support and verification bar.
     Supported,
@@ -269,6 +274,7 @@ impl SupportTier {
 fn generate_model_info_struct() -> String {
     r#"/// Comprehensive metadata for a model from the registry.
 #[derive(Debug, Clone)]
+#[non_exhaustive]
 pub struct ModelInfo {
     /// Unique identifier (kebab-case)
     pub id: &'static str,
@@ -326,10 +332,6 @@ pub struct ModelInfo {
     pub multi_vector: bool,
     /// Available quantization methods
     pub quantization: &'static [&'static str],
-    /// BEIR average score (if available)
-    pub beir_avg: f64,
-    /// MS MARCO MRR@10 score (if available)
-    pub ms_marco_mrr10: f64,
     /// License
     pub license: &'static str,
     /// Description

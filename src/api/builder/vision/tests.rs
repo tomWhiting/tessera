@@ -6,7 +6,7 @@ use crate::runtime::ResourcePolicy;
 fn resource_policy_cannot_exceed_vision_model_context() {
     let result = TesseraVisionBuilder::new()
         .model("colpali-v1.2")
-        .resource_policy(ResourcePolicy::default().with_max_sequence_tokens(513))
+        .resource_policy(ResourcePolicy::default().with_max_sequence_tokens(8193))
         .build();
 
     let Err(error) = result else {
@@ -15,8 +15,8 @@ fn resource_policy_cannot_exceed_vision_model_context() {
     assert!(matches!(
         error,
         TesseraError::ConfigError(message)
-            if message.contains("Configured sequence token limit 513")
-                && message.contains("model context limit 512")
+            if message.contains("Configured sequence token limit 8193")
+                && message.contains("model context limit 8192")
     ));
 }
 

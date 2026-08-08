@@ -1,4 +1,5 @@
 use super::Encoder;
+use anyhow::Result;
 
 /// Vision embedding representation for ColPali-style vision-language models.
 ///
@@ -15,52 +16,89 @@ use super::Encoder;
 /// - vidore/colpali-v1
 #[derive(Debug, Clone)]
 pub struct VisionEmbedding {
-    /// Patch embeddings: shape [`num_patches`, `embedding_dim`]
+    /// All upstream sequence-row embeddings.
     ///
-    /// Typically 1024 patches for 448×448 images (32×32 grid).
-    /// Each patch embedding is a vector of dimension `embedding_dim`.
-    pub embeddings: Vec<Vec<f32>>,
+    /// This includes physical image positions and any retained prompt/special
+    /// token states. Each row has `embedding_dim` values.
+    embeddings: Vec<Vec<f32>>,
 
     /// Number of patches in the image grid.
     ///
     /// For `ColPali` with 448×448 input, this is 32×32 = 1024 patches.
-    pub num_patches: usize,
+    num_patches: usize,
+
+    /// Total number of sequence-row vectors retained for scoring.
+    num_vectors: usize,
 
     /// Embedding dimension per patch.
     ///
     /// Typically 128 for `ColPali` (matches `ColBERT` dimension for compatibility).
-    pub embedding_dim: usize,
+    embedding_dim: usize,
 
     /// Optional: Source image path or identifier.
     ///
     /// Used for tracking the origin of the image embedding.
-    pub source: Option<String>,
+    source: Option<String>,
 }
 
 impl VisionEmbedding {
     /// Create a new vision embedding.
     ///
     /// # Arguments
-    /// * `embeddings` - The patch embeddings (shape [`num_patches`, `embedding_dim`])
+    /// * `embeddings` - All retained vectors (shape [`num_vectors`, `embedding_dim`])
     /// * `num_patches` - Number of patches (typically 1024 for `ColPali`)
     /// * `embedding_dim` - Dimension per patch (typically 128 for `ColPali`)
     /// * `source` - Optional source image path/identifier
     ///
     /// # Returns
-    /// A new `VisionEmbedding` instance
-    #[must_use]
-    pub const fn new(
+    /// A new validated `VisionEmbedding` instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if either dimension is zero, the physical patch count
+    /// exceeds the sequence-row count, a row has the wrong dimension, or any
+    /// value is non-finite.
+    pub fn new(
         embeddings: Vec<Vec<f32>>,
         num_patches: usize,
         embedding_dim: usize,
         source: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        anyhow::ensure!(num_patches > 0, "Vision embedding must contain patches");
+        anyhow::ensure!(
+            embedding_dim > 0,
+            "Vision embedding dimension must be greater than zero"
+        );
+        let num_vectors = embeddings.len();
+        anyhow::ensure!(
+            num_vectors >= num_patches,
+            "Vision embedding contains {num_vectors} sequence vectors, fewer than {num_patches} image patches"
+        );
+        for (vector_index, vector) in embeddings.iter().enumerate() {
+            anyhow::ensure!(
+                vector.len() == embedding_dim,
+                "Vision vector {vector_index} has dimension {}, expected {embedding_dim}",
+                vector.len()
+            );
+            anyhow::ensure!(
+                vector.iter().all(|value| value.is_finite()),
+                "Vision vector {vector_index} contains NaN or Inf values"
+            );
+        }
+
+        Ok(Self {
             embeddings,
             num_patches,
+            num_vectors,
             embedding_dim,
             source,
-        }
+        })
+    }
+
+    /// Borrow all retained sequence-row vectors.
+    #[must_use]
+    pub fn vectors(&self) -> &[Vec<f32>] {
+        &self.embeddings
     }
 
     /// Get the number of patches.
@@ -70,6 +108,12 @@ impl VisionEmbedding {
     #[must_use]
     pub const fn num_patches(&self) -> usize {
         self.num_patches
+    }
+
+    /// Get the total number of retained sequence-row vectors.
+    #[must_use]
+    pub const fn num_vectors(&self) -> usize {
+        self.num_vectors
     }
 
     /// Get the embedding dimension per patch.
@@ -90,15 +134,19 @@ impl VisionEmbedding {
         self.source.as_deref()
     }
 
-    /// Get the shape of the embedding matrix as (`num_patches`, `embedding_dim`).
+    /// Get the shape of the embedding matrix as (`num_vectors`, `embedding_dim`).
     ///
     /// # Returns
-    /// Tuple of (number of patches, embedding dimension)
+    /// Tuple of (number of retained vectors, embedding dimension)
     #[must_use]
     pub const fn shape(&self) -> (usize, usize) {
-        (self.num_patches, self.embedding_dim)
+        (self.num_vectors, self.embedding_dim)
     }
 }
+
+#[cfg(test)]
+#[path = "vision/tests.rs"]
+mod tests;
 
 /// Vision encoder producing patch-level embeddings (ColPali-style).
 ///

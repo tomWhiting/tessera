@@ -1,42 +1,6 @@
 use anyhow::{Context, Result};
-use candle_core::{DType, Device, Tensor, D};
+use candle_core::{Tensor, D};
 use ndarray::{Array2, Axis};
-
-/// Converts token IDs to a Candle tensor.
-pub(super) fn tokens_to_tensor(token_ids: &[u32], device: &Device) -> Result<Tensor> {
-    let token_ids_as_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();
-
-    Tensor::from_vec(token_ids_as_i64, (1, token_ids.len()), device)
-        .context("Creating token ID tensor")
-}
-
-/// Extracts token embeddings from BERT model output.
-pub(super) fn extract_embeddings(output: &Tensor) -> Result<Array2<f32>> {
-    // Output shape is (batch_size=1, seq_len, hidden_size)
-    // We need to squeeze the batch dimension and convert to ndarray
-    let embeddings = output.squeeze(0).context("Squeezing batch dimension")?;
-
-    // Convert to CPU and then to Vec
-    let embeddings_cpu = embeddings
-        .to_dtype(DType::F32)
-        .context("Converting to F32")?
-        .to_device(&Device::Cpu)
-        .context("Moving tensor to CPU")?;
-
-    let shape = embeddings_cpu.dims();
-    let seq_len = shape[0];
-    let hidden_size = shape[1];
-
-    let embeddings_vec = embeddings_cpu
-        .flatten_all()
-        .context("Flattening tensor")?
-        .to_vec1::<f32>()
-        .context("Converting tensor to Vec<f32>")?;
-
-    // Convert to ndarray
-    Array2::from_shape_vec((seq_len, hidden_size), embeddings_vec)
-        .context("Converting to ndarray Array2")
-}
 
 /// L2-normalizes each token independently across the embedding dimension.
 pub(super) fn l2_normalize_tokens(output: &Tensor) -> Result<Tensor> {

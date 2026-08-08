@@ -52,11 +52,13 @@ or device allocators may not immediately return reserved memory to the system;
 restart the notebook after memory pressure.
 
 The runtime's conservative policy limits raw input bytes, sequence length,
-batch shape, attention cells, and estimated parameter storage. Those are
-preflight guards, not peak-memory estimates. They cannot account for several
-live models, attention heads and temporaries, Python arrays, plotting data,
-Metal shared memory, or other applications. Start with the defaults and monitor
-the operating system's memory-pressure indicator.
+batch shape, attention cells, and estimated parameter storage. It also admits
+the prospective aggregate parameter estimate across retained Tessera encoders
+against the requesting model-byte policy. Those are preflight guards, not a
+peak process-memory estimate. They cannot account for attention heads and
+temporaries, Python arrays, plotting data, allocator overhead, Metal shared
+memory, or other applications. Start with the defaults and monitor the
+operating system's memory-pressure indicator.
 
 For constrained machines, leave high-memory mode disabled, inspect one
 paradigm, restart before switching after memory pressure, and avoid increasing

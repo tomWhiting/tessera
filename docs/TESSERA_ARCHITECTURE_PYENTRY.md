@@ -303,7 +303,6 @@ pub type Result<T> = std::result::Result<T, TesseraError>;
   - specs (parameters, embedding_dim, hidden_dim, context_length, vocab_size)
   - files (tokenizer, config, weights)
   - capabilities (languages, modalities, multi_vector, quantization)
-  - performance (BEIR, MS-MARCO scores)
   - license, description
 
 ### Example Models in Registry

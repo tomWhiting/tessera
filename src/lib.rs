@@ -1,6 +1,6 @@
 // Legacy pedantic/style lint debt is kept explicit while the revival replaces
-// old APIs. CI promotes every lint outside this finite ratchet to an error; do
-// not add entries here to make new warnings disappear.
+// old APIs. The local repository gate promotes every lint outside this finite
+// ratchet to an error; do not add entries merely to hide new warnings.
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
@@ -87,15 +87,24 @@
 //!
 //! # Resource limits
 //!
-//! Tessera validates work before model input tensors are allocated. The default
+//! Tessera's high-level builders preflight registered-model and request-shape
+//! limits before their main model input tensors are allocated. The default
 //! [`ResourcePolicy`] allows at most:
 //!
 //! - 1 MiB of UTF-8 input per sequence, checked before tokenization;
 //! - 512 tokens in one sequence, including special tokens;
 //! - 16 items in one batch;
 //! - 2,048 padded token cells (`items * longest sequence`);
-//! - 1,048,576 attention cells (`items * longest sequence^2`); and
-//! - 2 GiB of estimated F32 model parameter storage.
+//! - 1,048,576 attention cells (`items * longest sequence^2`);
+//! - 1,024 inputs and 64 MiB of aggregate UTF-8 input in one logical job;
+//! - 64 MiB of retained embedding values from one collecting API;
+//! - 512 MiB of estimated live inference scratch space per forward pass; and
+//! - 2 GiB of estimated resident model parameter storage (F32 by default).
+//!
+//! Batch limits apply to one tensor forward pass; job and output limits also
+//! bound work accumulated across internal chunks. Activation storage is a
+//! conservative estimate from the pinned transformer configuration and dtype,
+//! not a measurement of total process or accelerator memory.
 //!
 //! These are safety limits, not model capabilities. A registered 8K model
 //! remains capped at 512 tokens unless the caller opts in. A sequence limit can
@@ -109,7 +118,8 @@
 //!     .with_max_sequence_tokens(8_192)
 //!     .with_max_batch_items(1)
 //!     .with_max_batch_tokens(8_192)
-//!     .with_max_attention_cells(67_108_864);
+//!     .with_max_attention_cells(67_108_864)
+//!     .with_max_activation_bytes(8 * 1024 * 1024 * 1024);
 //!
 //! let embedder = TesseraDense::builder()
 //!     .model("jina-embeddings-v2-small-en")
@@ -124,13 +134,24 @@
 //! make 8K inference safe. Full attention is quadratic. One 8,192-token item
 //! permits 67,108,864 cells before multiplying by attention heads and
 //! accounting for model layers, temporary tensors, allocator overhead, or
-//! other process memory. It can still exhaust CPU, GPU, or Metal shared memory.
-//! Measure the selected model on the target hardware before opting in.
+//! other process memory. The 8 GiB scratch allowance is illustrative, not a
+//! certification result. It can still exhaust CPU, GPU, or Metal shared
+//! memory. Measure the selected model on the target hardware before opting in.
 //!
-//! Raise the model-byte limit separately for a deliberate large-model load. A
-//! 3B-parameter checkpoint has an approximately 12 GB F32 parameter estimate
-//! before allocator overhead, so the 2 GiB default rejects it. The estimate is
-//! a preflight guard, not a full peak-memory calculation.
+//! The model-byte limit bounds both one model and the prospective aggregate
+//! estimated parameter storage retained by Tessera encoders. A 3B-parameter
+//! checkpoint has an approximately 12 GB F32 parameter estimate before
+//! allocator overhead, so the 2 GiB default rejects it. The estimate is an
+//! admission guard, not a full peak-memory calculation.
+//!
+//! Active constructors reserve estimated parameter bytes before tokenizer,
+//! Hub, or artifact I/O. Reservations are keyed by immutable model revision,
+//! physical Candle device, and dtype. A duplicate retained key is rejected;
+//! callers must reuse or drop the existing embedder because Tessera does not
+//! share model tensors between instances. A distinct key is admitted only when
+//! its estimate plus existing Tessera reservations fits the requesting
+//! policy's model-byte limit. Reservations release automatically on constructor
+//! failure and after encoder tensors are dropped.
 //!
 //! # CPU worker ceiling
 //!
@@ -161,6 +182,15 @@
 //! cannot be resized through environment variables. It is not a process-wide
 //! guarantee for every thread, allocation, or accelerator operation.
 //!
+//! # Inference admission
+//!
+//! Tessera admits one Candle forward pass at a time across its encoders. The
+//! default process-wide queue permits 16 waiting callers with a 30-second wait
+//! deadline. Excess callers and expired waits return structured errors. Call
+//! [`configure_inference_gate`] before the first forward pass to choose
+//! other immutable process-wide bounds. This gate does not govern allocations
+//! made by other libraries in the process.
+//!
 //! # Multi-vector example
 //!
 //! ```no_run
@@ -181,10 +211,12 @@
 //!
 //! # Vision and PDF scope
 //!
-//! The high-level [`TesseraVision::encode_document`] method currently accepts
-//! an image path. The default `pdf` feature provides rendering plumbing used by
-//! lower layers; it is not yet a high-level PDF-document façade. ColPali is a
-//! large experimental path and requires an explicit model-memory override.
+//! The high-level [`TesseraVision::encode_document`] method accepts an image
+//! path. The opt-in `pdf` feature adds bounded page and whole-document methods
+//! to the same façade and requires a system Poppler installation. ColPali is a
+//! large experimental path and requires explicit visual-sequence, attention,
+//! activation, and model-memory overrides. Passing those preflights is not
+//! evidence that it fits the target machine.
 //!
 //! # Time-series scope
 //!
@@ -197,13 +229,20 @@
 //!
 //! # Cargo features
 //!
-//! - `pdf` (default): PDF rendering plumbing; no public document façade yet.
+//! - `pdf`: opt-in bounded PDF page/document encoding; requires Poppler.
 //! - `metal`: Apple Metal support in Candle.
 //! - `cuda`: NVIDIA CUDA support in Candle.
 //! - `python`: PyO3 bindings for active embedding façades.
 //! - `timeseries`: generic time-series core types only.
-//! - `wasm`: reserved for experimental WebAssembly work; bindings are not yet
-//!   implemented.
+//!
+//! # Licensing
+//!
+//! Tessera source code and repository documentation are Apache-2.0 licensed.
+//! Model checkpoints are not bundled and are governed by their upstream
+//! licenses and terms. The catalog includes permissive, non-commercial, and
+//! model-specific licenses; consult the pinned model repository before use.
+//! Registry license fields are discovery metadata, not a relicensing of the
+//! checkpoint.
 //!
 //! # Error handling
 //!
@@ -215,16 +254,16 @@
 //! [`SupportTier::Supported`]: model_registry::SupportTier::Supported
 
 pub mod api;
-pub mod backends;
-pub mod bindings;
+mod backends;
+mod bindings;
 pub mod core;
-pub mod encoding;
+mod encoding;
 pub mod error;
 pub mod models;
 pub mod quantization;
 pub mod runtime;
 pub mod utils;
-pub mod vision;
+mod vision;
 
 // Re-export commonly used types
 pub use api::{
@@ -237,7 +276,9 @@ pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
 pub use quantization::{multi_vector_distance, quantize_multi, BinaryQuantization, Quantization};
 pub use runtime::{
-    configure_cpu_threads, CpuThreadConfig, CpuThreadConfigError, ResourcePolicy,
+    configure_cpu_threads, configure_inference_gate, try_acquire_inference, ContextWindowConfig,
+    ContextWindowError, CpuThreadConfig, CpuThreadConfigError, InferenceGateConfig,
+    InferenceGateConfigError, InferenceGateError, ModelDType, ModelDTypeError, ResourcePolicy,
     ResourcePolicyError,
 };
 pub use utils::similarity::max_sim;

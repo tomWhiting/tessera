@@ -7,28 +7,24 @@
 //! - **Mean pooling**: Average all token embeddings (attention-weighted)
 //! - **Max pooling**: Take element-wise maximum across tokens
 //!
-//! Dense encodings are memory-efficient (one vector per text) but lose
-//! fine-grained token-level information compared to `ColBERT`.
+//! Dense encodings store one vector per text rather than one vector per token.
+//! This reduces retained vector storage relative to multi-vector encodings but
+//! does not preserve the same token-level scoring information as `ColBERT`.
 //!
 //! # Use Cases
 //!
 //! - Semantic search with large document collections
 //! - Clustering and classification
-//! - When memory/speed constraints prevent multi-vector approaches
+//! - Workloads that have validated single-vector retrieval for their corpus
 //!
 //! # Example
 //!
 //! ```no_run
-//! use tessera::encoding::dense::CandleDenseEncoder;
-//! use tessera::models::ModelConfig;
-//! use tessera::core::Encoder;
-//! use candle_core::Device;
+//! use tessera::TesseraDense;
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! // Load a dense model from registry (e.g., BGE, Nomic)
-//! let config = ModelConfig::from_registry("bge-base-en-v1.5")?;
-//! let device = Device::Cpu;
-//! let encoder = CandleDenseEncoder::new(config, device)?;
+//! let encoder = TesseraDense::new("bge-base-en-v1.5")?;
 //!
 //! // Encode text to single vector
 //! let embedding = encoder.encode("Machine learning is a subset of AI")?;
@@ -43,6 +39,7 @@ use serde::Deserialize;
 
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder, PoolingStrategy, Tokenizer};
 use crate::models::ModelConfig;
+use crate::runtime::{ModelDType, ModelResidencyPermit, ResourcePolicy, TransformerProfile};
 
 mod inference;
 mod loading;
@@ -119,6 +116,10 @@ pub struct CandleDenseEncoder {
     pooling_strategy: PoolingStrategy,
     normalize: bool,
     supports_padded_batch: bool,
+    dtype: ModelDType,
+    resource_policy: ResourcePolicy,
+    transformer_profile: TransformerProfile,
+    _residency: ModelResidencyPermit<'static>,
 }
 
 impl Encoder for CandleDenseEncoder {
@@ -143,6 +144,14 @@ impl DenseEncoder for CandleDenseEncoder {
 
     fn pooling_strategy(&self) -> PoolingStrategy {
         self.pooling_strategy
+    }
+}
+
+impl CandleDenseEncoder {
+    /// Parameter dtype selected when this model was loaded.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.dtype
     }
 }
 

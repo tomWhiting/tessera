@@ -2,7 +2,7 @@ use tokenizers::models::wordlevel::WordLevel;
 use tokenizers::pre_tokenizers::whitespace::Whitespace;
 
 use super::{HfTokenizer, Tokenizer};
-use crate::runtime::ResourcePolicy;
+use crate::runtime::{ContextWindowConfig, ResourcePolicy};
 
 fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
     let vocabulary = [
@@ -25,6 +25,7 @@ fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
     Tokenizer {
         inner,
         resource_policy,
+        pad_token_id: Some(1),
     }
 }
 
@@ -137,4 +138,51 @@ fn tokenizers_without_a_registry_pin_are_rejected_before_network_access() {
     assert!(error
         .to_string()
         .contains("has no pinned HuggingFace revision"));
+}
+
+#[test]
+fn artifact_token_ids_are_resolved_without_numeric_assumptions() {
+    let tokenizer = tokenizer(ResourcePolicy::default());
+
+    assert_eq!(tokenizer.token_to_id("[PAD]"), Some(1));
+    assert_eq!(tokenizer.token_to_id("three"), Some(4));
+    assert_eq!(tokenizer.token_to_id("[MASK]"), None);
+}
+
+#[test]
+fn bounded_truncation_encoding_still_enforces_raw_bytes() {
+    let tokenizer =
+        tokenizer(ResourcePolicy::new(1, 1, 1, usize::MAX).with_max_input_bytes_per_sequence(32));
+
+    let (ids, _) = tokenizer
+        .encode_for_bounded_truncation("one two three", false)
+        .expect("the role-specific caller is responsible for truncating tokens");
+    assert_eq!(ids, [2, 3, 4]);
+
+    let error = tokenizer
+        .encode_for_bounded_truncation("one two three one two three one two", false)
+        .expect_err("raw bytes remain bounded before tokenization");
+    assert!(error.to_string().contains("Input byte count"));
+}
+
+#[test]
+fn window_encoding_covers_content_once_by_center_ownership() {
+    let tokenizer = tokenizer(
+        ResourcePolicy::default()
+            .with_max_sequence_tokens(3)
+            .with_max_job_items(4),
+    );
+    let windows = tokenizer
+        .encode_windows("one two three one", ContextWindowConfig::new(3, 1))
+        .expect("valid overlapping windows");
+
+    assert_eq!(windows.len(), 2);
+    assert_eq!(
+        windows
+            .iter()
+            .map(crate::runtime::TokenWindow::owned_len)
+            .sum::<usize>(),
+        4
+    );
+    assert!(windows.iter().all(|window| window.token_ids.len() <= 3));
 }

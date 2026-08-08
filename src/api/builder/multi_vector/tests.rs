@@ -54,3 +54,32 @@ fn multi_vector_builder_rejects_a_runnable_dense_model() {
                 && message.contains("not Colbert")
     ));
 }
+
+#[test]
+fn colbert_role_lengths_are_validated_before_model_loading() {
+    let too_short = TesseraMultiVectorBuilder::new()
+        .model("colbert-small")
+        .query_max_length(2)
+        .build();
+    let Err(error) = too_short else {
+        panic!("query framing requires at least three positions");
+    };
+    assert!(matches!(
+        error,
+        TesseraError::ConfigError(message) if message.contains("at least 3")
+    ));
+
+    let policy = ResourcePolicy::default().with_max_sequence_tokens(64);
+    let too_long = TesseraMultiVectorBuilder::new()
+        .model("colbert-small")
+        .resource_policy(policy)
+        .document_max_length(65)
+        .build();
+    let Err(error) = too_long else {
+        panic!("document length must fit the resource policy");
+    };
+    assert!(matches!(
+        error,
+        TesseraError::ConfigError(message) if message.contains("exceeds resource policy")
+    ));
+}

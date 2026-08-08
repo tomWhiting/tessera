@@ -6,6 +6,7 @@
 
 mod conversion;
 mod dense;
+mod dtype;
 mod multivector;
 mod resource_policy;
 mod sparse;

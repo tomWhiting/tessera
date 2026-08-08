@@ -11,7 +11,7 @@ use anyhow::{Context, Result};
 use tokenizers::Tokenizer as HfTokenizer;
 
 use crate::models::loader::ModelFileResolver;
-use crate::runtime::ResourcePolicy;
+use crate::runtime::{plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow};
 
 #[cfg(test)]
 mod tests;
@@ -23,6 +23,7 @@ type UnpaddedBatch = (Vec<TokenizedInput>, usize);
 pub struct Tokenizer {
     inner: HfTokenizer,
     resource_policy: ResourcePolicy,
+    pad_token_id: Option<u32>,
 }
 
 impl Tokenizer {
@@ -68,11 +69,13 @@ impl Tokenizer {
         inner
             .with_truncation(None)
             .map_err(|e| anyhow::anyhow!("Failed to disable tokenizer truncation: {e}"))?;
+        let pad_token_id = inner.get_padding().map(|parameters| parameters.pad_id);
         inner.with_padding(None);
 
         Ok(Self {
             inner,
             resource_policy,
+            pad_token_id,
         })
     }
 
@@ -117,6 +120,75 @@ impl Tokenizer {
         Ok((token_ids, attention_mask))
     }
 
+    /// Encodes text for a caller that will apply and validate a bounded
+    /// transformation before allocating model tensors.
+    ///
+    /// Raw input bytes are still bounded here. This deliberately skips the
+    /// generic sequence check so callers can form validated context windows or
+    /// preserve required role-framing tokens while truncating content.
+    pub(crate) fn encode_for_bounded_truncation(
+        &self,
+        text: &str,
+        add_special_tokens: bool,
+    ) -> Result<(Vec<u32>, Vec<u32>)> {
+        self.resource_policy
+            .validate_input_bytes(text.len())
+            .map_err(anyhow::Error::new)?;
+        self.encode_unchecked(text, add_special_tokens)
+    }
+
+    /// Tokenizes a long input into validated overlapping model inputs.
+    ///
+    /// The caller must aggregate the window outputs according to its
+    /// representation semantics. This method bounds raw input bytes and every
+    /// planned forward before returning any tensor-ready token IDs.
+    pub(crate) fn encode_windows(
+        &self,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<Vec<TokenWindow>> {
+        let (content_ids, _) = self.encode_for_bounded_truncation(text, false)?;
+        let (special_prefix, special_suffix) = self.special_token_envelope()?;
+        let windows = plan_token_windows(
+            &content_ids,
+            &special_prefix,
+            &special_suffix,
+            config,
+            self.resource_policy,
+        )
+        .map_err(anyhow::Error::new)?;
+
+        for window in &windows {
+            self.resource_policy
+                .validate_sequence(window.token_ids.len())
+                .map_err(anyhow::Error::new)?;
+            self.resource_policy
+                .validate_batch(1, window.token_ids.len())
+                .map_err(anyhow::Error::new)?;
+        }
+        Ok(windows)
+    }
+
+    fn special_token_envelope(&self) -> Result<(Vec<u32>, Vec<u32>)> {
+        const PROBE: &str = "tessera";
+        let (content, _) = self.encode_unchecked(PROBE, false)?;
+        let (wrapped, _) = self.encode_unchecked(PROBE, true)?;
+        anyhow::ensure!(
+            !content.is_empty(),
+            "Tokenizer produced no content tokens for special-token probe"
+        );
+        let start = wrapped
+            .windows(content.len())
+            .position(|candidate| candidate == content)
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Tokenizer special-token processor does not preserve a contiguous single-sequence payload"
+                )
+            })?;
+        let end = start + content.len();
+        Ok((wrapped[..start].to_vec(), wrapped[end..].to_vec()))
+    }
+
     /// Decodes token IDs back into text.
     ///
     /// # Arguments
@@ -135,6 +207,14 @@ impl Tokenizer {
     /// Returns the vocabulary size of the tokenizer.
     pub fn vocab_size(&self) -> usize {
         self.inner.get_vocab_size(false)
+    }
+
+    /// Resolves a token ID from the loaded tokenizer artifact.
+    ///
+    /// ColBERT preprocessing uses this instead of assuming conventional BERT
+    /// IDs for role markers, masks, padding, and punctuation.
+    pub(crate) fn token_to_id(&self, token: &str) -> Option<u32> {
+        self.inner.token_to_id(token)
     }
 
     /// Returns the hard limits enforced by this tokenizer.
@@ -171,8 +251,7 @@ impl Tokenizer {
     ) -> Result<Vec<(Vec<u32>, Vec<u32>)>> {
         let (all_tokenized, max_len) = self.tokenize_batch_unpadded(texts, add_special_tokens)?;
 
-        // Get padding token ID (typically 0 for BERT)
-        let pad_token_id = self.inner.token_to_id("[PAD]").unwrap_or(0);
+        let pad_token_id = self.padding_token_id()?;
 
         // Pad all sequences to max length
         let mut padded_batch = Vec::with_capacity(texts.len());
@@ -187,6 +266,20 @@ impl Tokenizer {
         }
 
         Ok(padded_batch)
+    }
+
+    fn padding_token_id(&self) -> Result<u32> {
+        if let Some(pad_token_id) = self.pad_token_id {
+            return Ok(pad_token_id);
+        }
+        ["[PAD]", "<pad>"]
+            .into_iter()
+            .find_map(|token| self.inner.token_to_id(token))
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Tokenizer artifact does not define padding metadata or a recognized pad token"
+                )
+            })
     }
 
     fn tokenize_batch_unpadded(

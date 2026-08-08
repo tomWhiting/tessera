@@ -1,4 +1,4 @@
-use super::{cosine, min_max, sparse_cosine, sparse_dot};
+use super::{cosine, min_max, sparse_cosine, sparse_dot, validate_probe_token_count};
 
 #[test]
 fn compact_similarity_helpers_are_stable() {
@@ -15,4 +15,10 @@ fn compact_similarity_helpers_are_stable() {
 #[test]
 fn min_max_reports_observed_range() {
     assert_eq!(min_max(&[2.0, -1.0, 4.0]), (-1.0, 4.0));
+}
+
+#[test]
+fn pinned_probe_token_count_must_match_the_local_tokenizer() {
+    assert!(validate_probe_token_count(8_000, 8_000).is_ok());
+    assert!(validate_probe_token_count(8_000, 12).is_err());
 }

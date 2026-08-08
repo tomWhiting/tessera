@@ -4,6 +4,7 @@ use ndarray::Array1;
 
 use super::{BertVariant, CandleDenseEncoder};
 use crate::core::{DenseEmbedding, PoolingStrategy};
+use crate::runtime::ContextWindowConfig;
 
 impl CandleDenseEncoder {
     /// Converts token IDs to a Candle tensor.
@@ -38,7 +39,7 @@ impl CandleDenseEncoder {
 
         let total_elements = token_embeddings.len();
         anyhow::ensure!(
-            total_elements % seq_len == 0,
+            total_elements.is_multiple_of(seq_len),
             "Token embeddings length ({total_elements}) must be divisible by sequence length ({seq_len}). \
              This indicates a shape mismatch between model output and attention mask."
         );
@@ -109,14 +110,75 @@ impl CandleDenseEncoder {
     /// # Returns
     /// Dense embedding for the input text
     pub fn encode(&self, text: &str) -> Result<DenseEmbedding> {
-        // Tokenize input
         let (token_ids, attention_mask) = self
             .tokenizer
             .encode(text, true)
             .with_context(|| format!("Tokenizing text ({} UTF-8 bytes)", text.len()))?;
 
+        let final_embedding = self.encode_tokenized(&token_ids, &attention_mask)?;
+        DenseEmbedding::new(final_embedding, text.to_string())
+    }
+
+    /// Encodes a long input as bounded overlapping windows and returns their
+    /// center-owned weighted mean.
+    pub fn encode_windowed(
+        &self,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<DenseEmbedding> {
+        let windows = self
+            .tokenizer
+            .encode_windows(text, config)
+            .with_context(|| format!("Planning windows for {} UTF-8 bytes", text.len()))?;
+        let mut aggregate: Option<Array1<f32>> = None;
+        let mut total_weight = 0_f32;
+
+        for window in windows {
+            let embedding = self.encode_tokenized(&window.token_ids, &window.attention_mask)?;
+            let weight = window.owned_len().max(1) as f32;
+            if let Some(sum) = aggregate.as_mut() {
+                anyhow::ensure!(
+                    sum.len() == embedding.len(),
+                    "Dense window dimensions changed within one input"
+                );
+                sum.zip_mut_with(&embedding, |left, right| {
+                    *left = right.mul_add(weight, *left);
+                });
+            } else {
+                aggregate = Some(embedding.mapv(|value| value * weight));
+            }
+            total_weight += weight;
+        }
+
+        let mut aggregate = aggregate.context("Window planner returned no dense inputs")?;
+        anyhow::ensure!(
+            total_weight.is_finite() && total_weight > 0.0,
+            "Invalid window weight"
+        );
+        aggregate.mapv_inplace(|value| value / total_weight);
+        if self.normalize {
+            aggregate = crate::utils::normalization::l2_normalize(&aggregate);
+        }
+        DenseEmbedding::new(aggregate, text.to_string())
+    }
+
+    fn encode_tokenized(&self, token_ids: &[u32], attention_mask: &[u32]) -> Result<Array1<f32>> {
+        anyhow::ensure!(!token_ids.is_empty(), "Tokenized input cannot be empty");
+        anyhow::ensure!(
+            token_ids.len() == attention_mask.len(),
+            "Token ID and attention-mask lengths differ"
+        );
+        self.resource_policy
+            .validate_transformer_activations(
+                self.transformer_profile,
+                1,
+                token_ids.len(),
+                self.dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Dense activation preflight failed: {error}"))?;
+
         // Convert to tensors
-        let token_ids_tensor = self.tokens_to_tensor(&token_ids, 1)?;
+        let token_ids_tensor = self.tokens_to_tensor(token_ids, 1)?;
 
         // Handle attention mask - DistilBERT in Candle uses inverted convention
         // Standard tokenizer: 1=attend, 0=pad
@@ -134,7 +196,7 @@ impl CandleDenseEncoder {
         };
 
         let attention_mask_tensor = Tensor::from_vec(
-            attention_mask_processed.clone(),
+            attention_mask_processed,
             (1, attention_mask.len()),
             &self.device,
         )
@@ -169,12 +231,14 @@ impl CandleDenseEncoder {
         let embeddings_array = Array1::from_vec(embeddings_vec);
 
         // Apply pooling
-        let pooled = self.apply_pooling(&embeddings_array, &attention_mask_processed)?;
+        let pooling_mask = attention_mask
+            .iter()
+            .map(|&value| i64::from(value))
+            .collect::<Vec<_>>();
+        let pooled = self.apply_pooling(&embeddings_array, &pooling_mask)?;
 
         // Process output (Matryoshka + normalization)
-        let final_embedding = self.process_output(pooled)?;
-
-        DenseEmbedding::new(final_embedding, text.to_string())
+        self.process_output(pooled)
     }
 
     /// Encodes multiple text inputs in batch.
@@ -211,6 +275,14 @@ impl CandleDenseEncoder {
 
         let batch_size = batch_tokenized.len();
         let max_seq_len = batch_tokenized[0].0.len();
+        self.resource_policy
+            .validate_transformer_activations(
+                self.transformer_profile,
+                batch_size,
+                max_seq_len,
+                self.dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Dense batch activation preflight failed: {error}"))?;
 
         // Convert token IDs to 2D tensor: [batch_size, max_seq_len]
         let mut all_token_ids = Vec::with_capacity(batch_size * max_seq_len);

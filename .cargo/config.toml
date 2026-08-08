@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-D", "warnings"]  # Deny warnings in CI
+rustflags = ["-D", "warnings"]  # Keep the local repository gate warning-free
 
-# Note: target-cpu=native removed for CI compatibility
+# Keep builds portable across contributor machines; opt in to native tuning locally.
 # Users can add it locally for performance if needed

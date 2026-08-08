@@ -46,21 +46,12 @@ pub fn get_device() -> Result<Device> {
 
     #[cfg(feature = "cuda")]
     {
-        if let Ok(device) = Device::new_cuda(0) {
+        if let Ok(device) = cuda_device() {
             return Ok(device);
         }
     }
 
     // Default to CPU
-    Ok(Device::Cpu)
-}
-
-/// Creates a CPU device explicitly.
-///
-/// # Errors
-///
-/// This function never returns errors.
-pub const fn cpu_device() -> Result<Device> {
     Ok(Device::Cpu)
 }
 
@@ -85,19 +76,6 @@ pub fn metal_device() -> Result<Device> {
 #[cfg(feature = "cuda")]
 pub fn cuda_device() -> Result<Device> {
     Device::new_cuda(0).context("Failed to create CUDA device")
-}
-
-/// Returns a string describing the device.
-#[must_use]
-pub fn device_description(device: &Device) -> String {
-    match device {
-        Device::Cpu => "CPU".to_string(),
-        #[cfg(feature = "metal")]
-        Device::Metal(_) => "Metal".to_string(),
-        #[cfg(feature = "cuda")]
-        Device::Cuda(_) => "CUDA".to_string(),
-        _ => "Unknown".to_string(),
-    }
 }
 
 #[cfg(all(test, target_os = "macos", feature = "metal"))]

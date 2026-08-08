@@ -7,11 +7,14 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tessera::model_registry::{get_model, ModelType};
 
+use super::reference::{self, ReferencePointer};
+
 pub(crate) type CertResult<T> = Result<T, Box<dyn Error>>;
 
-const SPEC_SCHEMA_VERSION: u32 = 1;
+const SPEC_SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct CertificationSpec {
     pub(crate) schema_version: u32,
     pub(crate) model: ModelSpec,
@@ -22,6 +25,7 @@ pub(crate) struct CertificationSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ModelSpec {
     pub(crate) id: String,
     pub(crate) repository: String,
@@ -30,6 +34,7 @@ pub(crate) struct ModelSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ArtifactSpec {
     pub(crate) path: String,
     pub(crate) size_bytes: u64,
@@ -37,12 +42,17 @@ pub(crate) struct ArtifactSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ProfileSpec {
+    pub(crate) kind: ProfileKind,
+    pub(crate) capability: CapabilityScope,
     pub(crate) resource_policy: ResourceLimits,
     pub(crate) process: ProcessLimits,
+    pub(crate) official_reference: Option<ReferencePointer>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ResourceLimits {
     pub(crate) max_sequence_tokens: usize,
     pub(crate) max_batch_items: usize,
@@ -50,9 +60,14 @@ pub(crate) struct ResourceLimits {
     pub(crate) max_model_bytes: usize,
     pub(crate) max_input_bytes_per_sequence: usize,
     pub(crate) max_attention_cells: usize,
+    pub(crate) max_job_items: usize,
+    pub(crate) max_job_input_bytes: usize,
+    pub(crate) max_output_bytes: usize,
+    pub(crate) max_activation_bytes: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ProcessLimits {
     pub(crate) cpu_threads: usize,
     pub(crate) timeout_seconds: u64,
@@ -62,6 +77,7 @@ pub(crate) struct ProcessLimits {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct SmokeSpec {
     pub(crate) fixture: RetrievalFixture,
     pub(crate) expected_dimension: usize,
@@ -72,6 +88,7 @@ pub(crate) struct SmokeSpec {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct RetrievalFixture {
     pub(crate) query: String,
     pub(crate) positive: String,
@@ -79,11 +96,61 @@ pub(crate) struct RetrievalFixture {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct PromotionSpec {
     pub(crate) minimum_successful_runs: usize,
+    pub(crate) required_profiles: Vec<String>,
     pub(crate) require_clean_source: bool,
     pub(crate) require_enforced_rss: bool,
-    pub(crate) official_reference_sha256: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum ProfileKind {
+    Smoke,
+    LongContext,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct CapabilityScope {
+    pub(crate) device: CertificationDevice,
+    pub(crate) dtype: CertificationDtype,
+    pub(crate) semantic_mode: SemanticMode,
+    pub(crate) max_sequence_tokens: usize,
+    pub(crate) context_window_tokens: usize,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum CertificationDevice {
+    Cpu,
+}
+
+impl CertificationDevice {
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::Cpu => "cpu",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum CertificationDtype {
+    F32,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum SemanticMode {
+    Query,
+    Document,
+    SparseQuery,
+    SparseDocument,
+    LateInteractionQuery,
+    LateInteractionDocument,
+    VisionDocument,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
@@ -141,6 +208,7 @@ fn load(path: &Path) -> CertResult<LoadedSpec> {
     let spec: CertificationSpec = serde_json::from_slice(&bytes)?;
     validate(path, &spec)?;
     validate_registry(&spec)?;
+    validate_references(path, &spec)?;
     Ok(LoadedSpec {
         sha256: digest_bytes(&bytes),
         spec,
@@ -183,8 +251,14 @@ fn validate(path: &Path, spec: &CertificationSpec) -> CertResult<()> {
         }
         validate_hex(&artifact.sha256, 64, "artifact SHA-256")?;
     }
-    let profile = spec.profile("smoke")?;
-    validate_limits(spec, profile)?;
+    let smoke_profile = spec.profile("smoke")?;
+    if smoke_profile.kind != ProfileKind::Smoke {
+        return Err(format!("model '{}' smoke profile has the wrong kind", spec.model.id).into());
+    }
+    for (name, profile) in &spec.profiles {
+        validate_identifier(name)?;
+        validate_limits(spec, profile)?;
+    }
     if spec.smoke.expected_dimension == 0 || spec.promotion.minimum_successful_runs < 2 {
         return Err(format!(
             "model '{}' has incomplete smoke or promotion criteria",
@@ -192,8 +266,25 @@ fn validate(path: &Path, spec: &CertificationSpec) -> CertResult<()> {
         )
         .into());
     }
-    if let Some(reference) = &spec.promotion.official_reference_sha256 {
-        validate_hex(reference, 64, "official reference SHA-256")?;
+    if spec.promotion.required_profiles.is_empty()
+        || !spec
+            .promotion
+            .required_profiles
+            .iter()
+            .any(|name| name == "smoke")
+    {
+        return Err(format!("model '{}' must require its smoke profile", spec.model.id).into());
+    }
+    let mut required_profiles = HashSet::new();
+    for name in &spec.promotion.required_profiles {
+        if !required_profiles.insert(name) {
+            return Err(format!(
+                "model '{}' repeats required profile '{name}'",
+                spec.model.id
+            )
+            .into());
+        }
+        spec.profile(name)?;
     }
     Ok(())
 }
@@ -207,8 +298,14 @@ fn validate_limits(spec: &CertificationSpec, profile: &ProfileSpec) -> CertResul
         || resource.max_model_bytes == 0
         || resource.max_input_bytes_per_sequence == 0
         || resource.max_attention_cells == 0
+        || resource.max_job_items == 0
+        || resource.max_job_input_bytes == 0
+        || resource.max_output_bytes == 0
+        || resource.max_activation_bytes == 0
         || process.cpu_threads == 0
         || process.timeout_seconds == 0
+        || process.max_artifact_bytes == 0
+        || process.min_free_disk_bytes == 0
         || process.max_peak_rss_bytes == 0
     {
         return Err(format!("model '{}' has a zero resource limit", spec.model.id).into());
@@ -220,6 +317,83 @@ fn validate_limits(spec: &CertificationSpec, profile: &ProfileSpec) -> CertResul
         )
         .into());
     }
+    let registered = get_model(&spec.model.id)
+        .ok_or_else(|| format!("model '{}' is absent from the registry", spec.model.id))?;
+    if profile.capability.max_sequence_tokens != resource.max_sequence_tokens
+        || profile.capability.context_window_tokens != registered.context_length
+        || resource.max_sequence_tokens > registered.context_length
+        || resource.max_batch_tokens < resource.max_sequence_tokens
+    {
+        return Err(format!(
+            "model '{}' profile capability does not match its enforced token limits or registry context",
+            spec.model.id
+        )
+        .into());
+    }
+    let semantic_mode_matches = matches!(
+        (spec.model.representation, profile.capability.semantic_mode),
+        (
+            Representation::Dense,
+            SemanticMode::Query | SemanticMode::Document
+        ) | (
+            Representation::Sparse,
+            SemanticMode::SparseQuery | SemanticMode::SparseDocument
+        ) | (
+            Representation::MultiVector,
+            SemanticMode::LateInteractionQuery | SemanticMode::LateInteractionDocument
+        ) | (Representation::Vision, SemanticMode::VisionDocument)
+    );
+    if !semantic_mode_matches {
+        return Err(format!(
+            "model '{}' profile semantic mode does not match its representation",
+            spec.model.id
+        )
+        .into());
+    }
+    let minimum_attention_cells = resource
+        .max_sequence_tokens
+        .checked_mul(resource.max_sequence_tokens)
+        .ok_or("profile attention-cell requirement overflowed")?;
+    if resource.max_attention_cells < minimum_attention_cells {
+        return Err(format!(
+            "model '{}' profile cannot admit one maximum-length sequence",
+            spec.model.id
+        )
+        .into());
+    }
+    let configured_batch_input_bytes = resource
+        .max_batch_items
+        .checked_mul(resource.max_input_bytes_per_sequence)
+        .ok_or("profile batch input-byte requirement overflowed")?;
+    if resource.max_job_items < resource.max_batch_items
+        || resource.max_job_input_bytes < configured_batch_input_bytes
+    {
+        return Err(format!(
+            "model '{}' profile job limits cannot admit one configured batch",
+            spec.model.id
+        )
+        .into());
+    }
+    if profile.kind == ProfileKind::LongContext && resource.max_sequence_tokens < 1024 {
+        return Err(format!(
+            "model '{}' long-context profile is below 1024 tokens",
+            spec.model.id
+        )
+        .into());
+    }
+    let declared_live_bytes = resource
+        .max_model_bytes
+        .checked_add(resource.max_activation_bytes)
+        .ok_or("profile live-memory requirement overflowed")?;
+    let declared_live_bytes = u64::try_from(declared_live_bytes)
+        .map_err(|_| "profile live-memory requirement does not fit u64")?;
+    if declared_live_bytes > process.max_peak_rss_bytes {
+        return Err(format!(
+            "model '{}' model-plus-activation budget exceeds its RSS watchdog",
+            spec.model.id
+        )
+        .into());
+    }
     let artifact_bytes = spec.expected_artifact_bytes()?;
     if artifact_bytes > process.max_artifact_bytes {
         return Err(format!(
@@ -227,6 +401,20 @@ fn validate_limits(spec: &CertificationSpec, profile: &ProfileSpec) -> CertResul
             spec.model.id
         )
         .into());
+    }
+    Ok(())
+}
+
+fn validate_references(path: &Path, spec: &CertificationSpec) -> CertResult<()> {
+    let repository = path
+        .parent()
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .ok_or("certification spec is not inside certification/specs")?;
+    for (name, profile) in &spec.profiles {
+        if let Some(pointer) = &profile.official_reference {
+            reference::load_checked(repository, spec, name, profile, pointer)?;
+        }
     }
     Ok(())
 }

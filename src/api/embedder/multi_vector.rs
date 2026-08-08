@@ -1,11 +1,15 @@
-use super::quantized::QuantizedEmbeddings;
 use crate::api::TesseraMultiVectorBuilder;
 use crate::backends::CandleBertEncoder;
 use crate::core::{Encoder, TokenEmbedder, TokenEmbeddings};
 use crate::error::{Result, TesseraError};
-use crate::quantization::{multi_vector_distance, quantize_multi, BinaryQuantization};
+use crate::quantization::BinaryQuantization;
+use crate::runtime::{
+    f32_output_bytes, ContextWindowConfig, JobTracker, ModelDType, ResourcePolicy,
+};
 use crate::utils::similarity::max_sim;
 use std::num::NonZeroUsize;
+
+mod quantization;
 
 /// Multi-vector embedder for ColBERT-style token-level embeddings.
 ///
@@ -22,6 +26,8 @@ pub struct TesseraMultiVector {
     quantizer: Option<BinaryQuantization>,
     /// Maximum items sent through one encoder forward pass
     batch_size: Option<NonZeroUsize>,
+    /// Whole-job and collected-output limits.
+    resource_policy: ResourcePolicy,
 }
 
 impl TesseraMultiVector {
@@ -54,7 +60,7 @@ impl TesseraMultiVector {
     /// use tessera::TesseraMultiVector;
     ///
     /// let embedder = TesseraMultiVector::new("colbert-v2")?;
-    /// let embeddings = embedder.encode("What is machine learning?")?;
+    /// let embeddings = embedder.encode_query("What is machine learning?")?;
     /// ```
     pub fn new(model_id: &str) -> Result<Self> {
         // Use builder with just model ID
@@ -89,19 +95,21 @@ impl TesseraMultiVector {
         model_id: String,
         quantizer: Option<BinaryQuantization>,
         batch_size: Option<NonZeroUsize>,
+        resource_policy: ResourcePolicy,
     ) -> Self {
         Self {
             encoder,
             model_id,
             quantizer,
             batch_size,
+            resource_policy,
         }
     }
 
-    /// Encode a single text into embeddings.
+    /// Encode a single text with generic BERT tokenization.
     ///
-    /// Returns token-level embeddings suitable for ColBERT-style late interaction.
-    /// Each token gets its own embedding vector.
+    /// This compatibility path does not assign a ColBERT query/document role.
+    /// Use [`Self::encode_query`] and [`Self::encode_document`] for retrieval.
     ///
     /// # Arguments
     ///
@@ -122,17 +130,57 @@ impl TesseraMultiVector {
     /// ```ignore
     /// let embeddings = embedder.encode("What is machine learning?")?;
     /// println!("Encoded to {} vectors of {} dimensions",
-    ///     embeddings.num_tokens,
-    ///     embeddings.embedding_dim);
+    ///     embeddings.num_tokens(),
+    ///     embeddings.embedding_dim());
     /// ```
     pub fn encode(&self, text: &str) -> Result<TokenEmbeddings> {
-        TokenEmbedder::encode(&self.encoder, text).map_err(|e| TesseraError::EncodingError {
+        self.encode_one(text, "generic", TokenEmbedder::encode)
+    }
+
+    fn encode_one<F>(&self, text: &str, role: &str, encode: F) -> Result<TokenEmbeddings>
+    where
+        F: Fn(&CandleBertEncoder, &str) -> anyhow::Result<TokenEmbeddings>,
+    {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        tracker.admit_input(text.len()).map_err(|error| {
+            resource_error(&format!("ColBERT {role} input exceeds job limits"), error)
+        })?;
+        let embedding = encode(&self.encoder, text).map_err(|e| TesseraError::EncodingError {
             context: format!("Failed to encode text ({} UTF-8 bytes)", text.len()),
             source: e,
+        })?;
+        tracker
+            .retain_output(token_output_bytes(&embedding))
+            .map_err(|error| resource_error("ColBERT output exceeds collection limit", error))?;
+        Ok(embedding)
+    }
+
+    /// Encode a query with `[Q]` framing and fixed-length `[MASK]` augmentation.
+    pub fn encode_query(&self, text: &str) -> Result<TokenEmbeddings> {
+        self.encode_one(text, "query", CandleBertEncoder::encode_query)
+    }
+
+    /// Encode a document with `[D]` framing and punctuation filtering.
+    pub fn encode_document(&self, text: &str) -> Result<TokenEmbeddings> {
+        self.encode_one(text, "document", CandleBertEncoder::encode_document)
+    }
+
+    /// Encodes a long document through bounded overlapping ColBERT windows.
+    ///
+    /// This is an aggregation mode rather than native full-context attention.
+    /// Overlap is context-only: each non-punctuation content token contributes
+    /// to the returned late-interaction matrix once.
+    pub fn encode_document_windowed(
+        &self,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<TokenEmbeddings> {
+        self.encode_one(text, "windowed document", |encoder, input| {
+            encoder.encode_document_windowed(input, config)
         })
     }
 
-    /// Encode multiple texts in a batch.
+    /// Encode multiple texts with generic, un-typed BERT tokenization.
     ///
     /// Uses backend batching rather than one facade call per item. Throughput
     /// depends on input lengths, device, chunk size, and resource policy; no
@@ -159,27 +207,146 @@ impl TesseraMultiVector {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<TokenEmbeddings>> {
-        let Some(batch_size) = self.batch_size else {
-            return Encoder::encode_batch(&self.encoder, texts).map_err(|e| {
-                TesseraError::EncodingError {
-                    context: format!("Failed to encode batch of {} texts", texts.len()),
-                    source: e,
-                }
-            });
-        };
+        self.encode_role_batch(texts, "generic", Encoder::encode_batch)
+    }
 
+    /// Encode multiple queries with reference ColBERT query semantics.
+    pub fn encode_query_batch(&self, texts: &[&str]) -> Result<Vec<TokenEmbeddings>> {
+        self.encode_role_batch(texts, "query", CandleBertEncoder::encode_query_batch)
+    }
+
+    /// Encode multiple documents with reference ColBERT document semantics.
+    pub fn encode_document_batch(&self, texts: &[&str]) -> Result<Vec<TokenEmbeddings>> {
+        self.encode_role_batch(texts, "document", CandleBertEncoder::encode_document_batch)
+    }
+
+    /// Encodes generic inputs in bounded chunks and yields each result.
+    ///
+    /// Tessera does not retain streamed embeddings. Whole-job item and input
+    /// limits still apply, while the output ceiling is checked per yielded
+    /// item.
+    pub fn encode_stream<'a, I, C>(&self, texts: I, consume: C) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        C: FnMut(TokenEmbeddings) -> Result<()>,
+    {
+        self.encode_role_stream(texts, "generic", Encoder::encode_batch, consume)
+    }
+
+    /// Encodes ColBERT queries in bounded chunks and yields each result.
+    pub fn encode_query_stream<'a, I, C>(&self, texts: I, consume: C) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        C: FnMut(TokenEmbeddings) -> Result<()>,
+    {
+        self.encode_role_stream(
+            texts,
+            "query",
+            CandleBertEncoder::encode_query_batch,
+            consume,
+        )
+    }
+
+    /// Encodes ColBERT documents in bounded chunks and yields each result.
+    pub fn encode_document_stream<'a, I, C>(&self, texts: I, consume: C) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        C: FnMut(TokenEmbeddings) -> Result<()>,
+    {
+        self.encode_role_stream(
+            texts,
+            "document",
+            CandleBertEncoder::encode_document_batch,
+            consume,
+        )
+    }
+
+    fn encode_role_stream<'a, I, F, C>(
+        &self,
+        texts: I,
+        role: &str,
+        encode: F,
+        mut consume: C,
+    ) -> Result<()>
+    where
+        I: IntoIterator<Item = &'a str>,
+        F: Fn(&CandleBertEncoder, &[&str]) -> anyhow::Result<Vec<TokenEmbeddings>>,
+        C: FnMut(TokenEmbeddings) -> Result<()>,
+    {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        let chunk_size = self.batch_size.unwrap_or(NonZeroUsize::MIN).get();
+        let mut chunk = Vec::with_capacity(chunk_size);
+        let mut chunk_index = 0_usize;
+
+        for text in texts {
+            tracker.admit_input(text.len()).map_err(|error| {
+                resource_error(&format!("ColBERT {role} stream exceeds job limits"), error)
+            })?;
+            chunk.push(text);
+            if chunk.len() == chunk_size {
+                consume_stream_chunk(
+                    &self.encoder,
+                    &chunk,
+                    chunk_index,
+                    role,
+                    &encode,
+                    &tracker,
+                    &mut consume,
+                )?;
+                chunk.clear();
+                chunk_index = chunk_index.saturating_add(1);
+            }
+        }
+        if !chunk.is_empty() {
+            consume_stream_chunk(
+                &self.encoder,
+                &chunk,
+                chunk_index,
+                role,
+                &encode,
+                &tracker,
+                &mut consume,
+            )?;
+        }
+        Ok(())
+    }
+
+    fn encode_role_batch<F>(
+        &self,
+        texts: &[&str],
+        role: &str,
+        encode: F,
+    ) -> Result<Vec<TokenEmbeddings>>
+    where
+        F: Fn(&CandleBertEncoder, &[&str]) -> anyhow::Result<Vec<TokenEmbeddings>>,
+    {
+        let mut tracker = JobTracker::new(self.resource_policy);
+        for text in texts {
+            tracker.admit_input(text.len()).map_err(|error| {
+                resource_error(&format!("ColBERT {role} batch exceeds job limits"), error)
+            })?;
+        }
+        let chunk_size = self
+            .batch_size
+            .map_or_else(|| texts.len().max(1), NonZeroUsize::get);
         let mut all_embeddings = Vec::with_capacity(texts.len());
-        for (chunk_index, chunk) in texts.chunks(batch_size.get()).enumerate() {
-            let chunk_embeddings = Encoder::encode_batch(&self.encoder, chunk).map_err(|e| {
-                TesseraError::EncodingError {
+        for (chunk_index, chunk) in texts.chunks(chunk_size).enumerate() {
+            let embeddings =
+                encode(&self.encoder, chunk).map_err(|source| TesseraError::EncodingError {
                     context: format!(
-                        "Failed to encode batch chunk {chunk_index} ({} texts)",
+                        "Failed to encode {role} batch chunk {chunk_index} ({} texts)",
                         chunk.len()
                     ),
-                    source: e,
-                }
-            })?;
-            all_embeddings.extend(chunk_embeddings);
+                    source,
+                })?;
+            for embedding in &embeddings {
+                tracker
+                    .retain_output(token_output_bytes(embedding))
+                    .map_err(|error| {
+                        resource_error("ColBERT batch output exceeds collection limit", error)
+                    })?;
+            }
+            all_embeddings.extend(embeddings);
         }
         Ok(all_embeddings)
     }
@@ -191,13 +358,13 @@ impl TesseraMultiVector {
     ///
     /// # Arguments
     ///
-    /// * `text_a` - First text
-    /// * `text_b` - Second text
+    /// * `query` - Retrieval query
+    /// * `document` - Candidate document
     ///
     /// # Returns
     ///
-    /// Similarity score (higher = more similar). Typically in range [0, 1] for
-    /// normalized embeddings.
+    /// Similarity score (higher = more similar). `MaxSim` is a sum over query
+    /// vectors, so it is not bounded to the cosine-similarity range.
     ///
     /// # Errors
     ///
@@ -212,14 +379,31 @@ impl TesseraMultiVector {
     /// )?;
     /// println!("Similarity: {:.4}", score);
     /// ```
-    pub fn similarity(&self, text_a: &str, text_b: &str) -> Result<f32> {
-        let emb_a = self.encode(text_a)?;
-        let emb_b = self.encode(text_b)?;
+    pub fn similarity(&self, query: &str, document: &str) -> Result<f32> {
+        let query = self.encode_query(query)?;
+        let document = self.encode_document(document)?;
+        self.search(&query, &document)
+    }
 
-        max_sim(&emb_a, &emb_b).map_err(|e| TesseraError::EncodingError {
+    /// Score role-specific query and document embeddings with ColBERT `MaxSim`.
+    pub fn search(&self, query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f32> {
+        max_sim(query, document).map_err(|e| TesseraError::EncodingError {
             context: "Failed to compute similarity".to_string(),
             source: e,
         })
+    }
+
+    /// Encode one query and a document batch with their respective roles, then
+    /// return one `MaxSim` score per document in input order.
+    pub fn search_documents(&self, query: &str, documents: &[&str]) -> Result<Vec<f32>> {
+        if documents.is_empty() {
+            return Ok(Vec::new());
+        }
+        let query = self.encode_query(query)?;
+        self.encode_document_batch(documents)?
+            .iter()
+            .map(|document| self.search(&query, document))
+            .collect()
     }
 
     /// Get the embedding dimension.
@@ -249,139 +433,52 @@ impl TesseraMultiVector {
         &self.model_id
     }
 
-    /// Quantize embeddings to a one-bit representation.
-    ///
-    /// Converts float32 dimensions to sign bits. The packed payload is 32 times
-    /// smaller than the corresponding float32 values before metadata and
-    /// padding; retrieval quality must be measured for the target corpus.
-    ///
-    /// # Arguments
-    ///
-    /// * `embeddings` - Full-precision embeddings to quantize
-    ///
-    /// # Returns
-    ///
-    /// Quantized embeddings with compression metadata.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if no quantizer is configured. Use
-    /// `.quantization(QuantizationConfig::Binary)` in the builder.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// use tessera::{TesseraMultiVector, QuantizationConfig};
-    ///
-    /// let embedder = TesseraMultiVector::builder()
-    ///     .model("colbert-v2")
-    ///     .quantization(QuantizationConfig::Binary)
-    ///     .build()?;
-    ///
-    /// let embeddings = embedder.encode("What is machine learning?")?;
-    /// let quantized = embedder.quantize(&embeddings)?;
-    ///
-    /// println!("Compression: {:.1}x", quantized.compression_ratio());
-    /// ```
-    pub fn quantize(&self, embeddings: &TokenEmbeddings) -> Result<QuantizedEmbeddings> {
-        #[allow(clippy::option_if_let_else)]
-        match &self.quantizer {
-            Some(q) => {
-                // Convert Array2 to Vec<Vec<f32>> for quantization
-                let vectors: Vec<Vec<f32>> = (0..embeddings.num_tokens)
-                    .map(|i| embeddings.embeddings.row(i).to_vec())
-                    .collect();
-
-                let quantized = quantize_multi(q, &vectors);
-                Ok(QuantizedEmbeddings {
-                    quantized,
-                    original_dim: embeddings.embedding_dim,
-                    num_tokens: embeddings.num_tokens,
-                })
-            }
-            None => Err(TesseraError::QuantizationError(
-                "No quantizer configured. Use .quantization(QuantizationConfig::Binary) in builder"
-                    .to_string(),
-            )),
-        }
+    /// Parameter dtype selected for this model instance.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.encoder.model_dtype()
     }
+}
 
-    /// Encode and quantize in one step.
-    ///
-    /// Convenience method that combines encoding and quantization.
-    /// More efficient than calling `encode()` then `quantize()` separately
-    /// when you only need the quantized representation.
-    ///
-    /// # Arguments
-    ///
-    /// * `text` - Text to encode and quantize
-    ///
-    /// # Returns
-    ///
-    /// Quantized embeddings ready for similarity computation.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if encoding fails or no quantizer is configured.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let quantized = embedder.encode_quantized("What is ML?")?;
-    /// println!("Encoded {} tokens", quantized.num_tokens);
-    /// ```
-    pub fn encode_quantized(&self, text: &str) -> Result<QuantizedEmbeddings> {
-        let embeddings = self.encode(text)?;
-        self.quantize(&embeddings)
-    }
+fn token_output_bytes(embedding: &TokenEmbeddings) -> usize {
+    f32_output_bytes(
+        embedding
+            .num_tokens()
+            .saturating_mul(embedding.embedding_dim()),
+    )
+}
 
-    /// Compute similarity between quantized embeddings using Hamming distance.
-    ///
-    /// Uses the `MaxSim` algorithm adapted for binary embeddings:
-    /// - Distance computed via XOR + popcount (Hamming distance)
-    /// - For each query vector, find max similarity with document vectors
-    /// - Sum across all query vectors
-    ///
-    /// The implementation uses XOR and popcount instead of float32 dot
-    /// products. Benchmark speed and ranking quality for the target workload.
-    ///
-    /// # Arguments
-    ///
-    /// * `query` - Quantized query embeddings
-    /// * `document` - Quantized document embeddings
-    ///
-    /// # Returns
-    ///
-    /// Similarity score (higher = more similar). Scale is different from
-    /// float32 `MaxSim`; rankings are not guaranteed to be identical.
-    ///
-    /// # Errors
-    ///
-    /// Returns error if no quantizer is configured.
-    ///
-    /// # Example
-    ///
-    /// ```ignore
-    /// let query = embedder.encode_quantized("What is ML?")?;
-    /// let doc = embedder.encode_quantized("Machine learning is AI")?;
-    /// let score = embedder.similarity_quantized(&query, &doc)?;
-    /// println!("Similarity: {:.4}", score);
-    /// ```
-    pub fn similarity_quantized(
-        &self,
-        query: &QuantizedEmbeddings,
-        document: &QuantizedEmbeddings,
-    ) -> Result<f32> {
-        #[allow(clippy::option_if_let_else)]
-        match &self.quantizer {
-            Some(q) => {
-                let score = multi_vector_distance(q, &query.quantized, &document.quantized);
-                Ok(score)
-            }
-            None => Err(TesseraError::QuantizationError(
-                "No quantizer configured. Use .quantization(QuantizationConfig::Binary) in builder"
-                    .to_string(),
-            )),
-        }
+fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> TesseraError {
+    TesseraError::EncodingError {
+        context: context.to_string(),
+        source: anyhow::Error::new(error),
     }
+}
+
+fn consume_stream_chunk<F, C>(
+    encoder: &CandleBertEncoder,
+    chunk: &[&str],
+    chunk_index: usize,
+    role: &str,
+    encode: &F,
+    tracker: &JobTracker,
+    consume: &mut C,
+) -> Result<()>
+where
+    F: Fn(&CandleBertEncoder, &[&str]) -> anyhow::Result<Vec<TokenEmbeddings>>,
+    C: FnMut(TokenEmbeddings) -> Result<()>,
+{
+    let embeddings = encode(encoder, chunk).map_err(|source| TesseraError::EncodingError {
+        context: format!("Failed to encode {role} stream chunk {chunk_index}"),
+        source,
+    })?;
+    for embedding in embeddings {
+        tracker
+            .validate_streamed_output(token_output_bytes(&embedding))
+            .map_err(|error| {
+                resource_error("ColBERT streamed output exceeds per-item limit", error)
+            })?;
+        consume(embedding)?;
+    }
+    Ok(())
 }

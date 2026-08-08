@@ -47,8 +47,8 @@ paradigms as if they shared one scale.
 - Start with the default resource limits.
 - Expect first use to download remote model artifacts.
 - Leave the `HIGH MEMORY` checkbox clear on a constrained machine.
-- If opting in, monitor memory because three live models are outside a single
-  aggregate resource budget.
+- If opting in, monitor memory: Tessera checks aggregate estimated parameter
+  bytes, not the full peak memory of three models plus Python and plotting.
 - Treat UMAP as visualization, not retrieval evaluation.
 - Do not substitute a catalog-only ID just because it appears in the registry.
 

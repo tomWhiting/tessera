@@ -17,21 +17,21 @@ pub struct TimeSeriesEmbedding {
     ///
     /// For batch processing, this contains embeddings for multiple time series.
     /// Each row represents the embedding for one time series.
-    pub embeddings: Vec<Vec<f32>>,
+    embeddings: Vec<Vec<f32>>,
 
     /// Number of time series in the batch.
-    pub num_series: usize,
+    num_series: usize,
 
     /// Embedding dimension (e.g., 512 for Chronos Bolt).
-    pub embedding_dim: usize,
+    embedding_dim: usize,
 
     /// Optional: Original time series lengths before padding.
     ///
     /// Useful for tracking which series were padded/truncated during preprocessing.
-    pub original_lengths: Option<Vec<usize>>,
+    original_lengths: Option<Vec<usize>>,
 
     /// Optional: Source identifier for tracking data origin.
-    pub source: Option<String>,
+    source: Option<String>,
 }
 
 impl TimeSeriesEmbedding {
@@ -45,28 +45,74 @@ impl TimeSeriesEmbedding {
     /// * `source` - Optional source identifier
     ///
     /// # Returns
-    /// A new `TimeSeriesEmbedding` instance
-    #[must_use]
-    pub const fn new(
+    /// A new validated `TimeSeriesEmbedding` instance
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the declared shape or optional length metadata does
+    /// not match the data, or if an embedding contains a non-finite value.
+    pub fn new(
         embeddings: Vec<Vec<f32>>,
         num_series: usize,
         embedding_dim: usize,
         original_lengths: Option<Vec<usize>>,
         source: Option<String>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self> {
+        anyhow::ensure!(
+            num_series > 0,
+            "Time-series embedding must contain a series"
+        );
+        anyhow::ensure!(
+            embedding_dim > 0,
+            "Time-series embedding dimension must be greater than zero"
+        );
+        anyhow::ensure!(
+            embeddings.len() == num_series,
+            "Time-series embedding contains {} vectors, expected {num_series}",
+            embeddings.len()
+        );
+        for (series_index, embedding) in embeddings.iter().enumerate() {
+            anyhow::ensure!(
+                embedding.len() == embedding_dim,
+                "Time-series vector {series_index} has dimension {}, expected {embedding_dim}",
+                embedding.len()
+            );
+            anyhow::ensure!(
+                embedding.iter().all(|value| value.is_finite()),
+                "Time-series vector {series_index} contains NaN or Inf values"
+            );
+        }
+        if let Some(lengths) = &original_lengths {
+            anyhow::ensure!(
+                lengths.len() == num_series,
+                "Original-length metadata contains {} entries, expected {num_series}",
+                lengths.len()
+            );
+            anyhow::ensure!(
+                lengths.iter().all(|length| *length > 0),
+                "Original time-series lengths must be greater than zero"
+            );
+        }
+
+        Ok(Self {
             embeddings,
             num_series,
             embedding_dim,
             original_lengths,
             source,
-        }
+        })
     }
 
     /// Get the number of time series in this embedding.
     #[must_use]
     pub const fn num_series(&self) -> usize {
         self.num_series
+    }
+
+    /// Borrow the series embedding vectors.
+    #[must_use]
+    pub fn vectors(&self) -> &[Vec<f32>] {
+        &self.embeddings
     }
 
     /// Get the embedding dimension.
@@ -81,12 +127,22 @@ impl TimeSeriesEmbedding {
         (self.num_series, self.embedding_dim)
     }
 
+    /// Borrow original input lengths, when recorded.
+    #[must_use]
+    pub fn original_lengths(&self) -> Option<&[usize]> {
+        self.original_lengths.as_deref()
+    }
+
     /// Get the source identifier if available.
     #[must_use]
     pub fn source(&self) -> Option<&str> {
         self.source.as_deref()
     }
 }
+
+#[cfg(test)]
+#[path = "timeseries/tests.rs"]
+mod tests;
 
 /// Time series encoder producing fixed-size embeddings from temporal data.
 ///

@@ -50,10 +50,12 @@ impl ModelFileResolver {
 
     /// Gets one artifact, downloading only when online and absent from the cache.
     pub(crate) fn get(&self, filename: &str) -> Result<PathBuf> {
-        let revision = self
-            .model
-            .revision
-            .expect("ModelFileResolver requires a pinned revision");
+        let revision = self.model.revision.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Model '{}' lost its required immutable revision",
+                self.model.id
+            )
+        })?;
         match &self.source {
             ArtifactSource::Online(repo) => repo.get(filename).with_context(|| {
                 format!(
@@ -76,15 +78,11 @@ impl ModelFileResolver {
         self.model
     }
 
-    /// Resolves the preferred declared weights, falling back to PyTorch only
-    /// when a published safetensors artifact cannot be resolved.
+    /// Resolves the exact weight artifact declared by the immutable registry.
     pub(crate) fn weights(&self) -> Result<PathBuf> {
         self.model.safetensors_file.map_or_else(
             || self.get(self.model.pytorch_file),
-            |filename| {
-                self.get(filename)
-                    .or_else(|_| self.get(self.model.pytorch_file))
-            },
+            |filename| self.get(filename),
         )
     }
 }
@@ -113,8 +111,8 @@ fn parse_offline_flag(value: Option<&OsStr>) -> Result<bool> {
         None => Ok(false),
         Some(value) if value == OsStr::new("1") => Ok(true),
         Some(value) => bail!(
-            "TESSERA_OFFLINE must be unset or exactly '1', got {:?}",
-            value
+            "TESSERA_OFFLINE must be unset or exactly '1', got {}",
+            value.display()
         ),
     }
 }

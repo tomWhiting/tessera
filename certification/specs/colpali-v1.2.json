@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "model": { "id": "colpali-v1.2", "repository": "vidore/colpali-v1.2-merged", "revision": "537a46ee5663ab3b1fd60d09dea3c641fff6e5da", "representation": "vision" },
   "artifacts": [
     { "path": "config.json", "size_bytes": 999, "sha256": "c465a09374f7c6cef023d591158ed25d75c443d134441052bfdcb8deeda528aa" },
@@ -10,12 +10,15 @@
     { "path": "model-00002-of-00002.safetensors", "size_bytes": 862495528, "sha256": "cf083d7c0f64061cbfe41ee5f9e6ffb8f8e934723417cb5ce739505457ff8d0a" }
   ],
   "profiles": { "smoke": {
-    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 1, "max_batch_tokens": 128, "max_model_bytes": 12000000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 16384 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 3600, "max_artifact_bytes": 6200000000, "min_free_disk_bytes": 16000000000, "max_peak_rss_bytes": 16000000000 }
+    "kind": "smoke",
+    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "vision_document", "max_sequence_tokens": 2048, "context_window_tokens": 8192 },
+    "resource_policy": { "max_sequence_tokens": 2048, "max_batch_items": 1, "max_batch_tokens": 2048, "max_model_bytes": 12000000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 4194304, "max_job_items": 1, "max_job_input_bytes": 65536, "max_output_bytes": 67108864, "max_activation_bytes": 3000000000 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 3600, "max_artifact_bytes": 6200000000, "min_free_disk_bytes": 16000000000, "max_peak_rss_bytes": 16000000000 },
+    "official_reference": null
   } },
   "smoke": {
     "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
     "expected_dimension": 128, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.0, "repeat_similarity_minimum": 0.9999
   },
-  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+  "promotion": { "minimum_successful_runs": 2, "required_profiles": ["smoke"], "require_clean_source": true, "require_enforced_rss": true }
 }

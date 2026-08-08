@@ -4,11 +4,12 @@ build-backend = "maturin"
 
 [project]
 name = "tessera-embeddings"
-version = "0.1.1"
-description = "Multi-paradigm embedding library with ColBERT, dense, sparse, and vision-language models"
+version = "0.2.0"
+description = "Experimental embedding library for dense, sparse, multi-vector, and vision-language retrieval"
 readme = "README.md"
 requires-python = ">=3.9,<3.14"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     { name = "Tessera Contributors" }
 ]
@@ -44,6 +45,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "marimo>=0.17.0",
+    "maturin>=1.7,<2.0",
     "pandas>=2.3.3",
     "plotly>=6.3.1",
     "pytest>=8.4.2",
@@ -56,14 +58,14 @@ dev = [
 [project.urls]
 Homepage = "https://github.com/tomWhiting/tessera"
 Repository = "https://github.com/tomWhiting/tessera"
-Documentation = "https://docs.rs/tessera"
+Documentation = "https://docs.rs/tessera-embeddings/latest/tessera/"
 
 [tool.maturin]
 module-name = "tessera"  # Keep as "tessera" - this is the Python import name
 features = ["python"]
 no-default-features = true
-# Keep local Maturin builds aligned with release wheels: Python bindings only,
-# without the unrelated default PDF feature.
+# Keep local Maturin builds aligned with release wheels: Python bindings only.
+# PDF rendering remains an explicit Rust-side opt-in with a system dependency.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

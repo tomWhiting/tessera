@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "model_id": "contract-dense",
+  "repository": "example/contract-dense",
+  "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "profile": "smoke",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "query",
+    "max_sequence_tokens": 8,
+    "context_window_tokens": 8
+  },
+  "provenance": {
+    "producer": "model-free contract fixture",
+    "framework": "reference-fixture",
+    "framework_version": "1",
+    "source_repository": "example/contract-dense",
+    "source_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "probe": { "kind": "text", "text": "canonical dense probe", "token_count": 3 },
+  "tolerance": { "absolute": 0.001, "relative": 0.001, "minimum_cosine": 0.999 },
+  "expected": { "representation": "dense", "values": [0.6, 0.8, 0.0] }
+}

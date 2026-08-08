@@ -36,6 +36,10 @@ def test_resource_policy_defaults_and_immutable_updates():
     assert default_policy.max_model_bytes == 2 * 1_024 * 1_024 * 1_024
     assert default_policy.max_input_bytes_per_sequence == 1_024 * 1_024
     assert default_policy.max_attention_cells == 1_048_576
+    assert default_policy.max_job_items == 1_024
+    assert default_policy.max_job_input_bytes == 64 * 1_024 * 1_024
+    assert default_policy.max_output_bytes == 64 * 1_024 * 1_024
+    assert default_policy.max_activation_bytes == 512 * 1_024 * 1_024
 
     long_context = default_policy.with_max_sequence_tokens(
         8_192
@@ -45,6 +49,10 @@ def test_resource_policy_defaults_and_immutable_updates():
         .with_max_batch_tokens(32_768)
         .with_max_model_bytes(12_000_000_000)
         .with_max_input_bytes_per_sequence(2 * 1_024 * 1_024)
+        .with_max_job_items(32)
+        .with_max_job_input_bytes(8 * 1_024 * 1_024)
+        .with_max_output_bytes(128 * 1_024 * 1_024)
+        .with_max_activation_bytes(8 * 1_024 * 1_024 * 1_024)
     )
     assert default_policy.max_sequence_tokens == 512
     assert long_context.max_sequence_tokens == 8_192
@@ -53,6 +61,10 @@ def test_resource_policy_defaults_and_immutable_updates():
     assert vision_budget.max_batch_tokens == 32_768
     assert vision_budget.max_model_bytes == 12_000_000_000
     assert vision_budget.max_input_bytes_per_sequence == 2 * 1_024 * 1_024
+    assert vision_budget.max_job_items == 32
+    assert vision_budget.max_job_input_bytes == 8 * 1_024 * 1_024
+    assert vision_budget.max_output_bytes == 128 * 1_024 * 1_024
+    assert vision_budget.max_activation_bytes == 8 * 1_024 * 1_024 * 1_024
     assert "max_sequence_tokens=8192" in repr(vision_budget)
     with pytest.raises(AttributeError):
         setattr(default_policy, "max_sequence_tokens", 8_192)

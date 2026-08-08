@@ -25,16 +25,11 @@
 //! # Example
 //!
 //! ```no_run
-//! use tessera::encoding::sparse::CandleSparseEncoder;
-//! use tessera::models::ModelConfig;
-//! use tessera::core::Encoder;
-//! use candle_core::Device;
+//! use tessera::TesseraSparse;
 //!
 //! # fn main() -> anyhow::Result<()> {
 //! // Load SPLADE model
-//! let config = ModelConfig::from_registry("splade-pp-en-v1")?;
-//! let device = Device::Cpu;
-//! let encoder = CandleSparseEncoder::new(config, device)?;
+//! let encoder = TesseraSparse::new("splade-pp-en-v1")?;
 //!
 //! // Encode text to sparse vector
 //! let embedding = encoder.encode("machine learning")?;
@@ -51,7 +46,10 @@ use crate::core::{Encoder, SparseEmbedding, SparseEncoder, Tokenizer};
 use crate::error::TesseraError;
 use crate::models::loader::ModelFileResolver;
 use crate::models::{registry::ModelType, ModelConfig};
-use crate::runtime::{preflight_registered_model, ResourcePolicy};
+use crate::runtime::{
+    preflight_and_reserve_registered_model_with_dtype, ContextWindowConfig, ModelDType,
+    ModelResidencyPermit, ResourcePolicy, TransformerProfile,
+};
 
 mod mlm;
 mod model;
@@ -147,39 +145,30 @@ pub struct CandleSparseEncoder {
     device: Device,
     /// Vocabulary size
     vocab_size: usize,
+    /// Parameter dtype selected at load time.
+    dtype: ModelDType,
+    resource_policy: ResourcePolicy,
+    transformer_profile: TransformerProfile,
+    /// Process-wide admission retained until the model tensors are dropped.
+    _residency: ModelResidencyPermit<'static>,
 }
 
 impl CandleSparseEncoder {
-    /// Create new sparse encoder.
-    ///
-    /// # Arguments
-    /// * `config` - Model configuration from registry
-    /// * `device` - Device to run inference on
-    ///
-    /// # Returns
-    /// Initialized sparse encoder with loaded weights
-    ///
-    /// # Errors
-    /// Returns error if model files cannot be downloaded/loaded or
-    /// if the model architecture is incompatible
-    pub fn new(config: ModelConfig, device: Device) -> Result<Self> {
-        let resource_policy = ResourcePolicy::for_model_context(config.max_seq_length);
-        Self::new_with_resource_policy(config, device, resource_policy)
-    }
-
-    /// Creates a sparse encoder with explicit resource limits.
-    pub fn new_with_resource_policy(
+    /// Creates a sparse encoder with an explicit parameter dtype and limits.
+    pub fn new_with_dtype_and_resource_policy(
         config: ModelConfig,
         device: Device,
+        dtype: ModelDType,
         resource_policy: ResourcePolicy,
     ) -> Result<Self> {
         let model_name = &config.model_name;
 
-        let model_info = preflight_registered_model(
+        let (model_info, residency) = preflight_and_reserve_registered_model_with_dtype(
             model_name,
             config.max_seq_length,
             ModelType::Sparse,
             &device,
+            dtype,
             &resource_policy,
         )?;
 
@@ -192,6 +181,16 @@ impl CandleSparseEncoder {
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
+        let profile = TransformerProfile::from_config_json(&config_str)
+            .context("Reading transformer dimensions for resource estimation")?;
+        resource_policy
+            .validate_transformer_activations(
+                profile,
+                1,
+                resource_policy.max_sequence_tokens(),
+                dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Sparse activation preflight failed: {error}"))?;
 
         let detector: ModelTypeDetector = serde_json::from_str(&config_str)
             .context("Parsing config to detect model type and vocab size")?;
@@ -219,11 +218,15 @@ impl CandleSparseEncoder {
         // Load model weights
         let vb = if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
             unsafe {
-                VarBuilder::from_mmaped_safetensors(&[weights_path.clone()], DType::F32, &device)
-                    .context("Loading model from safetensors")?
+                VarBuilder::from_mmaped_safetensors(
+                    &[weights_path.clone()],
+                    dtype.candle_dtype(),
+                    &device,
+                )
+                .context("Loading model from safetensors")?
             }
         } else {
-            VarBuilder::from_pth(&weights_path, DType::F32, &device)
+            VarBuilder::from_pth(&weights_path, dtype.candle_dtype(), &device)
                 .context("Loading model from pytorch_model.bin")?
         };
 
@@ -255,7 +258,17 @@ impl CandleSparseEncoder {
             tokenizer,
             device,
             vocab_size,
+            dtype,
+            resource_policy,
+            transformer_profile: profile,
+            _residency: residency,
         })
+    }
+
+    /// Parameter dtype selected when this model was loaded.
+    #[must_use]
+    pub const fn model_dtype(&self) -> ModelDType {
+        self.dtype
     }
 
     /// Convert dense tensor to sparse representation.
@@ -291,35 +304,64 @@ impl CandleSparseEncoder {
 
         SparseEmbedding::new(sparse_values, self.vocab_size, text)
     }
-}
 
-impl Encoder for CandleSparseEncoder {
-    type Output = SparseEmbedding;
-
-    fn encode(&self, input: &str) -> Result<Self::Output> {
-        // Tokenize
-        let (token_ids, attention_mask) = self
+    /// Encodes a long input in bounded windows and merges SPLADE weights with
+    /// the representation's elementwise-maximum semantics.
+    pub fn encode_windowed(
+        &self,
+        input: &str,
+        config: ContextWindowConfig,
+    ) -> Result<SparseEmbedding> {
+        let windows = self
             .tokenizer
-            .encode(input, true)
-            .with_context(|| format!("Tokenizing input ({} UTF-8 bytes)", input.len()))?;
+            .encode_windows(input, config)
+            .with_context(|| format!("Planning windows for {} UTF-8 bytes", input.len()))?;
+        let mut merged = vec![0_f32; self.vocab_size];
+        for window in windows {
+            let embedding =
+                self.encode_tokenized(&window.token_ids, &window.attention_mask, String::new())?;
+            for &(index, weight) in embedding.entries() {
+                merged[index] = merged[index].max(weight);
+            }
+        }
+        let entries = merged
+            .into_iter()
+            .enumerate()
+            .filter(|(_, weight)| *weight > 0.0)
+            .collect();
+        SparseEmbedding::new(entries, self.vocab_size, input.to_string())
+    }
 
-        // Convert to tensors
+    fn encode_tokenized(
+        &self,
+        token_ids: &[u32],
+        attention_mask: &[u32],
+        text: String,
+    ) -> Result<SparseEmbedding> {
+        anyhow::ensure!(!token_ids.is_empty(), "Tokenized input cannot be empty");
+        anyhow::ensure!(
+            token_ids.len() == attention_mask.len(),
+            "Token ID and attention-mask lengths differ"
+        );
+        self.resource_policy
+            .validate_transformer_activations(
+                self.transformer_profile,
+                1,
+                token_ids.len(),
+                self.dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Sparse activation preflight failed: {error}"))?;
+
         let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();
         let token_ids_tensor = Tensor::from_vec(token_ids_i64, (1, token_ids.len()), &self.device)
             .context("Creating token IDs tensor")?;
 
-        // Handle attention mask - DistilBERT expects inverted mask
         let attention_mask_processed: Vec<i64> = match &self.model {
             BertVariant::DistilBert(_) => {
-                // Invert mask for DistilBERT: 1 -> 0, 0 -> 1
                 attention_mask.iter().map(|&x| i64::from(x != 1)).collect()
             }
-            _ => {
-                // Standard BERT convention
-                attention_mask.iter().map(|&x| i64::from(x)).collect()
-            }
+            _ => attention_mask.iter().map(|&x| i64::from(x)).collect(),
         };
-
         let attention_mask_tensor = Tensor::from_vec(
             attention_mask_processed,
             (1, attention_mask.len()),
@@ -327,36 +369,36 @@ impl Encoder for CandleSparseEncoder {
         )
         .context("Creating attention mask tensor")?;
 
-        // BERT forward pass
         let inference_permit = crate::runtime::acquire_inference_permit()
             .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
         let hidden_states = self
             .model
             .forward(&token_ids_tensor, &attention_mask_tensor)
-            .context("BERT forward pass")?;
-
-        // Remove batch dimension: [1, seq_len, hidden_size] -> [seq_len, hidden_size]
-        let hidden_states = hidden_states
+            .context("BERT forward pass")?
             .squeeze(0)
             .context("Squeezing batch dimension")?;
-
-        // MLM head forward pass: [seq_len, hidden_size] -> [seq_len, vocab_size]
         let logits = self
             .mlm_head
             .forward(&hidden_states)
             .context("MLM head forward pass")?;
-
-        // SPLADE's transform is monotone, so max-pool the raw logits first.
-        // This keeps the reduction on-device and applies elementwise transforms
-        // only to the pooled vocabulary vector, not the full token matrix.
-        let pooled_logits = max_pool_token_logits(&logits, &attention_mask, self.vocab_size)
+        let pooled_logits = max_pool_token_logits(&logits, attention_mask, self.vocab_size)
             .context("Max pooling vocabulary logits across tokens")?;
         let pooled = splade_transform(&pooled_logits).context("Applying SPLADE transformation")?;
-
-        // Convert to sparse representation
-        let sparse_embedding = self.to_sparse(&pooled, input.to_string());
+        let sparse_embedding = self.to_sparse(&pooled, text);
         drop(inference_permit);
         sparse_embedding
+    }
+}
+
+impl Encoder for CandleSparseEncoder {
+    type Output = SparseEmbedding;
+
+    fn encode(&self, input: &str) -> Result<Self::Output> {
+        let (token_ids, attention_mask) = self
+            .tokenizer
+            .encode(input, true)
+            .with_context(|| format!("Tokenizing input ({} UTF-8 bytes)", input.len()))?;
+        self.encode_tokenized(&token_ids, &attention_mask, input.to_string())
     }
 
     fn encode_batch(&self, inputs: &[&str]) -> Result<Vec<Self::Output>> {
@@ -379,13 +421,6 @@ impl SparseEncoder for CandleSparseEncoder {
         0.99 // 99% sparse for SPLADE models
     }
 }
-
-/// Legacy type for backward compatibility.
-///
-/// # Deprecated
-/// Use `CandleSparseEncoder` instead.
-#[deprecated(since = "0.2.0", note = "Use CandleSparseEncoder instead")]
-pub type SparseEncoding = CandleSparseEncoder;
 
 #[cfg(test)]
 #[path = "sparse/tests.rs"]
