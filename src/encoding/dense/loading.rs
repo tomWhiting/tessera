@@ -119,10 +119,16 @@ impl CandleDenseEncoder {
             None => vb,
         };
 
-        let model = Self::load_model(&config_str, model_vb, &model_type)
-            .with_context(|| format!("Loading {model_type} model"))?;
+        let model = Self::load_model(
+            &config_str,
+            model_vb,
+            &model_type,
+            resource_policy.max_sequence_tokens(),
+        )
+        .with_context(|| format!("Loading {model_type} model"))?;
 
         let normalize = model_config.normalize_embeddings;
+        let supports_padded_batch = Self::model_supports_padded_batch(&model_type);
 
         Ok(Self {
             model,
@@ -131,7 +137,24 @@ impl CandleDenseEncoder {
             config: model_config,
             pooling_strategy,
             normalize,
+            supports_padded_batch,
         })
+    }
+
+    pub(super) fn model_supports_padded_batch(model_type: &str) -> bool {
+        !matches!(model_type, "jinabert" | "jinabert-code")
+    }
+
+    pub(super) fn effective_max_position_embeddings(
+        model_type: &str,
+        configured_max: usize,
+        policy_max: usize,
+    ) -> usize {
+        if matches!(model_type, "jinabert" | "jinabert-code") {
+            configured_max.min(policy_max)
+        } else {
+            configured_max
+        }
     }
 
     /// Detects the model type from config
@@ -278,7 +301,12 @@ impl CandleDenseEncoder {
     }
 
     /// Loads the appropriate model variant
-    fn load_model(config_str: &str, vb: VarBuilder, model_type: &str) -> Result<BertVariant> {
+    fn load_model(
+        config_str: &str,
+        vb: VarBuilder,
+        model_type: &str,
+        max_sequence_tokens: usize,
+    ) -> Result<BertVariant> {
         match model_type {
             "distilbert" => {
                 let config: candle_transformers::models::distilbert::Config =
@@ -289,15 +317,28 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::DistilBert(model))
             }
             "jinabert" => {
-                let config: candle_transformers::models::jina_bert::Config =
+                let mut config: candle_transformers::models::jina_bert::Config =
                     serde_json::from_str(config_str).context("Parsing JinaBERT config")?;
+                // Candle eagerly builds a quadratic ALiBi table from this value.
+                // ALiBi values for a permitted prefix do not depend on the full
+                // configured context, so cap the table to the validated policy.
+                config.max_position_embeddings = Self::effective_max_position_embeddings(
+                    model_type,
+                    config.max_position_embeddings,
+                    max_sequence_tokens,
+                );
                 let model = candle_transformers::models::jina_bert::BertModel::new(vb, &config)
                     .context("Loading JinaBERT model")?;
                 Ok(BertVariant::JinaBert(model))
             }
             "jinabert-code" => {
-                let config: candle_transformers::models::jina_bert::Config =
+                let mut config: candle_transformers::models::jina_bert::Config =
                     serde_json::from_str(config_str).context("Parsing JinaBERT Code config")?;
+                config.max_position_embeddings = Self::effective_max_position_embeddings(
+                    model_type,
+                    config.max_position_embeddings,
+                    max_sequence_tokens,
+                );
                 let model = candle_transformers::models::jina_bert::BertModel::new(vb, &config)
                     .context("Loading JinaBERT Code model")?;
                 Ok(BertVariant::JinaBertCode(model))

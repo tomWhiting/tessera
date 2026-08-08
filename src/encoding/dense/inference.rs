@@ -200,6 +200,15 @@ impl CandleDenseEncoder {
             .encode_batch(texts, true)
             .context("Batch tokenization")?;
 
+        // Candle 0.11's JinaBERT forward pass does not accept an attention mask,
+        // so padded keys and values would change the valid token representations.
+        // Batch tokenization above still enforces the aggregate resource policy;
+        // inference then uses unpadded inputs to preserve sequential parity.
+        if !self.supports_padded_batch {
+            drop(batch_tokenized);
+            return texts.iter().map(|&text| self.encode(text)).collect();
+        }
+
         let batch_size = batch_tokenized.len();
         let max_seq_len = batch_tokenized[0].0.len();
 

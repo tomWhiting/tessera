@@ -1,4 +1,8 @@
-use super::{CandleDenseEncoder, ModelTypeDetector};
+use anyhow::Result;
+use candle_core::{DType, Device, Tensor};
+use candle_nn::{VarBuilder, VarMap};
+
+use super::{BertVariant, CandleDenseEncoder, ModelTypeDetector};
 
 const NOMIC_CONFIG: &str = r#"
 {
@@ -22,6 +26,47 @@ const NOMIC_CONFIG: &str = r#"
   "prenorm": false
 }
 "#;
+
+fn tiny_bert() -> Result<BertVariant> {
+    let config = candle_transformers::models::bert::Config {
+        vocab_size: 16,
+        hidden_size: 8,
+        num_hidden_layers: 1,
+        num_attention_heads: 2,
+        intermediate_size: 16,
+        hidden_act: candle_transformers::models::bert::HiddenAct::Gelu,
+        hidden_dropout_prob: 0.0,
+        max_position_embeddings: 16,
+        type_vocab_size: 2,
+        initializer_range: 0.02,
+        layer_norm_eps: 1e-12,
+        pad_token_id: 0,
+        position_embedding_type: candle_transformers::models::bert::PositionEmbeddingType::Absolute,
+        use_cache: false,
+        classifier_dropout: None,
+        model_type: Some("bert".to_string()),
+    };
+    let variables = VarMap::new();
+    let builder = VarBuilder::from_varmap(&variables, DType::F32, &Device::Cpu);
+    let model = candle_transformers::models::bert::BertModel::load(builder, &config)?;
+    Ok(BertVariant::Bert(model))
+}
+
+fn assert_tensors_close(left: &Tensor, right: &Tensor, tolerance: f32) -> Result<()> {
+    let left = left.flatten_all()?.to_vec1::<f32>()?;
+    let right = right.flatten_all()?.to_vec1::<f32>()?;
+    assert_eq!(left.len(), right.len());
+    let max_difference = left
+        .iter()
+        .zip(right.iter())
+        .map(|(left, right)| (left - right).abs())
+        .fold(0.0_f32, f32::max);
+    assert!(
+        max_difference <= tolerance,
+        "maximum element difference {max_difference} exceeds {tolerance}"
+    );
+    Ok(())
+}
 
 #[test]
 fn detects_nomic_bert_before_generic_bert() {
@@ -77,4 +122,82 @@ fn leaves_optional_nomic_model_type_prefix_to_stock_loader() {
         CandleDenseEncoder::model_weight_prefix(true, "nomic-bert"),
         None
     );
+}
+
+#[test]
+fn jina_bert_batches_use_unpadded_forward_passes() {
+    for model_type in ["jinabert", "jinabert-code"] {
+        assert!(!CandleDenseEncoder::model_supports_padded_batch(model_type));
+    }
+
+    for model_type in [
+        "bert",
+        "distilbert",
+        "modernbert",
+        "nomic-bert",
+        "xlm-roberta",
+    ] {
+        assert!(CandleDenseEncoder::model_supports_padded_batch(model_type));
+    }
+}
+
+#[test]
+fn jina_alibi_capacity_is_clamped_to_the_validated_policy() {
+    for model_type in ["jinabert", "jinabert-code"] {
+        assert_eq!(
+            CandleDenseEncoder::effective_max_position_embeddings(model_type, 8_192, 512),
+            512
+        );
+        assert_eq!(
+            CandleDenseEncoder::effective_max_position_embeddings(model_type, 512, 8_192),
+            512
+        );
+    }
+}
+
+#[test]
+fn non_jina_position_capacity_is_preserved() {
+    for model_type in [
+        "bert",
+        "distilbert",
+        "modernbert",
+        "nomic-bert",
+        "xlm-roberta",
+    ] {
+        assert_eq!(
+            CandleDenseEncoder::effective_max_position_embeddings(model_type, 8_192, 512),
+            8_192
+        );
+    }
+}
+
+#[test]
+fn bert_forward_passes_zero_token_types_and_attention_mask() -> Result<()> {
+    let variant = tiny_bert()?;
+    let token_ids = Tensor::new(&[[1_i64, 2, 3, 0, 0]], &Device::Cpu)?;
+    let attention_mask = Tensor::new(&[[1_i64, 1, 1, 0, 0]], &Device::Cpu)?;
+
+    let actual = variant.forward(&token_ids, &attention_mask)?;
+    let BertVariant::Bert(model) = &variant else {
+        unreachable!("test constructs a BERT variant")
+    };
+    let token_type_ids = token_ids.zeros_like()?;
+    let expected = model.forward(&token_ids, &token_type_ids, Some(&attention_mask))?;
+
+    assert_tensors_close(&actual, &expected, 0.0)
+}
+
+#[test]
+fn mixed_length_bert_batch_matches_sequential_forward() -> Result<()> {
+    let variant = tiny_bert()?;
+    let batch_ids = Tensor::new(&[[1_i64, 2, 3, 0, 0], [1_i64, 2, 3, 4, 5]], &Device::Cpu)?;
+    let batch_mask = Tensor::new(&[[1_i64, 1, 1, 0, 0], [1_i64, 1, 1, 1, 1]], &Device::Cpu)?;
+    let sequential_ids = Tensor::new(&[[1_i64, 2, 3]], &Device::Cpu)?;
+    let sequential_mask = Tensor::new(&[[1_i64, 1, 1]], &Device::Cpu)?;
+
+    let batch = variant.forward(&batch_ids, &batch_mask)?;
+    let sequential = variant.forward(&sequential_ids, &sequential_mask)?;
+    let short_batch_item = batch.get(0)?.narrow(0, 0, 3)?;
+
+    assert_tensors_close(&short_batch_item, &sequential.squeeze(0)?, 1e-5)
 }

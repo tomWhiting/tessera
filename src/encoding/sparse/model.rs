@@ -5,6 +5,9 @@ use candle_core::Tensor;
 use candle_nn::VarBuilder;
 use serde::Deserialize;
 
+#[cfg(test)]
+mod tests;
+
 /// Enum to hold different BERT model variants.
 pub(super) enum BertVariant {
     Bert(candle_transformers::models::bert::BertModel),
@@ -14,9 +17,14 @@ pub(super) enum BertVariant {
 impl BertVariant {
     pub(super) fn forward(&self, token_ids: &Tensor, attention_mask: &Tensor) -> Result<Tensor> {
         match self {
-            Self::Bert(model) => model
-                .forward(token_ids, attention_mask, None)
-                .context("BERT forward pass"),
+            Self::Bert(model) => {
+                let token_type_ids = token_ids
+                    .zeros_like()
+                    .context("Creating BERT token type IDs")?;
+                model
+                    .forward(token_ids, &token_type_ids, Some(attention_mask))
+                    .context("BERT forward pass")
+            }
             Self::DistilBert(model) => model
                 .forward(token_ids, attention_mask)
                 .context("DistilBERT forward pass"),
