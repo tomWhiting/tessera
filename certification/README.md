@@ -69,9 +69,11 @@ cargo run --locked --offline -p tessera-xtask --features certification -- \
 
 Each child constructs exactly one model instance on CPU. The parent enforces
 the specification timeout and, on Unix systems with `ps`, samples process RSS
-every 200 ms and kills the child when the declared ceiling is exceeded. A
+every 50 ms and kills the child when the declared ceiling is exceeded. A
 platform without live RSS samples may still produce diagnostic evidence, but
 `readiness` refuses promotion when enforceable RSS evidence is required.
+The recorded value is the largest sample observed, not an operating-system
+lifetime high-water mark.
 
 Working evidence is compact JSON under `.tessera/cert-evidence/<model>/`. It
 contains artifact hashes, shapes, finite/norm checks, batch-versus-sequential
@@ -79,8 +81,8 @@ parity, repeatability and retrieval scores, source state, resource limits,
 duration, and sampled peak RSS. It never contains model weights or full
 embedding vectors. Both cache and working evidence are ignored by Git.
 
-Readiness remains conservative. It requires matching successful runs from one
-clean source commit, the current specification digest, verified artifacts,
+Readiness remains conservative. It requires matching successful runs from the
+current clean `HEAD`, the current specification digest, verified artifacts,
 enforced RSS evidence, and a checked official-reference fingerprint. The
 initial specifications intentionally leave that final fingerprint unset, so a
 basic smoke cannot accidentally promote a model to `Supported`.

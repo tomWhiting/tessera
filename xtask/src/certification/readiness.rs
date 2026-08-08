@@ -3,7 +3,8 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use super::artifacts;
+use super::artifacts::{self, VerifiedArtifact};
+use super::evidence;
 use super::spec::{CertResult, LoadedSpec};
 
 const EVIDENCE_SCHEMA_VERSION: u32 = 1;
@@ -19,6 +20,8 @@ struct EvidenceSummary {
     source_commit: String,
     source_dirty: bool,
     peak_rss: PeakRssSummary,
+    #[serde(default)]
+    verified_artifacts: Vec<VerifiedArtifact>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -45,6 +48,20 @@ pub(crate) fn evaluate(repository: &Path, loaded: &LoadedSpec) -> ReadinessRepor
     if loaded.spec.promotion.official_reference_sha256.is_none() {
         reasons.push("no pinned official-reference fingerprint is checked in".to_string());
     }
+    let current_source = match evidence::source_state(repository) {
+        Ok(source) => Some(source),
+        Err(error) => {
+            reasons.push(format!("current source state is unavailable: {error}"));
+            None
+        }
+    };
+    if loaded.spec.promotion.require_clean_source
+        && current_source
+            .as_ref()
+            .is_some_and(|(_, source_dirty)| *source_dirty)
+    {
+        reasons.push("current source tree is dirty".to_string());
+    }
 
     let evidence = match load_evidence(repository, loaded) {
         Ok(evidence) => evidence,
@@ -53,36 +70,31 @@ pub(crate) fn evaluate(repository: &Path, loaded: &LoadedSpec) -> ReadinessRepor
             Vec::new()
         }
     };
-    let valid = evidence
-        .into_iter()
+    let matching = evidence
+        .iter()
         .filter(|entry| evidence_matches(entry, loaded))
         .collect::<Vec<_>>();
     let required = loaded.spec.promotion.minimum_successful_runs;
-    if valid.len() < required {
+    let (source_commit, successful_runs) =
+        current_source
+            .as_ref()
+            .map_or((None, 0), |(current_commit, _)| {
+                eligible_current_cohort(
+                    &matching,
+                    current_commit,
+                    loaded.spec.promotion.require_clean_source,
+                    loaded.spec.promotion.require_enforced_rss,
+                )
+            });
+    if successful_runs < required {
         reasons.push(format!(
-            "{} matching successful runs found; {required} required",
-            valid.len()
+            "eligible current-HEAD cohort has {successful_runs} successful runs; {required} required"
         ));
-    }
-    if loaded.spec.promotion.require_clean_source && valid.iter().any(|entry| entry.source_dirty) {
-        reasons.push("at least one matching run used a dirty source tree".to_string());
-    }
-    if loaded.spec.promotion.require_enforced_rss
-        && valid
-            .iter()
-            .any(|entry| !entry.peak_rss.enforced || entry.peak_rss.bytes.is_none())
-    {
-        reasons.push("at least one matching run lacks enforceable peak-RSS evidence".to_string());
-    }
-
-    let source_commit = common_source_commit(&valid);
-    if !valid.is_empty() && source_commit.is_none() {
-        reasons.push("matching runs do not share one source commit".to_string());
     }
     ReadinessReport {
         model_id: loaded.spec.model.id.clone(),
         ready: reasons.is_empty(),
-        successful_runs: valid.len(),
+        successful_runs,
         required_runs: required,
         source_commit,
         reasons,
@@ -114,14 +126,39 @@ fn evidence_matches(evidence: &EvidenceSummary, loaded: &LoadedSpec) -> bool {
         && evidence.profile == "smoke"
         && evidence.device == "cpu"
         && evidence.status == "passed"
+        && artifact_manifest_matches(evidence, loaded)
 }
 
-fn common_source_commit(evidence: &[EvidenceSummary]) -> Option<String> {
-    let first = evidence.first()?.source_commit.clone();
-    evidence
+fn artifact_manifest_matches(evidence: &EvidenceSummary, loaded: &LoadedSpec) -> bool {
+    evidence.verified_artifacts.len() == loaded.spec.artifacts.len()
+        && loaded.spec.artifacts.iter().all(|expected| {
+            evidence.verified_artifacts.iter().any(|observed| {
+                observed.path == expected.path
+                    && observed.size_bytes == expected.size_bytes
+                    && observed.sha256 == expected.sha256
+            })
+        })
+}
+
+fn eligible_current_cohort(
+    evidence: &[&EvidenceSummary],
+    current_commit: &str,
+    require_clean_source: bool,
+    require_enforced_rss: bool,
+) -> (Option<String>, usize) {
+    let count = evidence
         .iter()
-        .all(|entry| entry.source_commit == first)
-        .then_some(first)
+        .filter(|entry| entry.source_commit == current_commit)
+        .filter(|entry| !require_clean_source || !entry.source_dirty)
+        .filter(|entry| {
+            !require_enforced_rss || (entry.peak_rss.enforced && entry.peak_rss.bytes.is_some())
+        })
+        .count();
+    if count == 0 {
+        (None, 0)
+    } else {
+        (Some(current_commit.to_string()), count)
+    }
 }
 
 #[cfg(test)]

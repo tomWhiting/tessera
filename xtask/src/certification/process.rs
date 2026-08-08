@@ -8,7 +8,7 @@ use super::artifacts;
 use super::evidence::{self, ChildOutcome, PeakRssEvidence, RecordInput};
 use super::spec::{self, CertResult, LoadedSpec};
 
-const RSS_SAMPLE_INTERVAL_MS: u64 = 200;
+const RSS_SAMPLE_INTERVAL_MS: u64 = 50;
 
 #[derive(Debug, Clone)]
 pub(crate) struct RunOptions {

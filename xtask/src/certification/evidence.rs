@@ -148,7 +148,7 @@ pub(crate) fn now_unix_ms() -> CertResult<u128> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis())
 }
 
-fn source_state(repository: &Path) -> CertResult<(String, bool)> {
+pub(crate) fn source_state(repository: &Path) -> CertResult<(String, bool)> {
     let commit = Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(repository)

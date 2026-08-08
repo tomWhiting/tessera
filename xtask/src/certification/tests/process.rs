@@ -2,10 +2,11 @@ use std::path::Path;
 
 use crate::certification::evidence::ChildOutcome;
 
-use super::{apply_launcher_result, outcome_path, rss_method};
+use super::{apply_launcher_result, outcome_path, rss_method, RSS_SAMPLE_INTERVAL_MS};
 
 #[test]
 fn launcher_paths_and_rss_labels_are_explicit() {
+    assert_eq!(RSS_SAMPLE_INTERVAL_MS, 50);
     assert_eq!(rss_method(0), "unavailable");
     assert_eq!(rss_method(1), "sampled-process-rss-watchdog");
     assert_eq!(
