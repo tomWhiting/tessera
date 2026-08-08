@@ -1,5 +1,10 @@
 # Chronos Bolt Implementation
 
+> [!CAUTION]
+> Historical implementation report. Chronos is now catalog-only because this
+> path depends on APIs from an old Candle fork; it is not an active runtime.
+> See the [time-series legacy note](legacy/TIMESERIES.md).
+
 ## Summary
 
 Successfully implemented the Chronos Bolt time series foundation model for Tessera, using the existing T5 implementation in candle-transformers as the backbone. The implementation includes all preprocessing components and model architecture, with one critical TODO item for the forward pass.

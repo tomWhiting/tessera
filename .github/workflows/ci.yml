@@ -1,71 +1,144 @@
-name: CI
+name: Foundation CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: foundation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
+  CARGO_INCREMENTAL: "0"
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: "1"
 
 jobs:
-  test:
-    name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    
+  core:
+    name: Core policy and tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      
-    - name: Cache
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    
-    - name: Build (Linux - core features only)
-      if: runner.os == 'Linux'
-      run: cargo build --no-default-features --verbose
+      # v4.2.2; pin third-party code rather than following a mutable major tag.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
 
-    - name: Build (macOS - all features)
-      if: runner.os == 'macOS'
-      run: cargo build --verbose
+      - name: Install repository-pinned Rust toolchain
+        run: |
+          rustup show active-toolchain
+          rustc --version --verbose
+          cargo --version --verbose
 
-    - name: Run tests (Linux - core features only)
-      if: runner.os == 'Linux'
-      run: cargo test --no-default-features --verbose
+      # This is the only step allowed to resolve Rust dependencies over the network.
+      - name: Fetch locked dependency graph
+        run: cargo fetch --locked
 
-    - name: Run tests (macOS - all features)
-      if: runner.os == 'macOS'
-      run: cargo test --verbose
-    
-    - name: Run tests (with Metal on macOS)
-      if: runner.os == 'macOS'
-      run: cargo test --features metal --verbose
+      - name: Check formatting
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: cargo fmt --all -- --check
 
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    
+      - name: Check repository policy
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: cargo run --locked --offline -p tessera-xtask -- all
+
+      - name: Run strict Clippy (no-default core)
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: >-
+          cargo clippy --workspace --all-targets --locked --offline
+          --no-default-features -- -D warnings
+
+      - name: Run strict Clippy (default / PDF)
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: >-
+          cargo clippy --workspace --all-targets --locked --offline -- -D warnings
+
+      - name: Run strict Clippy (Python 3.12)
+        env:
+          CARGO_NET_OFFLINE: "true"
+          PYO3_PYTHON: /usr/bin/python3.12
+        run: >-
+          cargo clippy -p tessera-embeddings --all-targets --locked --offline
+          --no-default-features --features python -- -D warnings
+
+      - name: Run strict Clippy (quarantined timeseries API)
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: >-
+          cargo clippy -p tessera-embeddings --all-targets --locked --offline
+          --no-default-features --features timeseries -- -D warnings
+
+      - name: Run hermetic core tests
+        env:
+          CARGO_NET_OFFLINE: "true"
+        run: |
+          # A separate network namespace catches accidental runtime downloads as
+          # well as Cargo dependency access. Preserve the runner's pinned Rust
+          # installation, then drop back to the unprivileged runner user before
+          # Cargo writes any artifacts.
+          sudo unshare --net -- \
+            sudo --user="$USER" env \
+              "PATH=$PATH" \
+              "HOME=$HOME" \
+              "CARGO_HOME=$HOME/.cargo" \
+              "RUSTUP_HOME=$HOME/.rustup" \
+              "CARGO_NET_OFFLINE=true" \
+              "RUST_BACKTRACE=$RUST_BACKTRACE" \
+              cargo test --workspace --all-targets --locked --offline --no-default-features
+
+  python-bindings:
+    name: Python 3.12 wheel and model-free pytest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: clippy, rustfmt
-    
-    - name: Check formatting
-      run: cargo fmt -- --check
-    
-    - name: Run clippy
-      run: cargo clippy --no-default-features --features python -- -D warnings  # Core + Python bindings only (lib code, not tests)
+      # v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Install repository-pinned Rust toolchain
+        run: rustup show active-toolchain
+
+      - name: Fetch locked Rust dependencies
+        run: cargo fetch --locked
+
+      - name: Install pinned Python build and test tools
+        run: |
+          /usr/bin/python3.12 -m venv .venv
+          .venv/bin/python -m pip install --disable-pip-version-check --only-binary=:all: \
+            maturin==1.13.3 numpy==2.2.6 pytest==8.4.2 uv==0.9.25
+
+      - name: Check Python dependency lock
+        run: .venv/bin/uv lock --check
+
+      - name: Build Python wheel against Python 3.12
+        env:
+          CARGO_NET_OFFLINE: "true"
+          PYO3_PYTHON: ${{ github.workspace }}/.venv/bin/python
+        run: >-
+          .venv/bin/maturin build --locked --offline --no-default-features
+          --features python --interpreter .venv/bin/python --out dist
+
+      - name: Install wheel without resolving runtime packages
+        run: .venv/bin/python -m pip install --no-deps dist/*.whl
+
+      - name: Run model-free Python tests hermetically
+        run: |
+          sudo unshare --net -- \
+            sudo --user="$USER" env \
+              "PATH=$PWD/.venv/bin:$PATH" \
+              "HOME=$HOME" \
+              "$PWD/.venv/bin/python" -m pytest \
+                -m "not model" --strict-markers tests/python

@@ -1,5 +1,10 @@
 # PyO3 Python Bindings - Quick Reference Guide
 
+> [!CAUTION]
+> Historical proposed API, not a reference for the shipped Python module. It
+> includes classes and model paths that are absent or catalog-only. See the
+> maintained [Python development guide](PYTHON_DEV_GUIDE.md).
+
 ## API Classes to Implement
 
 ### 1. Factory Class: `Tessera`

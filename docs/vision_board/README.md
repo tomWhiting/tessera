@@ -1,5 +1,10 @@
 # Tessera Vision Board: Comprehensive Embedding Models
 
+> [!CAUTION]
+> Historical January 2025 research and roadmap snapshot. It is retained without
+> rewriting, excluded from the crate, and must not be read as current model or
+> implementation status. See the [documentation index](../README.md).
+
 This vision board outlines the complete landscape of embedding models and representations that Tessera aims to support.
 
 ## Parts

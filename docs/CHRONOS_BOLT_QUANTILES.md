@@ -1,5 +1,10 @@
 # Chronos Bolt Quantile Implementation
 
+> [!CAUTION]
+> Historical implementation report. Its compile, test, and model-loading claims
+> do not apply to the stock-Candle revival. This file is excluded from the crate;
+> see the [time-series legacy note](legacy/TIMESERIES.md).
+
 ## Overview
 
 Fixed the Chronos Bolt implementation to properly handle 9 quantiles in the output, matching the pre-trained weights structure from HuggingFace (amazon/chronos-bolt-small).

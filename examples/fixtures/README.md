@@ -1,28 +1,21 @@
-# Test Fixtures for Examples
+# Manual example fixtures
 
-This directory contains test data files used by the example programs.
+This directory retains assets for manual vision-language experiments. No
+current automated example consumes these files, so the directory is excluded
+from the published crate package.
 
-## Files
+## `attention_is_all_you_need.pdf`
 
-### attention_is_all_you_need.pdf
-- **Source:** [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
-- **Title:** "Attention Is All You Need" by Vaswani et al. (2017)
-- **Size:** ~2.2 MB, 15 pages
-- **Usage:** ColPali document embedding examples
-- **Content:** Seminal paper introducing the Transformer architecture
-- **License:** arXiv.org perpetual, non-exclusive license
+- Source: [arXiv:1706.03762](https://arxiv.org/abs/1706.03762)
+- Title: “Attention Is All You Need” by Vaswani et al. (2017)
+- Checked-in size: 2,215,244 bytes
+- Pages: 15
+- Intended use: manual document-rendering and ColPali experiments
 
-This paper is one of the most influential in modern NLP/AI and makes an excellent test document for vision-language models like ColPali because it contains:
-- Dense technical text
-- Mathematical equations and formulas
-- Diagrams and architecture figures
-- Tables with experimental results
-- Multi-column layout
+The public `TesseraVision::encode_document` façade currently accepts image
+paths, not PDF paths. The default `pdf` feature provides lower-level rendering
+plumbing; it does not make this fixture an active end-to-end example.
 
-## Adding More Fixtures
-
-When adding test files:
-1. Keep files reasonably sized (< 5 MB preferred)
-2. Use publicly available, properly licensed content
-3. Document the source and usage in this README
-4. Name files descriptively
+Before promoting a fixture into an automated example, verify its redistribution
+terms, keep the test opt-in, and apply the same image and model-memory limits as
+the public API.

@@ -1,5 +1,10 @@
 # Tessera Performance Optimization Plan
 
+> [!CAUTION]
+> Historical pre-revival proposal, not a current roadmap or benchmark report.
+> Forecast speedups and resource estimates were not established measurements.
+> This file is excluded from the crate; see the [current docs](docs/README.md).
+
 ## Overview
 
 This document outlines a comprehensive plan for implementing the remaining performance optimizations in Tessera, based on exhaustive research of current best practices (February 2026).

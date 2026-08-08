@@ -1,5 +1,10 @@
 # Part 5: Dense Embedding Models (2024-2025) & Conclusion
 
+> [!CAUTION]
+> Historical January 2025 research snapshot. Its “current state,” deployment,
+> model-compatibility, and roadmap claims do not describe the revival. See the
+> [maintained documentation](../README.md).
+
 ## Overview
 
 Dense embeddings output a **single vector per input** through pooling (CLS token, mean pooling, etc.). This section focuses EXCLUSIVELY on NEW models from 2024-2025 - old standards like all-MiniLM-L6-v2 are omitted since they're available everywhere.

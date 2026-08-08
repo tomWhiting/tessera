@@ -10,10 +10,16 @@
 //! These functions are the building blocks for retrieval, ranking, and clustering.
 
 use anyhow::Result;
-use ndarray::{Array1, Axis};
+use ndarray::{linalg::general_mat_vec_mul, s, Array1};
 
 use crate::core::TokenEmbeddings;
 use crate::utils::normalization::l2_norm;
+
+/// Number of document-token scores retained while computing `MaxSim`.
+///
+/// Keeping this deliberately small bounds the temporary score workspace while
+/// still amortizing traversal of the document matrix.
+const MAX_SIM_DOCUMENT_BLOCK_SIZE: usize = 64;
 
 /// Cosine similarity between two vectors.
 ///
@@ -172,7 +178,7 @@ pub fn euclidean_distance(a: &Array1<f32>, b: &Array1<f32>) -> Result<f32> {
 ///
 /// # fn example() -> Result<()> {
 /// # let device = tessera::backends::candle::get_device()?;
-/// # let config = tessera::models::ModelConfig::distilbert_base_uncased();
+/// # let config = tessera::models::ModelConfig::colbert_small();
 /// # let encoder = CandleBertEncoder::new(config, device)?;
 /// let query = encoder.encode("machine learning")?;
 /// let doc = encoder.encode("deep learning and neural networks")?;
@@ -189,134 +195,33 @@ pub fn max_sim(query: &TokenEmbeddings, document: &TokenEmbeddings) -> Result<f3
         document.embedding_dim
     );
 
-    // Get references to the embedding matrices
     let query_matrix = &query.embeddings;
     let doc_matrix = &document.embeddings;
 
-    // Compute the similarity matrix: query_matrix × doc_matrix^T
-    // Result shape: (num_query_tokens, num_doc_tokens)
-    let similarity_matrix = query_matrix.dot(&doc_matrix.t());
+    // Retain only one running maximum per query token and a fixed-size block of
+    // document scores. This avoids materializing either the full Q x D matrix
+    // or a Q x block matrix.
+    let mut max_sims = Array1::from_elem(query_matrix.nrows(), f32::NEG_INFINITY);
+    let mut block_scores = Array1::zeros(MAX_SIM_DOCUMENT_BLOCK_SIZE);
 
-    // For each query token (row), find the maximum similarity across all doc tokens
-    let max_sims: Array1<f32> = similarity_matrix.map_axis(Axis(1), |row| {
-        row.fold(f32::NEG_INFINITY, |acc, &val| acc.max(val))
-    });
+    for document_start in (0..doc_matrix.nrows()).step_by(MAX_SIM_DOCUMENT_BLOCK_SIZE) {
+        let document_end = (document_start + MAX_SIM_DOCUMENT_BLOCK_SIZE).min(doc_matrix.nrows());
+        let document_block = doc_matrix.slice(s![document_start..document_end, ..]);
+        let mut active_scores = block_scores.slice_mut(s![..document_block.nrows()]);
 
-    // Sum all maximum similarities
-    let total_score: f32 = max_sims.sum();
+        for (query_index, query_row) in query_matrix.outer_iter().enumerate() {
+            general_mat_vec_mul(1.0, &document_block, &query_row, 0.0, &mut active_scores);
 
-    Ok(total_score)
+            let block_max = active_scores
+                .iter()
+                .fold(f32::NEG_INFINITY, |acc, &score| acc.max(score));
+            max_sims[query_index] = max_sims[query_index].max(block_max);
+        }
+    }
+
+    Ok(max_sims.sum())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use ndarray::array;
-
-    #[test]
-    fn test_cosine_similarity_identical() {
-        let a = array![1.0, 2.0, 3.0];
-        let b = array![1.0, 2.0, 3.0];
-        let sim = cosine_similarity(&a, &b).unwrap();
-        assert!((sim - 1.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_cosine_similarity_orthogonal() {
-        let a = array![1.0, 0.0, 0.0];
-        let b = array![0.0, 1.0, 0.0];
-        let sim = cosine_similarity(&a, &b).unwrap();
-        assert!((sim - 0.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_cosine_similarity_opposite() {
-        let a = array![1.0, 0.0];
-        let b = array![-1.0, 0.0];
-        let sim = cosine_similarity(&a, &b).unwrap();
-        assert!((sim - (-1.0)).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_cosine_similarity_dimension_mismatch() {
-        let a = array![1.0, 2.0];
-        let b = array![1.0, 2.0, 3.0];
-        assert!(cosine_similarity(&a, &b).is_err());
-    }
-
-    #[test]
-    fn test_dot_product() {
-        let a = array![1.0, 2.0, 3.0];
-        let b = array![4.0, 5.0, 6.0];
-        let dot = dot_product(&a, &b).unwrap();
-        // 1*4 + 2*5 + 3*6 = 32
-        assert!((dot - 32.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_dot_product_dimension_mismatch() {
-        let a = array![1.0, 2.0];
-        let b = array![1.0, 2.0, 3.0];
-        assert!(dot_product(&a, &b).is_err());
-    }
-
-    #[test]
-    fn test_euclidean_distance() {
-        let a = array![0.0, 0.0];
-        let b = array![3.0, 4.0];
-        let dist = euclidean_distance(&a, &b).unwrap();
-        // √(3² + 4²) = 5
-        assert!((dist - 5.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_euclidean_distance_identical() {
-        let a = array![1.0, 2.0, 3.0];
-        let b = array![1.0, 2.0, 3.0];
-        let dist = euclidean_distance(&a, &b).unwrap();
-        assert!((dist - 0.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_euclidean_distance_dimension_mismatch() {
-        let a = array![1.0, 2.0];
-        let b = array![1.0, 2.0, 3.0];
-        assert!(euclidean_distance(&a, &b).is_err());
-    }
-
-    #[test]
-    fn test_max_sim_simple() {
-        // Create simple query embeddings (2 tokens, 3 dimensions each)
-        let query_emb = array![
-            [1.0, 0.0, 0.0], // Token 1
-            [0.0, 1.0, 0.0], // Token 2
-        ];
-        let query = TokenEmbeddings::new(query_emb, "query text".to_string()).unwrap();
-
-        // Create simple document embeddings (3 tokens, 3 dimensions each)
-        let doc_emb = array![
-            [1.0, 0.0, 0.0], // Token 1 (matches query token 1)
-            [0.0, 0.5, 0.0], // Token 2 (partial match to query token 2)
-            [0.0, 1.0, 0.0], // Token 3 (matches query token 2)
-        ];
-        let document = TokenEmbeddings::new(doc_emb, "document text".to_string()).unwrap();
-
-        let score = max_sim(&query, &document).unwrap();
-
-        // Query token 1 max similarity: max(1.0, 0.0, 0.0) = 1.0
-        // Query token 2 max similarity: max(0.0, 0.5, 1.0) = 1.0
-        // Total: 1.0 + 1.0 = 2.0
-        assert!((score - 2.0).abs() < 1e-6);
-    }
-
-    #[test]
-    fn test_max_sim_dimension_mismatch() {
-        let query_emb = array![[1.0, 0.0]];
-        let query = TokenEmbeddings::new(query_emb, "query".to_string()).unwrap();
-
-        let doc_emb = array![[1.0, 0.0, 0.0]];
-        let document = TokenEmbeddings::new(doc_emb, "document".to_string()).unwrap();
-
-        assert!(max_sim(&query, &document).is_err());
-    }
-}
+#[path = "similarity/tests.rs"]
+mod tests;

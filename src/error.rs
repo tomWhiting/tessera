@@ -29,7 +29,7 @@ pub enum TesseraError {
     },
 
     /// Encoding operation failed during inference.
-    #[error("Encoding failed: {context}")]
+    #[error("Encoding failed: {context}: {source}")]
     EncodingError {
         /// Context describing what encoding operation failed
         context: String,
@@ -126,5 +126,19 @@ mod tests {
             actual: 64,
         };
         assert_eq!(err.to_string(), "Dimension mismatch: expected 128, got 64");
+    }
+
+    #[test]
+    fn encoding_error_display_preserves_resource_counts_and_source() {
+        let err = TesseraError::EncodingError {
+            context: "Failed to encode text".to_string(),
+            source: anyhow::anyhow!("Sequence token count 513 exceeds resource policy limit 512"),
+        };
+
+        assert_eq!(
+            err.to_string(),
+            "Encoding failed: Failed to encode text: Sequence token count 513 exceeds resource policy limit 512"
+        );
+        assert!(std::error::Error::source(&err).is_some());
     }
 }

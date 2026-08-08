@@ -1,257 +1,64 @@
-# Supported Models
+# Model catalog and support tiers
 
-This document lists all models available in the Tessera/Hypiler model registry. The registry is generated at compile time from `models.json` and provides type-safe access to model metadata.
+The filename is retained for existing links, but this is a catalog rather than
+a list of fully supported models. Tessera currently has no `Supported` entries.
+The authoritative per-model metadata and notes live in
+[`models.json`](../../models.json).
 
-## Overview
+## Current totals
 
-The model registry contains **5 ColBERT models** optimized for late-interaction retrieval:
+| Tier | Count | Meaning |
+|---|---:|---|
+| `Supported` | 0 | Passed the project's repeatable compatibility and output-validation bar |
+| `Experimental` | 10 | Runtime adapter exists; remote checkpoint and output quality remain provisional |
+| `CatalogOnly` | 12 | Metadata only; builders reject execution |
 
-- 1 original Stanford ColBERT model
-- 1 compact ColBERT variant
-- 3 Jina AI multilingual variants (including Matryoshka representations)
+Use `tessera::model_registry::runnable_models()` to get the `Supported` and
+`Experimental` entries. Use `get_model()` for catalog-complete discovery, then
+inspect `support_tier`, `support_note`, and `is_runnable()`.
 
-## Usage
+## Experimental adapter paths
 
-### Accessing Models
+| Representation | Model IDs |
+|---|---|
+| Dense | `bge-base-en-v1.5`, `jina-embeddings-v2-small-en`, `jina-embeddings-v2-base-en`, `nomic-embed-v1.5`, `snowflake-arctic-l` |
+| Multi-vector | `colbert-small`, `colbert-v2` |
+| Sparse | `splade-pp-en-v1`, `splade-pp-en-v2` |
+| Vision-language | `colpali-v1.2` |
 
-```rust
-use hypiler::model_registry::{get_model, COLBERT_V2};
-use hypiler::ModelConfig;
+These entries are runnable in the narrow sense that Tessera exposes an adapter.
+They are not a claim that every referenced checkpoint currently loads, produces
+correct embeddings, or meets a quality or performance target.
 
-// Access constant directly
-println!("Model: {}", COLBERT_V2.name);
-println!("Dimensions: {}", COLBERT_V2.embedding_dim);
+## Catalog-only metadata
 
-// Load by ID
-let model = get_model("colbert-small").expect("Model not found");
-println!("Found: {}", model.name);
+| Representation | Model IDs |
+|---|---|
+| Dense | `jina-embeddings-v2-base-code`, `jina-embeddings-v3` |
+| Multi-vector / unified | `bge-m3-multi`, `colpali-v1.3-hf`, `gte-modern-colbert`, `jina-colbert-v2`, `jina-colbert-v2-64`, `jina-colbert-v2-96` |
+| Sparse | `minicoil-v1`, `splade-v3` |
+| Time series | `chronos-bolt-small`, `timesfm-1.0-200m` |
 
-// Create config from registry
-let config = ModelConfig::from_registry("jina-colbert-v2")?;
-```
+Catalog-only entries cover architectures or artifact layouts for which the
+current adapters are incompatible or absent. The generated support note states
+the concrete reason for each entry. Builders reject these IDs before model
+artifacts are downloaded.
 
-### Querying Models
+## Context windows
 
-```rust
-use hypiler::model_registry::{models_by_type, models_by_language, ModelType};
+Several entries advertise 8,192-token contexts. That value is descriptive
+metadata, not a safe default. Tessera defaults to 512 tokens and 1,048,576
+attention cells; raising both limits only passes preflight. Full attention is
+quadratic and multiplies across heads, layers, and temporary tensors, so an 8K
+request can still exhaust CPU, GPU, or Metal shared memory.
 
-// Get all ColBERT models
-let colbert_models = models_by_type(ModelType::Colbert);
+## Promotion criteria
 
-// Get models supporting a language
-let english_models = models_by_language("en");
+An entry should move to `Supported` only with a pinned, repeatable checkpoint
+smoke test, checked output shape and numerical sanity, and representation-level
+quality evidence appropriate to that model. Metadata completeness alone is not
+runtime support.
 
-// Get compact models
-let compact = models_by_max_embedding_dim(128);
-
-// Get Matryoshka-enabled models
-let matryoshka = models_with_matryoshka();
-```
-
-## Model Catalog
-
-### ColBERT v2
-
-**ID:** `colbert-v2`  
-**HuggingFace:** `colbert-ir/colbertv2.0`  
-**Organization:** Stanford NLP  
-**License:** MIT
-
-Original ColBERT v2 from Stanford, baseline for late interaction retrieval. Uses BERT-base with projection layer to 128 dimensions.
-
-- **Parameters:** 110M
-- **Embedding Dimensions:** 128
-- **Context Length:** 512 tokens
-- **Architecture:** bert-base with projection
-- **Languages:** English
-- **Benchmarks:**
-  - BEIR Average: 0.52
-  - MS MARCO MRR@10: 0.39
-
-### ColBERT Small
-
-**ID:** `colbert-small`  
-**HuggingFace:** `answerdotai/answerai-colbert-small-v1`  
-**Organization:** Answer.AI  
-**License:** Apache-2.0
-
-Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference.
-
-- **Parameters:** 33M
-- **Embedding Dimensions:** 96
-- **Context Length:** 512 tokens
-- **Architecture:** distilbert-base with projection
-- **Languages:** English
-- **Benchmarks:**
-  - BEIR Average: 0.45
-  - MS MARCO MRR@10: 0.32
-
-### Jina ColBERT v2
-
-**ID:** `jina-colbert-v2`  
-**HuggingFace:** `jinaai/jina-colbert-v2`  
-**Organization:** Jina AI  
-**License:** Apache-2.0
-
-Multilingual ColBERT supporting 89 languages with extended 8K context length. Based on Jina BERT v2 architecture without projection layer.
-
-- **Parameters:** 560M
-- **Embedding Dimensions:** 768
-- **Context Length:** 8192 tokens
-- **Architecture:** jina-bert-v2-base-en (no projection)
-- **Languages:** 89 languages including English, German, French, Spanish, Italian, Portuguese, Dutch, Polish, Russian, Chinese, Japanese, Korean, Arabic, Hindi, and many more
-- **Benchmarks:**
-  - BEIR Average: 0.54
-  - MS MARCO MRR@10: 0.42
-
-### Jina ColBERT v2 (96-dim Matryoshka)
-
-**ID:** `jina-colbert-v2-96`  
-**HuggingFace:** `jinaai/jina-colbert-v2`  
-**Organization:** Jina AI  
-**License:** Apache-2.0
-
-Jina ColBERT v2 using Matryoshka representation at 96 dimensions for compact storage with minimal quality loss.
-
-- **Parameters:** 560M
-- **Embedding Dimensions:** 96 (Matryoshka)
-- **Available Dimensions:** 768, 512, 384, 256, 128, 96, 64
-- **Context Length:** 8192 tokens
-- **Architecture:** jina-bert-v2-base-en (Matryoshka)
-- **Languages:** 89 languages
-- **Benchmarks:**
-  - BEIR Average: 0.53
-  - MS MARCO MRR@10: 0.41
-
-### Jina ColBERT v2 (64-dim Matryoshka)
-
-**ID:** `jina-colbert-v2-64`  
-**HuggingFace:** `jinaai/jina-colbert-v2`  
-**Organization:** Jina AI  
-**License:** Apache-2.0
-
-Jina ColBERT v2 using Matryoshka representation at 64 dimensions for maximum compactness.
-
-- **Parameters:** 560M
-- **Embedding Dimensions:** 64 (Matryoshka)
-- **Available Dimensions:** 768, 512, 384, 256, 128, 96, 64
-- **Context Length:** 8192 tokens
-- **Architecture:** jina-bert-v2-base-en (Matryoshka)
-- **Languages:** 89 languages
-- **Benchmarks:**
-  - BEIR Average: 0.51
-  - MS MARCO MRR@10: 0.39
-
-## Model Comparison
-
-| Model | Dims | Context | Params | BEIR | MRR@10 | Languages | License |
-|-------|------|---------|--------|------|--------|-----------|---------|
-| ColBERT v2 | 128 | 512 | 110M | 0.52 | 0.39 | 1 | MIT |
-| ColBERT Small | 96 | 512 | 33M | 0.45 | 0.32 | 1 | Apache-2.0 |
-| Jina ColBERT v2 | 768 | 8192 | 560M | 0.54 | 0.42 | 89 | Apache-2.0 |
-| Jina ColBERT v2-96 | 96 | 8192 | 560M | 0.53 | 0.41 | 89 | Apache-2.0 |
-| Jina ColBERT v2-64 | 64 | 8192 | 560M | 0.51 | 0.39 | 89 | Apache-2.0 |
-
-## Adding New Models
-
-To add a new model to the registry:
-
-1. Edit `models.json` in the project root
-2. Add a new model entry with all required fields
-3. Run `cargo build` - the model will be automatically included
-
-### Required Fields
-
-```json
-{
-  "id": "unique-model-id",
-  "type": "colbert",
-  "name": "Display Name",
-  "huggingface_id": "org/model-name",
-  "organization": "Organization Name",
-  "release_date": "2024",
-  "architecture": {
-    "type": "bert",
-    "variant": "bert-base",
-    "has_projection": true,
-    "projection_dims": 128
-  },
-  "specs": {
-    "parameters": "110M",
-    "embedding_dim": 128,
-    "hidden_dim": 768,
-    "context_length": 512,
-    "max_position_embeddings": 512,
-    "vocab_size": 30522
-  },
-  "files": {
-    "tokenizer": "tokenizer.json",
-    "config": "config.json",
-    "weights": {
-      "safetensors": "model.safetensors",
-      "pytorch": "pytorch_model.bin"
-    }
-  },
-  "capabilities": {
-    "languages": ["en"],
-    "modalities": ["text"],
-    "multi_vector": true,
-    "quantization": ["fp32", "fp16"]
-  },
-  "performance": {
-    "beir_avg": 0.52,
-    "ms_marco_mrr10": 0.39
-  },
-  "license": "MIT",
-  "description": "Model description here"
-}
-```
-
-## Registry API
-
-### Constants
-
-Each model has a corresponding constant:
-
-- `COLBERT_V2`
-- `COLBERT_SMALL`
-- `JINA_COLBERT_V2`
-- `JINA_COLBERT_V2_96`
-- `JINA_COLBERT_V2_64`
-
-### Functions
-
-- `get_model(id: &str) -> Option<&ModelInfo>` - Get model by ID
-- `models_by_type(model_type: ModelType) -> Vec<&ModelInfo>` - Filter by type
-- `models_by_organization(org: &str) -> Vec<&ModelInfo>` - Filter by organization
-- `models_by_language(lang: &str) -> Vec<&ModelInfo>` - Filter by language support
-- `models_by_max_embedding_dim(max: usize) -> Vec<&ModelInfo>` - Filter by dimension
-- `models_with_matryoshka() -> Vec<&ModelInfo>` - Get Matryoshka models
-
-## Architecture
-
-The model registry is implemented using build-time code generation:
-
-1. **models.json** - Source of truth for all model metadata
-2. **build.rs** - Parses JSON and generates Rust code at compile time
-3. **model_registry.rs** - Generated code with type-safe constants and functions
-4. **ModelConfig** - Integration point for existing code
-
-This approach provides:
-
-- Zero runtime overhead - all metadata is compile-time constants
-- Type safety - impossible to reference non-existent models
-- Easy maintenance - just edit JSON to add models
-- Comprehensive metadata - all model information in one place
-
-## Future Extensions
-
-The registry system is designed to scale to hundreds of models. Future additions may include:
-
-- Dense embedding models
-- Sparse embedding models
-- Timeseries models
-- Geometric embedding models
-- Cross-modal models
-
-Adding models is as simple as editing `models.json` and rebuilding.
+See the [registry quick start](../guides/quick_start_registry.md) for selection
+examples and the [registry architecture](../architecture/model_registry.md) for
+the generated API and validation flow.

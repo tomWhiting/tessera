@@ -25,7 +25,7 @@ struct Args {
     #[arg(short, long)]
     document: String,
 
-    /// Model to use: colbert-small, colbert-v2, jina-colbert-v2, or distilbert
+    /// Model to use: colbert-small or colbert-v2
     #[arg(short, long, default_value = "colbert-small")]
     model: String,
 }
@@ -38,21 +38,17 @@ fn main() -> Result<()> {
     println!("Query:    {}", args.query);
     println!("Document: {}\n", args.document);
 
-    // Create model config - support both short names and full model paths
+    // Create a config only for explicitly audited CLI paths.
     let config = match args.model.as_str() {
         // ColBERT models (recommended)
         "colbert-small" => ModelConfig::colbert_small(),
         "colbert-v2" => ModelConfig::colbert_v2(),
-        "jina-colbert-v2" => ModelConfig::jina_colbert_v2(),
+        // Retain an actionable migration error for the old CLI spelling.
+        "jina-colbert-v2" => ModelConfig::jina_colbert_v2()?,
 
-        // Standard BERT model
-        "distilbert" | "distilbert-base-uncased" => ModelConfig::distilbert_base_uncased(),
-
-        // Custom model path
-        other => {
-            println!("Using custom model: {other}");
-            ModelConfig::custom(other, 768, 512)
-        }
+        other => anyhow::bail!(
+            "Unknown or unaudited CLI model '{other}'. Choose colbert-small or colbert-v2"
+        ),
     };
 
     // Run with Candle backend

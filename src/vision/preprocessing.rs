@@ -5,8 +5,13 @@
 
 use crate::error::{Result, TesseraError};
 use candle_core::{Device, Tensor};
-use image::{DynamicImage, ImageBuffer, Rgb};
-use std::path::Path;
+use image::{DynamicImage, ImageBuffer, ImageDecoder, ImageReader, Limits, Rgb};
+use std::{fs::File, io::BufReader, path::Path};
+
+const MAX_IMAGE_SOURCE_BYTES: u64 = 64 * 1024 * 1024;
+const MAX_IMAGE_EDGE: u32 = 16_384;
+const MAX_IMAGE_PIXELS: u64 = 24_000_000;
+const MAX_DECODED_IMAGE_BYTES: u64 = MAX_IMAGE_PIXELS * 16;
 
 /// Image preprocessor for ColPali/PaliGemma models.
 ///
@@ -64,11 +69,61 @@ impl ImageProcessor {
     /// Returns error if:
     /// - Image file cannot be loaded
     /// - Image format is unsupported
+    /// - The encoded file is larger than 64 MiB
+    /// - An image edge is larger than 16,384 pixels
+    /// - The image contains more than 24 million pixels
     /// - Tensor creation fails
     pub fn preprocess_from_path(&self, image_path: &Path, device: &Device) -> Result<Tensor> {
-        // Load image
-        let img = image::open(image_path)
-            .map_err(|e| TesseraError::ConfigError(format!("Failed to load image: {e}")))?;
+        let file = File::open(image_path).map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Failed to open image '{}': {error}",
+                image_path.display()
+            ))
+        })?;
+        let source_bytes = file.metadata().map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Failed to inspect image '{}': {error}",
+                image_path.display()
+            ))
+        })?;
+        validate_source_size(source_bytes.len())?;
+
+        let reader = ImageReader::new(BufReader::new(file))
+            .with_guessed_format()
+            .map_err(|error| {
+                TesseraError::ConfigError(format!(
+                    "Failed to inspect image format for '{}': {error}",
+                    image_path.display()
+                ))
+            })?;
+        let mut decoder = reader.into_decoder().map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Failed to read image header for '{}': {error}",
+                image_path.display()
+            ))
+        })?;
+
+        let (width, height) = decoder.dimensions();
+        validate_image_dimensions(width, height)?;
+        validate_decoded_size(decoder.total_bytes())?;
+
+        let mut limits = Limits::default();
+        limits.max_image_width = Some(MAX_IMAGE_EDGE);
+        limits.max_image_height = Some(MAX_IMAGE_EDGE);
+        limits.max_alloc = Some(MAX_DECODED_IMAGE_BYTES);
+        decoder.set_limits(limits).map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Image decoder rejected '{}': {error}",
+                image_path.display()
+            ))
+        })?;
+
+        let img = DynamicImage::from_decoder(decoder).map_err(|error| {
+            TesseraError::ConfigError(format!(
+                "Failed to decode image '{}': {error}",
+                image_path.display()
+            ))
+        })?;
 
         self.preprocess_image(&img, device)
     }
@@ -83,7 +138,16 @@ impl ImageProcessor {
     /// # Returns
     ///
     /// Normalized image tensor with shape [3, height, width].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error before RGB conversion if an image edge is larger than
+    /// 16,384 pixels or the image contains more than 24 million pixels. Tensor
+    /// creation errors are also returned.
     pub fn preprocess_image(&self, img: &DynamicImage, device: &Device) -> Result<Tensor> {
+        validate_image_dimensions(img.width(), img.height())?;
+        validate_image_dimensions(self.target_size.0, self.target_size.1)?;
+
         // 1. Convert to RGB
         let rgb_img = img.to_rgb8();
 
@@ -153,60 +217,54 @@ impl Default for ImageProcessor {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+mod tests;
 
-    #[test]
-    fn test_image_processor_creation() {
-        let processor = ImageProcessor::new();
-        assert_eq!(processor.target_size, (448, 448));
-        assert_eq!(processor.mean.len(), 3);
-        assert_eq!(processor.std.len(), 3);
+fn validate_source_size(source_bytes: u64) -> Result<()> {
+    if source_bytes > MAX_IMAGE_SOURCE_BYTES {
+        return Err(TesseraError::ConfigError(format!(
+            "Image source is {source_bytes} bytes; maximum allowed is {MAX_IMAGE_SOURCE_BYTES} bytes"
+        )));
     }
 
-    #[test]
-    fn test_normalization_values() {
-        let processor = ImageProcessor::new();
-        // Verify SigLIP mean/std values
-        assert!((processor.mean[0] - 0.48145466).abs() < 1e-6);
-        assert!((processor.std[0] - 0.26862954).abs() < 1e-6);
+    Ok(())
+}
+
+fn validate_image_dimensions(width: u32, height: u32) -> Result<()> {
+    if width == 0 || height == 0 {
+        return Err(TesseraError::ConfigError(format!(
+            "Image dimensions are {width}x{height}; width and height must each be at least 1 pixel"
+        )));
     }
 
-    #[test]
-    fn test_custom_config() {
-        let processor = ImageProcessor::with_config((224, 224), [0.5, 0.5, 0.5], [0.5, 0.5, 0.5]);
-        assert_eq!(processor.target_size, (224, 224));
-        assert_eq!(processor.mean, [0.5, 0.5, 0.5]);
-        assert_eq!(processor.std, [0.5, 0.5, 0.5]);
+    let pixels = u64::from(width)
+        .checked_mul(u64::from(height))
+        .ok_or_else(|| {
+            TesseraError::ConfigError(format!(
+                "Image dimensions {width}x{height} overflow the pixel count"
+            ))
+        })?;
+
+    if width > MAX_IMAGE_EDGE || height > MAX_IMAGE_EDGE {
+        return Err(TesseraError::ConfigError(format!(
+            "Image dimensions are {width}x{height}; maximum allowed edge is {MAX_IMAGE_EDGE} pixels"
+        )));
     }
 
-    #[test]
-    fn test_normalization_output_size() {
-        let processor = ImageProcessor::new();
-        // Create a small test image
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
-            ImageBuffer::from_fn(10, 10, |_, _| Rgb([128u8, 128u8, 128u8]));
-
-        let normalized = processor.normalize_image(&img).unwrap();
-        // Should have 3 channels * width * height
-        assert_eq!(normalized.len(), 3 * 10 * 10);
+    if pixels > MAX_IMAGE_PIXELS {
+        return Err(TesseraError::ConfigError(format!(
+            "Image has {pixels} pixels ({width}x{height}); maximum allowed is {MAX_IMAGE_PIXELS} pixels"
+        )));
     }
 
-    #[test]
-    fn test_normalization_formula() {
-        let processor = ImageProcessor::new();
-        // Create a test image with known pixel value
-        let img: ImageBuffer<Rgb<u8>, Vec<u8>> =
-            ImageBuffer::from_fn(2, 2, |_, _| Rgb([255u8, 0u8, 128u8]));
+    Ok(())
+}
 
-        let normalized = processor.normalize_image(&img).unwrap();
-
-        // Check first pixel of R channel (255)
-        let r_normalized = (255.0 / 255.0 - processor.mean[0]) / processor.std[0];
-        assert!((normalized[0] - r_normalized).abs() < 1e-5);
-
-        // Check first pixel of G channel (0)
-        let g_normalized = (0.0 / 255.0 - processor.mean[1]) / processor.std[1];
-        assert!((normalized[4] - g_normalized).abs() < 1e-5);
+fn validate_decoded_size(decoded_bytes: u64) -> Result<()> {
+    if decoded_bytes > MAX_DECODED_IMAGE_BYTES {
+        return Err(TesseraError::ConfigError(format!(
+            "Decoded image requires {decoded_bytes} bytes; maximum allowed is {MAX_DECODED_IMAGE_BYTES} bytes"
+        )));
     }
+
+    Ok(())
 }

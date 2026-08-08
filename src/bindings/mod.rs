@@ -3,8 +3,10 @@
 //! Provides foreign function interfaces (FFI) and language-specific
 //! bindings for using Tessera from other programming languages:
 //!
-//! - **Python** (requires `python` feature): PyO3-based Python bindings for `pip install tessera`
-//! - **WebAssembly** (requires `wasm` feature): wasm-bindgen for TypeScript/JavaScript (`npm install tessera-wasm`)
+//! - **Python** (requires `python` feature): typed PyO3 facades for dense,
+//!   sparse, multi-vector, and vision-language encoders.
+//! - **WebAssembly** (requires `wasm` feature): a reserved placeholder; no
+//!   JavaScript runtime API is implemented yet.
 //!
 //! Bindings expose the high-level API from [`crate::api`] with
 //! language-appropriate idioms and error handling.
@@ -12,34 +14,22 @@
 //! # Python Bindings
 //!
 //! Feature-gated behind `python` feature flag. Provides:
-//! - `Tessera` class matching Rust API
+//! - `TesseraDense`, `TesseraMultiVector`, `TesseraSparse`, and `TesseraVision`
 //! - `NumPy` array interop for embeddings
-//! - Pythonic error messages
-//! - Type hints for IDE support
+//! - An immutable `ResourcePolicy` shared with the Rust builders
 //!
 //! Example:
 //! ```python
-//! from tessera import Tessera
+//! from tessera import TesseraMultiVector
 //!
-//! embedder = Tessera("colbert-v2")
+//! embedder = TesseraMultiVector("colbert-v2")
 //! embeddings = embedder.encode("What is ML?")
 //! ```
 //!
 //! # WebAssembly Bindings
 //!
-//! Feature-gated behind `wasm` feature flag. Provides:
-//! - `Tessera` class for TypeScript/JavaScript
-//! - Async API with Promise support
-//! - `Float32Array` interop for embeddings
-//! - Browser and Node.js compatibility
-//!
-//! Example:
-//! ```typescript
-//! import { Tessera } from 'tessera-wasm';
-//!
-//! const embedder = await Tessera.new("colbert-v2");
-//! const embeddings = await embedder.encode("What is ML?");
-//! ```
+//! The `wasm` feature currently compiles a placeholder only. It deliberately
+//! makes no npm package or browser-runtime claim.
 //!
 //! # Building Bindings
 //!
@@ -49,10 +39,7 @@
 //! maturin develop
 //! ```
 //!
-//! WASM:
-//! ```bash
-//! wasm-pack build --target web --features wasm
-//! ```
+//! WebAssembly bindings need a separate implementation before they are usable.
 
 #[cfg(feature = "python")]
 pub mod python;

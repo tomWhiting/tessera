@@ -1,5 +1,10 @@
 # Tessera Architecture Review
 
+> [!CAUTION]
+> Historical architecture snapshot. Paths, missing-component findings, and
+> readiness claims refer to an older tree and are not current evidence. This
+> file is excluded from the crate; see the [documentation index](README.md).
+
 **Version:** 1.0  
 **Date:** January 2025  
 **Reviewer:** Technical Architecture Analysis  

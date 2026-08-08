@@ -1,5 +1,10 @@
 # Part 3: Time Series Foundation Models
 
+> [!CAUTION]
+> Historical January 2025 research snapshot. Tessera's time-series runtimes are
+> now catalog-only; this survey is not an implementation or support promise.
+> See the [time-series legacy note](../legacy/TIMESERIES.md).
+
 ## Overview
 
 Time series foundation models bring the pre-training + zero-shot paradigm from NLP to temporal data. These models are trained on **billions to trillions of time points** and can forecast, classify, detect anomalies, or impute missing values without task-specific training.

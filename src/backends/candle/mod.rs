@@ -16,5 +16,7 @@ pub use encoder::CandleBertEncoder;
 #[deprecated(since = "0.2.0", note = "Use CandleBertEncoder instead")]
 pub type CandleEncoder = CandleBertEncoder;
 
-#[cfg(target_os = "macos")]
+#[cfg(feature = "cuda")]
+pub use device::cuda_device;
+#[cfg(all(target_os = "macos", feature = "metal"))]
 pub use device::metal_device;

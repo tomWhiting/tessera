@@ -1,3 +1,6 @@
+// Legacy pedantic/style lint debt is kept explicit while the revival replaces
+// old APIs. CI promotes every lint outside this finite ratchet to an error; do
+// not add entries here to make new warnings disappear.
 #![allow(
     clippy::missing_errors_doc,
     clippy::must_use_candidate,
@@ -29,279 +32,187 @@
     clippy::needless_range_loop
 )]
 
-//! Tessera: Multi-paradigm embeddings for semantic search and representation learning
+//! Tessera: dense, sparse, multi-vector, and vision-language embeddings.
 //!
-//! A production-ready embedding library that combines five complementary approaches to semantic
-//! representation: dense single-vector embeddings, multi-vector token embeddings via ColBERT,
-//! sparse learned representations via SPLADE, vision-language embeddings via ColPali, and
-//! probabilistic time series forecasting via Chronos Bolt.
+//! Tessera is a Rust-first embedding library built on Candle. The current
+//! revival focuses on retrieval representations and predictable resource use;
+//! it is alpha-quality software rather than a production-ready model suite.
 //!
-//! Tessera supports 23+ production models with native GPU acceleration (Metal on Apple Silicon,
-//! CUDA on NVIDIA), comprehensive batch processing, and binary quantization for 32x compression
-//! of multi-vector embeddings.
+//! # Revival status
 //!
-//! # Features
+//! The generated registry contains 22 entries. Support metadata intentionally
+//! distinguishes model discovery from model execution:
 //!
-//! - **Five embedding paradigms** for different use cases and trade-offs
-//! - **Multi-vector (ColBERT)** with `MaxSim` late interaction and binary quantization (32x compression)
-//! - **Dense embeddings** with 8 state-of-the-art models from BGE, Nomic, GTE, Jina, Qwen, and Snowflake
-//! - **Sparse embeddings (SPLADE)** with 99% sparsity for interpretable keyword search
-//! - **Vision-language embeddings (ColPali)** for OCR-free document understanding with PDFs and images
-//! - **Time series forecasting (Chronos Bolt)** with uncertainty quantification across 9 quantile levels
-//! - **GPU acceleration** with automatic device selection (Metal > CUDA > CPU)
-//! - **Batch processing** for 5-10x throughput improvements
-//! - **Matryoshka dimensions** for variable embedding sizes without model reloading
-//! - **Type-safe API** preventing mismatched embedding operations at compile time
-//! - **Rust and Python support** with PyO3 bindings for seamless NumPy interoperability
+//! - 10 entries are [`SupportTier::Experimental`]: an adapter path exists, but
+//!   remote checkpoint execution and output quality still need repeatable
+//!   validation.
+//! - 12 entries are [`SupportTier::CatalogOnly`]: metadata is discoverable, but
+//!   the current runtime has no compatible adapter.
+//! - No entry is [`SupportTier::Supported`] yet.
 //!
-//! # Quick Start
+//! [`get_model`](model_registry::get_model) is catalog-complete. Use
+//! [`ModelInfo::is_runnable`](model_registry::ModelInfo::is_runnable) or
+//! [`runnable_models`](model_registry::runnable_models) when choosing a model
+//! for execution. See the checked-in `models.json` for per-model support notes.
 //!
-//! Dense embeddings for semantic similarity:
+//! # Quick start
+//!
+//! Creating an embedder may download model artifacts from Hugging Face. The
+//! BGE path below is currently experimental, so it is suitable for smoke
+//! testing rather than a stable compatibility promise.
 //!
 //! ```no_run
 //! use tessera::TesseraDense;
 //!
-//! # fn main() -> anyhow::Result<()> {
+//! # fn main() -> tessera::Result<()> {
 //! let embedder = TesseraDense::new("bge-base-en-v1.5")?;
-//!
-//! let query_embedding = embedder.encode("What is machine learning?")?;
-//! let doc_embedding = embedder.encode("Machine learning is a subset of artificial intelligence")?;
-//!
-//! let similarity = embedder.similarity(
-//!     "What is machine learning?",
-//!     "Machine learning is a subset of artificial intelligence"
-//! )?;
-//! println!("Similarity score: {:.4}", similarity);
+//! let embedding = embedder.encode("A tessera is one tile in a mosaic.")?;
+//! println!("{} dimensions", embedding.dim());
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! Multi-vector embeddings for precise phrase matching:
+//! The public façades are separated by representation:
+//!
+//! - [`TesseraDense`] produces one pooled vector per text.
+//! - [`TesseraSparse`] produces vocabulary-sized SPLADE-style weights.
+//! - [`TesseraMultiVector`] produces token vectors for late-interaction
+//!   retrieval.
+//! - [`TesseraVision`] produces patch vectors from image inputs and token
+//!   vectors from text queries.
+//!
+//! Multi-vector and vision scores use bounded-memory MaxSim. Binary
+//! quantization is available as an explicit multi-vector option, but Tessera
+//! does not claim a quality or throughput result without a checked benchmark.
+//!
+//! # Resource limits
+//!
+//! Tessera validates work before model input tensors are allocated. The default
+//! [`ResourcePolicy`] allows at most:
+//!
+//! - 1 MiB of UTF-8 input per sequence, checked before tokenization;
+//! - 512 tokens in one sequence, including special tokens;
+//! - 16 items in one batch;
+//! - 2,048 padded token cells (`items * longest sequence`);
+//! - 1,048,576 attention cells (`items * longest sequence^2`); and
+//! - 2 GiB of estimated F32 model parameter storage.
+//!
+//! These are safety limits, not model capabilities. A registered 8K model
+//! remains capped at 512 tokens unless the caller opts in. A sequence limit can
+//! never exceed the selected model's registered context window.
+//!
+//! ```no_run
+//! use tessera::{ResourcePolicy, TesseraDense};
+//!
+//! # fn main() -> tessera::Result<()> {
+//! let single_document_8k = ResourcePolicy::default()
+//!     .with_max_sequence_tokens(8_192)
+//!     .with_max_batch_items(1)
+//!     .with_max_batch_tokens(8_192)
+//!     .with_max_attention_cells(67_108_864);
+//!
+//! let embedder = TesseraDense::builder()
+//!     .model("jina-embeddings-v2-small-en")
+//!     .resource_policy(single_document_8k)
+//!     .build()?;
+//! # let _ = embedder;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! This override only passes Tessera's request-shape preflight; it does not
+//! make 8K inference safe. Full attention is quadratic. One 8,192-token item
+//! permits 67,108,864 cells before multiplying by attention heads and
+//! accounting for model layers, temporary tensors, allocator overhead, or
+//! other process memory. It can still exhaust CPU, GPU, or Metal shared memory.
+//! Measure the selected model on the target hardware before opting in.
+//!
+//! Raise the model-byte limit separately for a deliberate large-model load. A
+//! 3B-parameter checkpoint has an approximately 12 GB F32 parameter estimate
+//! before allocator overhead, so the 2 GiB default rejects it. The estimate is
+//! a preflight guard, not a full peak-memory calculation.
+//!
+//! # CPU worker ceiling
+//!
+//! Before constructing the first CPU encoder, Tessera attempts to configure
+//! Candle's process-global Rayon and barrier pools with a ceiling of two
+//! workers (or fewer when less parallelism is available). To opt into a higher
+//! ceiling, call [`configure_cpu_threads`] during single-threaded startup,
+//! before constructing any Tessera builder or allowing other code to initialize
+//! those pools. The first Tessera configuration call wins for the lifetime of
+//! the process.
+//!
+//! ```no_run
+//! use candle_core::Device;
+//! use tessera::{configure_cpu_threads, TesseraDense};
+//!
+//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! configure_cpu_threads(8)?;
+//! let embedder = TesseraDense::builder()
+//!     .model("bge-base-en-v1.5")
+//!     .device(Device::Cpu)
+//!     .build()?;
+//! # let _ = embedder;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! This setup is best-effort because an already initialized external Rayon pool
+//! cannot be resized through environment variables. It is not a process-wide
+//! guarantee for every thread, allocation, or accelerator operation.
+//!
+//! # Multi-vector example
 //!
 //! ```no_run
 //! use tessera::TesseraMultiVector;
 //!
-//! # fn main() -> anyhow::Result<()> {
-//! let embedder = TesseraMultiVector::new("colbert-v2")?;
-//!
-//! // Compute similarity between two texts using MaxSim
-//! let similarity = embedder.similarity(
-//!     "machine learning algorithms",
-//!     "algorithms for machine learning applications"
+//! # fn main() -> tessera::Result<()> {
+//! let embedder = TesseraMultiVector::new("colbert-small")?;
+//! let score = embedder.similarity(
+//!     "late interaction retrieval",
+//!     "retrieval with token-level late interaction",
 //! )?;
-//! println!("MaxSim score: {:.4}", similarity);
+//! println!("MaxSim score: {score:.4}");
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! # Embedding Paradigms
+//! `colbert-small` is also currently experimental.
 //!
-//! ## Dense Embeddings
+//! # Vision and PDF scope
 //!
-//! Compress text into a single fixed-size vector through pooling operations. Best for broad semantic
-//! meaning and efficient similarity search via cosine distance or dot product.
+//! The high-level [`TesseraVision::encode_document`] method currently accepts
+//! an image path. The default `pdf` feature provides rendering plumbing used by
+//! lower layers; it is not yet a high-level PDF-document façade. ColPali is a
+//! large experimental path and requires an explicit model-memory override.
 //!
-//! **Use cases:** Semantic search, clustering, recommendation systems, topic modeling.
+//! # Time-series scope
 //!
-//! **Models:** BGE Base/Large, Nomic Embed, GTE, Qwen, Jina, Snowflake Arctic.
+//! Chronos and TimesFM remain catalog-only. The retained Chronos runtime used
+//! hidden-state T5 APIs from an old Candle fork and is quarantined under stock
+//! Candle 0.11. The `timeseries` Cargo feature exposes generic time-series
+//! types only; it does not activate a forecasting model or Python façade. See
+//! `docs/legacy/TIMESERIES.md` for the exact incompatibilities and reactivation
+//! criteria.
 //!
-//! ## Multi-Vector Embeddings (ColBERT)
+//! # Cargo features
 //!
-//! Preserve token-level granularity with a vector per token. Similarity computed via `MaxSim`
-//! (maximum similarity between any token pair). Exceptional for exact phrase matching and
-//! information retrieval.
+//! - `pdf` (default): PDF rendering plumbing; no public document façade yet.
+//! - `metal`: Apple Metal support in Candle.
+//! - `cuda`: NVIDIA CUDA support in Candle.
+//! - `python`: PyO3 bindings for active embedding façades.
+//! - `timeseries`: generic time-series core types only.
+//! - `wasm`: reserved for experimental WebAssembly work; bindings are not yet
+//!   implemented.
 //!
-//! **Use cases:** Precise search, question answering, passage retrieval, academic search.
+//! # Error handling
 //!
-//! **Features:** Binary quantization for 32x compression, Matryoshka dimension support.
+//! Public operations return [`Result<T>`] with structured [`TesseraError`]
+//! values. Resource-limit errors include both the measured and allowed values.
 //!
-//! **Models:** ColBERT v2, ColBERT Small, Jina ColBERT v2/v3, Nomic BERT MultiVector.
-//!
-//! ## Sparse Embeddings (SPLADE)
-//!
-//! Map text to vocabulary space producing 99% sparse representations. Each dimension corresponds
-//! to a token with learned context-aware weights. Enables efficient inverted index search while
-//! maintaining semantic expansion.
-//!
-//! **Use cases:** Interpretable search, hybrid retrieval, legal/medical document search, keyword expansion.
-//!
-//! **Models:** SPLADE CoCondenser, SPLADE++ EN v1.
-//!
-//! ## Vision-Language Embeddings (ColPali)
-//!
-//! Encode images and PDFs directly at the patch level for OCR-free document understanding. Processes
-//! visual content through a vision transformer and projects into the same embedding space as text,
-//! enabling late interaction search over documents containing tables, figures, and handwriting.
-//!
-//! **Use cases:** Document search, invoice processing, diagram retrieval, visual question answering.
-//!
-//! **Models:** ColPali v1.3-hf, ColPali v1.2.
-//!
-//! ## Time Series Forecasting (Chronos Bolt)
-//!
-//! Zero-shot probabilistic forecasting through continuous-time embeddings. Generates forecasts with
-//! nine quantile levels for uncertainty quantification without task-specific fine-tuning.
-//!
-//! **Use cases:** Demand forecasting, anomaly detection, capacity planning, financial prediction.
-//!
-//! **Models:** Chronos Bolt Small.
-//!
-//! # Supported Models
-//!
-//! Tessera provides 23+ production models across five paradigms:
-//!
-//! ## Multi-Vector (9 models)
-//! - ColBERT v2 (110M parameters, 128 dimensions)
-//! - ColBERT Small (33M parameters, 96 dimensions)
-//! - Jina ColBERT v2 (137M parameters, 768 dimensions with Matryoshka)
-//! - Jina ColBERT v3 (250M parameters, 768 dimensions)
-//! - Nomic BERT MultiVector (137M parameters, 768 dimensions)
-//!
-//! ## Dense (8 models)
-//! - BGE Base/Large EN v1.5 (110M/335M parameters, 768/1024 dimensions)
-//! - Nomic Embed Text v1 (137M parameters, 768 dimensions)
-//! - GTE Large EN v1.5 (335M parameters, 1024 dimensions)
-//! - Qwen 2.5 0.5B (100M parameters, 1024 dimensions)
-//! - Qwen3 Embedding 8B/4B/0.6B (8B/4B/600M parameters, 4096 dimensions)
-//! - Jina Embeddings v3 (570M parameters, 1024 dimensions)
-//! - Snowflake Arctic Embed Large (735M parameters, 1024 dimensions)
-//!
-//! ## Sparse (4 models)
-//! - SPLADE CoCondenser (110M parameters, 30522 vocabulary)
-//! - SPLADE++ EN v1 (110M parameters, 30522 vocabulary)
-//!
-//! ## Vision-Language (2 models)
-//! - ColPali v1.3-hf (3B parameters, 128 dimensions, 1024 patches)
-//! - ColPali v1.2 (3B parameters, 128 dimensions, 1024 patches)
-//!
-//! ## Time Series (1 model)
-//! - Chronos Bolt Small (48M parameters)
-//!
-//! # Advanced Usage
-//!
-//! ## Builder Pattern for Configuration
-//!
-//! ```no_run
-//! use tessera::{TesseraMultiVector, QuantizationConfig};
-//!
-//! # fn main() -> anyhow::Result<()> {
-//! let embedder = TesseraMultiVector::builder()
-//!     .model("jina-colbert-v2")
-//!     .dimension(96)  // Matryoshka support
-//!     .quantization(QuantizationConfig::Binary)  // Optional: 32x compression
-//!     .build()?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ## Batch Processing
-//!
-//! ```no_run
-//! use tessera::TesseraDense;
-//!
-//! # fn main() -> anyhow::Result<()> {
-//! let embedder = TesseraDense::new("bge-base-en-v1.5")?;
-//!
-//! let texts = vec![
-//!     "First document about machine learning",
-//!     "Second document about neural networks",
-//!     "Third document about deep learning",
-//! ];
-//!
-//! let embeddings = embedder.encode_batch(&texts)?;
-//! println!("Encoded {} documents", embeddings.len());
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ## Binary Quantization for Multi-Vector
-//!
-//! ```no_run
-//! use tessera::{TesseraMultiVector, QuantizationConfig};
-//!
-//! # fn main() -> anyhow::Result<()> {
-//! let embedder = TesseraMultiVector::builder()
-//!     .model("colbert-v2")
-//!     .quantization(QuantizationConfig::Binary)
-//!     .build()?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! # GPU Acceleration
-//!
-//! Tessera automatically selects the best available compute device with a fallback chain:
-//! Metal (Apple Silicon) > CUDA (NVIDIA) > CPU. Models are cached after first load for
-//! efficient repeated encoding.
-//!
-//! Enable GPU support with Cargo features:
-//!
-//! ```toml
-//! [dependencies]
-//! tessera = { version = "0.1", features = ["metal"] }  # Apple Silicon
-//! tessera = { version = "0.1", features = ["cuda"] }   # NVIDIA GPUs
-//! ```
-//!
-//! # Feature Flags
-//!
-//! - `metal` - Apple Silicon acceleration (macOS only)
-//! - `cuda` - NVIDIA GPU acceleration
-//! - `pdf` - PDF rendering for ColPali document processing (enabled by default)
-//! - `python` - PyO3 bindings for Python support (includes timeseries)
-//! - `timeseries` - Time series forecasting with Chronos Bolt (requires candle fork)
-//! - `wasm` - WebAssembly bindings (experimental)
-//!
-//! # Architecture
-//!
-//! - **Core**: Abstract types and traits for embeddings and similarity metrics
-//! - **Backends**: Pluggable backend implementations via Candle ML framework
-//! - **Models**: Model configuration, loading, and caching utilities
-//! - **Encoding**: Paradigm-specific encoding strategies for each embedding type
-//! - **Quantization**: Compression methods (binary, int8, int4) with minimal quality loss
-//! - **API**: High-level user-facing interface with builder pattern and type safety
-//! - **Vision**: Image and PDF processing for vision-language models
-//! - **TimeSeries**: Probabilistic forecasting utilities
-//! - **Bindings**: Language bindings (Python via PyO3, WebAssembly)
-//! - **Utils**: Common utilities (batching, pooling, normalization, similarity metrics)
-//!
-//! # Performance
-//!
-//! Typical performance on Apple M1 Max:
-//!
-//! - **Dense encoding:** 125 docs/sec (batch=1), 711 docs/sec (batch=32)
-//! - **ColBERT encoding:** 83 docs/sec (batch=1), 410 docs/sec (batch=32)
-//! - **Binary quantization:** 3,333 ops/sec
-//!
-//! # Benchmark Results
-//!
-//! - **BGE Base EN v1.5:** 63.55 BEIR Average, 85.29 MS MARCO MRR@10
-//! - **ColBERT v2:** 65.12 BEIR Average, 87.43 MS MARCO MRR@10
-//! - **SPLADE++ EN v1:** 61.23 BEIR Average, 86.15 MS MARCO MRR@10
-//! - **Jina Embeddings v3:** 66.84 MTEB Average (#2 under 1B parameters)
-//! - **Qwen3 Embedding 8B:** 70.58 MTEB Average (#1 multilingual model)
-//!
-//! # Error Handling
-//!
-//! The library uses [`Result<T>`] with [`TesseraError`] for comprehensive error handling:
-//!
-//! ```no_run
-//! use tessera::{TesseraDense, Result};
-//!
-//! # fn main() -> Result<()> {
-//! let embedder = TesseraDense::new("invalid-model")?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! # See Also
-//!
-//! - [`TesseraDense`] - Dense embedding API
-//! - [`TesseraMultiVector`] - Multi-vector ColBERT API
-//! - [`TesseraSparse`] - Sparse SPLADE API
-//! - [`TesseraVision`] - Vision-language ColPali API
-//! - [`TesseraTimeSeries`] - Time series forecasting API (requires `timeseries` feature)
-//! - [`ModelConfig`] - Model configuration and registry
-//! - [`QuantizationConfig`] - Quantization options
+//! [`SupportTier::Experimental`]: model_registry::SupportTier::Experimental
+//! [`SupportTier::CatalogOnly`]: model_registry::SupportTier::CatalogOnly
+//! [`SupportTier::Supported`]: model_registry::SupportTier::Supported
 
 pub mod api;
 pub mod backends;
@@ -311,8 +222,7 @@ pub mod encoding;
 pub mod error;
 pub mod models;
 pub mod quantization;
-#[cfg(feature = "timeseries")]
-pub mod timeseries;
+pub mod runtime;
 pub mod utils;
 pub mod vision;
 
@@ -322,12 +232,14 @@ pub use api::{
     TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
     TesseraVision, TesseraVisionBuilder,
 };
-#[cfg(feature = "timeseries")]
-pub use api::{TesseraTimeSeries, TesseraTimeSeriesBuilder};
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
 pub use quantization::{multi_vector_distance, quantize_multi, BinaryQuantization, Quantization};
+pub use runtime::{
+    configure_cpu_threads, CpuThreadConfig, CpuThreadConfigError, ResourcePolicy,
+    ResourcePolicyError,
+};
 pub use utils::similarity::max_sim;
 
 /// Model registry with compile-time generated metadata

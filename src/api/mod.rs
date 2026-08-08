@@ -1,9 +1,8 @@
 //! High-level user-facing API for Tessera.
 //!
-//! Provides ergonomic interfaces that hide complexity while offering
-//! advanced configuration options for power users. The builder pattern
-//! enables progressive disclosure: simple usage is trivial, advanced
-//! usage is possible.
+//! Provides typed facades and builders for dense, multi-vector, sparse, and
+//! vision-language embeddings. Registry entries without a compatible runtime
+//! adapter remain discoverable but are rejected before model loading.
 //!
 //! # Simple Usage
 //!
@@ -11,20 +10,20 @@
 //! use tessera::Tessera;
 //!
 //! let embedder = Tessera::new("colbert-v2")?;
+//! let tessera::Tessera::MultiVector(embedder) = embedder else {
+//!     unreachable!("colbert-v2 is registered as a multi-vector model");
+//! };
 //! let embeddings = embedder.encode("What is machine learning?")?;
 //! ```
 //!
 //! # Advanced Usage
 //!
 //! ```ignore
-//! use tessera::api::TesseraBuilder;
-//! use tessera::quantization::BinaryQuantization;
+//! use tessera::{QuantizationConfig, TesseraMultiVectorBuilder};
 //!
-//! let embedder = TesseraBuilder::new()
-//!     .model("jina-colbert-v2")
-//!     .device("metal")
-//!     .dimension(96)  // Matryoshka
-//!     .quantization(BinaryQuantization::new())
+//! let embedder = TesseraMultiVectorBuilder::new()
+//!     .model("colbert-v2")
+//!     .quantization(QuantizationConfig::Binary)
 //!     .build()?;
 //! ```
 //!
@@ -33,28 +32,24 @@
 //! The API is designed around these principles:
 //! - **Sensible defaults**: Common use cases require minimal code
 //! - **Progressive disclosure**: Advanced features available but not required
-//! - **Type safety**: Invalid configurations caught at compile time
-//! - **Clear errors**: Runtime errors include actionable messages
+//! - **Typed configuration**: Paradigm-specific options live on typed builders
+//! - **Early validation**: Catalog-only and over-budget configurations fail before loading
 //!
 //! # Features
 //!
 //! - Automatic model downloading from `HuggingFace` Hub
 //! - Device detection (CPU, Metal, CUDA)
-//! - Built-in quantization support
+//! - Binary quantization for multi-vector output
 //! - Batch encoding for efficiency
 //! - Matryoshka dimension support
 
 pub mod builder;
 pub mod embedder;
 
-#[cfg(feature = "timeseries")]
-pub use builder::TesseraTimeSeriesBuilder;
 pub use builder::{
     QuantizationConfig, TesseraDenseBuilder, TesseraMultiVectorBuilder, TesseraSparseBuilder,
     TesseraVisionBuilder,
 };
-#[cfg(feature = "timeseries")]
-pub use embedder::TesseraTimeSeries;
 pub use embedder::{
     QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision,
 };

@@ -1,171 +1,86 @@
-# Tessera Marimo Notebooks
+# Tessera Marimo notebooks
 
-Interactive data science notebooks showcasing Tessera's Python bindings using [Marimo](https://marimo.io).
+These [Marimo](https://marimo.io) notebooks are exploratory examples for
+Tessera's Python bindings. They are useful for manual evaluation, but they are
+not benchmarks or production validation.
 
-## 📚 Available Notebooks
+## Current status
 
-### 1. Embedding Paradigm Comparison (`embedding_comparison.py`)
+| Notebook | Status | Purpose |
+| --- | --- | --- |
+| `embedding_comparison.py` | Experimental | Compare dense, multi-vector, and sparse retrieval |
+| `timeseries_forecasting.py` | Quarantined notice | Explain why the legacy Chronos demo is not runnable |
 
-Compare three embedding paradigms with interactive UMAP visualizations:
+The embedding notebook offers three registry entries with experimental runtime
+adapters:
 
-- **Dense Embeddings** (BGE): Single vector per document
-- **Multi-Vector Embeddings** (ColBERT): Token-level embeddings
-- **Sparse Embeddings** (SPLADE): Learned sparse representations
+- `bge-base-en-v1.5` for one dense vector per text;
+- `colbert-v2` for token-level multi-vector embeddings; and
+- `splade-pp-en-v1` for sparse vocabulary-space embeddings.
 
-**Features:**
-- 90 documents across 6 categories
-- Interactive query search
-- Side-by-side UMAP projections
-- Top-5 comparison table
-- Real-time similarity scoring
+Only the selected model is constructed by default; BGE is the initial
+selection. Its artifacts are downloaded from Hugging Face on first use.
+Experimental means a matching Tessera adapter exists; it does not mean the
+remote checkpoint has a golden-output or quality guarantee.
 
-### 2. Probabilistic Time Series Forecasting (`timeseries_forecasting.py`)
+> **High-memory opt-in:** the notebook constructs all three models only after
+> the user checks the conspicuous `HIGH MEMORY` checkbox. That mode retains
+> three model objects, three embedding sets, and three UMAP reducers. Tessera's
+> resource policy preflights individual raw inputs, request shapes, attention
+> cells, and estimated parameter bytes, but it does not impose an aggregate or
+> peak-memory budget across them. Leave the checkbox clear unless the target
+> machine has been monitored with this workload.
 
-Zero-shot time series forecasting with Chronos Bolt:
+## Install and launch
 
-**Features:**
-- 4 synthetic datasets with different patterns
-- Interactive dataset and context length selection
-- Beautiful uncertainty band visualizations
-- 9 quantile levels (10%, 20%, ..., 90%)
-- Forecast statistics tables
-- Educational explanations
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-```bash
-# Install uv if you haven't already
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Install dependencies
-uv sync
-```
-
-### Running the Notebooks
+From the repository root:
 
 ```bash
-# Embedding comparison
+uv sync --extra dev
 uv run marimo edit examples/notebooks/embedding_comparison.py
-
-# Time series forecasting
-uv run marimo edit examples/notebooks/timeseries_forecasting.py
 ```
 
-The notebooks will open in your browser with an interactive interface!
+The launcher script is equivalent:
 
-## 🎓 Learning Path
-
-**New to Tessera?** Start with the embedding comparison notebook to understand different embedding paradigms.
-
-**Interested in forecasting?** The time series notebook showcases probabilistic predictions with uncertainty quantification.
-
-## 🛠️ What is Marimo?
-
-[Marimo](https://marimo.io) is a reactive Python notebook that's:
-
-- **Reactive**: Cells update automatically when dependencies change
-- **Reproducible**: No hidden state, deterministic execution
-- **Interactive**: Built-in UI elements (sliders, dropdowns, etc.)
-- **Git-friendly**: Notebooks are pure Python files
-
-Unlike Jupyter, Marimo notebooks are reactive and prevent common bugs from out-of-order execution.
-
-## 📊 Notebook Structure
-
-Both notebooks follow best practices:
-
-```python
-import marimo
-
-app = marimo.App(width="full")
-
-@app.cell
-def __():
-    # Imports
-    import marimo as mo
-    import numpy as np
-    return mo, np
-
-@app.cell
-def __(mo):
-    # Interactive widgets
-    slider = mo.ui.slider(0, 100, value=50)
-    slider
-    return slider,
-
-@app.cell
-def __(slider):
-    # Reactive cell - updates when slider changes
-    value = slider.value
-    return value,
-```
-
-Each `@app.cell` decorator defines a reactive cell that automatically re-runs when its dependencies change.
-
-## 🎨 Visualizations
-
-Both notebooks use **Plotly** for interactive visualizations:
-
-- Hover to see details
-- Zoom and pan
-- Select regions
-- Export as images
-
-## 🔧 Customization
-
-Feel free to modify the notebooks:
-
-- **Change datasets**: Edit the `dataset` dictionary
-- **Adjust parameters**: Modify sliders and dropdowns
-- **Add models**: Load different Tessera models
-- **Extend visualizations**: Add new Plotly traces
-
-## 📝 Tips
-
-1. **Reactive updates**: Changes to UI elements automatically trigger downstream cells
-2. **No variable redefinition**: Each variable can only be defined once across all cells
-3. **Display values**: The last expression in a cell is automatically displayed
-4. **UI element values**: Access with `.value` attribute (e.g., `slider.value`)
-
-## 🐛 Troubleshooting
-
-**Notebook won't open?**
 ```bash
-# Make sure marimo is installed
-uv run marimo --version
+./examples/notebooks/run.sh embedding
 ```
 
-**Import errors?**
+Launching the legacy entry opens its quarantine explanation, not a
+forecaster:
+
 ```bash
-# Sync dependencies
-uv sync
+./examples/notebooks/run.sh timeseries
 ```
 
-**Model download issues?**
-- Models download automatically on first use
-- Check your internet connection
-- Large models (ColBERT, Chronos) may take several minutes
+Chronos and TimesFM remain catalog metadata only. See
+[`docs/legacy/TIMESERIES.md`](../../docs/legacy/TIMESERIES.md) for the missing
+runtime work and the validation required before reactivation.
 
-## 📚 Additional Resources
+## What the embedding notebook does
 
-- [Tessera Documentation](../README.md)
-- [Marimo Documentation](https://docs.marimo.io)
-- [Plotly Documentation](https://plotly.com/python/)
-- [UMAP Documentation](https://umap-learn.readthedocs.io/)
+The example uses 90 short documents across six categories. It:
 
-## 🤝 Contributing
+1. constructs and embeds with the selected paradigm only by default;
+2. optionally activates all three through an explicit high-memory checkbox;
+3. projects each active representation separately with UMAP;
+4. embeds an interactive text query;
+5. scores dense and sparse vectors with dot products and multi-vector results
+   with late interaction; and
+6. displays one result panel, or three panels in high-memory mode.
 
-Have ideas for new notebooks? Contributions welcome!
+UMAP is a visualization aid, not evidence of retrieval quality. The corpus is
+synthetic and small, and scores from different paradigms are not calibrated to
+one another.
 
-Possible topics:
-- Vision-language embeddings (ColPali)
-- Hybrid search (combining paradigms)
-- Real-world datasets (e.g., arXiv papers)
-- Custom similarity metrics
-- Batch processing examples
+## Troubleshooting
 
-## 📄 License
+- If `marimo` is missing, run `uv sync --extra dev` again.
+- Model construction requires network access on the first uncached run.
+- A resource-limit error is deliberate. Shorten the input/batch or configure a
+  larger `ResourcePolicy` only when the machine has enough memory.
+- If the process approaches memory pressure, stop it, relaunch, and leave the
+  high-memory checkbox clear rather than raising every limit.
 
-Same as Tessera project.
+For notebook mechanics, see [GUIDE.md](GUIDE.md). For the shortest command and
+API reference, see [QUICKREF.md](QUICKREF.md).

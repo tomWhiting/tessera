@@ -207,9 +207,9 @@ mod tests {
         let pooled = cls_pooling(&embeddings, &mask);
 
         assert_eq!(pooled.len(), 3);
-        assert_eq!(pooled[0], 1.0);
-        assert_eq!(pooled[1], 2.0);
-        assert_eq!(pooled[2], 3.0);
+        assert!((pooled[0] - 1.0).abs() < f32::EPSILON);
+        assert!((pooled[1] - 2.0).abs() < f32::EPSILON);
+        assert!((pooled[2] - 3.0).abs() < f32::EPSILON);
     }
 
     #[test]
@@ -248,8 +248,8 @@ mod tests {
         let pooled = mean_pooling(&embeddings, &mask);
 
         assert_eq!(pooled.len(), 2);
-        assert_eq!(pooled[0], 0.0);
-        assert_eq!(pooled[1], 0.0);
+        assert!(pooled[0].abs() < f32::EPSILON);
+        assert!(pooled[1].abs() < f32::EPSILON);
     }
 
     #[test]
@@ -288,8 +288,8 @@ mod tests {
         let pooled = max_pooling(&embeddings, &mask);
 
         assert_eq!(pooled.len(), 2);
-        assert_eq!(pooled[0], 0.0);
-        assert_eq!(pooled[1], 0.0);
+        assert!(pooled[0].abs() < f32::EPSILON);
+        assert!(pooled[1].abs() < f32::EPSILON);
     }
 
     #[test]
@@ -328,8 +328,8 @@ mod tests {
         let pooled = last_token_pooling(&embeddings, &mask);
 
         assert_eq!(pooled.len(), 3);
-        assert_eq!(pooled[0], 1.0);
-        assert_eq!(pooled[1], 2.0);
-        assert_eq!(pooled[2], 3.0);
+        assert!((pooled[0] - 1.0).abs() < f32::EPSILON);
+        assert!((pooled[1] - 2.0).abs() < f32::EPSILON);
+        assert!((pooled[2] - 3.0).abs() < f32::EPSILON);
     }
 }

@@ -1,5 +1,10 @@
 # Dense Embeddings Integration Tests - Phase 2.1
 
+> [!CAUTION]
+> Historical test inventory, not a current pass report. Counts, pooling notes,
+> ignored-test guidance, and status checkboxes may be obsolete. See the current
+> test source and [maintained documentation](../docs/README.md).
+
 ## Overview
 
 Comprehensive integration test suite for `TesseraDense` API covering all major functionality including basic encoding, batch processing, similarity computation, Matryoshka support, factory patterns, and error handling.

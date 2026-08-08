@@ -1,5 +1,10 @@
 # Part 4: Exotic and Geometric Embeddings
 
+> [!CAUTION]
+> Historical January 2025 research snapshot. Model availability, accuracy,
+> production, and roadmap claims are not current Tessera evidence. See the
+> [maintained documentation](../README.md).
+
 ## Overview
 
 Exotic embeddings move beyond standard Euclidean vector spaces, leveraging non-Euclidean geometries, hypercomplex algebras, topological methods, and novel mathematical structures. These approaches offer **massive capacity improvements** for specific data types (hierarchies, rotations, uncertainty) while providing theoretical guarantees and interpretability.

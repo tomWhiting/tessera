@@ -1,52 +1,8 @@
 //! WebAssembly bindings for Tessera using wasm-bindgen.
 //!
-//! Provides JavaScript/TypeScript bindings for running Tessera in
-//! web browsers and Node.js environments. Uses wasm-bindgen for
-//! interop and supports async operations.
-//!
-//! # Installation
-//!
-//! ```bash
-//! npm install tessera-wasm
-//! ```
-//!
-//! # Usage (Browser)
-//!
-//! ```typescript
-//! import init, { Tessera } from 'tessera-wasm';
-//!
-//! // Initialize WASM module
-//! await init();
-//!
-//! // Create embedder
-//! const embedder = await Tessera.new("jina-colbert-v2");
-//!
-//! // Encode text
-//! const embeddings = await embedder.encode("What is machine learning?");
-//! console.log(embeddings.length);  // num_tokens
-//! console.log(embeddings[0].length);  // embedding_dim
-//!
-//! // Compute similarity
-//! const score = await embedder.similarity("query", "document");
-//! console.log(`Similarity: ${score}`);
-//! ```
-//!
-//! # Usage (Node.js)
-//!
-//! ```javascript
-//! const { Tessera } = require('tessera-wasm');
-//!
-//! (async () => {
-//!   const embedder = await Tessera.new("colbert-v2");
-//!   const embeddings = await embedder.encode("Hello world");
-//! })();
-//! ```
-//!
-//! # Building
-//!
-//! ```bash
-//! wasm-pack build --target web --features wasm
-//! ```
+//! This feature is reserved for a future JavaScript/TypeScript adapter. It
+//! currently exposes only a marker type and is not an installable or runnable
+//! WebAssembly package.
 
 // This module is only compiled when the "wasm" feature is enabled
 // TODO: Implement wasm-bindgen bindings
@@ -69,8 +25,7 @@
 
 /// Placeholder for WebAssembly bindings.
 ///
-/// This module will contain wasm-bindgen-based JavaScript bindings
-/// when the `wasm` feature is enabled.
+/// This marker reserves the future public namespace; it has no runtime API.
 pub struct WasmTessera {
     // TODO: Wrap crate::api::Tessera
 }

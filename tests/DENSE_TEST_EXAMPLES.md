@@ -1,5 +1,10 @@
 # Dense Embeddings Test Examples
 
+> [!CAUTION]
+> Historical captured output and test guidance. APIs, timing estimates, and
+> recommended model runs are not current evidence. This file is excluded from
+> the crate; see the [maintained documentation](../docs/README.md).
+
 ## Example Test Output
 
 ### Running All Tests (No Model Downloads)

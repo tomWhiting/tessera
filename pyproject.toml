@@ -4,10 +4,10 @@ build-backend = "maturin"
 
 [project]
 name = "tessera-embeddings"
-version = "0.1.0"
+version = "0.1.1"
 description = "Multi-paradigm embedding library with ColBERT, dense, sparse, and vision-language models"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.14"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Tessera Contributors" }
@@ -16,14 +16,13 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Rust",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
@@ -39,9 +38,7 @@ keywords = [
     "rust",
 ]
 dependencies = [
-    "huggingface-hub>=1.2.3",
     "numpy>=1.21.0",
-    "safetensors>=0.7.0",
 ]
 
 [project.optional-dependencies]
@@ -64,12 +61,15 @@ Documentation = "https://docs.rs/tessera"
 [tool.maturin]
 module-name = "tessera"  # Keep as "tessera" - this is the Python import name
 features = ["python"]
-# Build with default features plus python feature
-# The python feature pulls in pyo3 and numpy dependencies
+no-default-features = true
+# Keep local Maturin builds aligned with release wheels: Python bindings only,
+# without the unrelated default PDF feature.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-
+markers = [
+    "model: downloads and runs one external model; execute serially outside pull-request CI",
+]

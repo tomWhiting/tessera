@@ -24,6 +24,14 @@
 use anyhow::Result;
 use ndarray::{Array1, Array2};
 
+#[cfg(feature = "timeseries")]
+mod timeseries;
+mod vision;
+
+#[cfg(feature = "timeseries")]
+pub use timeseries::{TimeSeriesEmbedding, TimeSeriesEncoder};
+pub use vision::{VisionEmbedding, VisionEncoder};
+
 /// Token-level embeddings representing a sequence of tokens.
 ///
 /// Each row represents a single token's embedding vector.
@@ -177,9 +185,8 @@ pub trait Encoder {
 /// - Typically 64-128 dimensions per token
 ///
 /// # Example Models
-/// - `ColBERT` v2 (colbert-ir/colbertv2.0)
-/// - Jina `ColBERT` (jinaai/jina-colbert-v2)
-/// - `AnswerAI` `ColBERT` Small (answerdotai/answerai-colbert-small-v1)
+/// - `colbert-v2`
+/// - `colbert-small`
 pub trait MultiVectorEncoder: Encoder<Output = TokenEmbeddings> {
     /// Get the number of vectors that would be produced for a given text.
     ///
@@ -253,9 +260,9 @@ impl DenseEmbedding {
 /// - Typically 384-1024 dimensions
 ///
 /// # Example Models
-/// - sentence-transformers/all-MiniLM-L6-v2
-/// - BAAI/bge-base-en-v1.5
-/// - nomic-ai/nomic-embed-text-v1
+/// - `bge-base-en-v1.5`
+/// - `jina-embeddings-v2-small-en`
+/// - `nomic-embed-v1.5`
 pub trait DenseEncoder: Encoder<Output = DenseEmbedding> {
     /// Get the embedding dimension.
     ///
@@ -302,8 +309,8 @@ pub enum PoolingStrategy {
 
 /// Sparse vocabulary-space embedding.
 ///
-/// Represents an input as a sparse vector over the vocabulary space,
-/// with most dimensions zero (99%+ sparsity typical).
+/// Represents an input as a sparse vector over the vocabulary space. The
+/// observed sparsity depends on the model, input, and filtering threshold.
 #[derive(Debug, Clone)]
 pub struct SparseEmbedding {
     /// Sparse vector as (index, weight) pairs.
@@ -375,19 +382,18 @@ impl SparseEmbedding {
 
 /// Sparse encoder producing vocabulary-space embeddings (SPLADE-style).
 ///
-/// Each input produces a sparse vector over the vocabulary (30K+ dimensions,
-/// 99%+ sparsity), compatible with inverted indexes for efficient retrieval.
+/// Each input produces a sparse vector over the model vocabulary, compatible
+/// with inverted-index retrieval structures.
 ///
 /// # Characteristics
-/// - High-dimensional output (vocabulary size, typically 30K+)
-/// - Extremely sparse (99%+ zero values)
+/// - High-dimensional output (the model's vocabulary size)
+/// - Input-dependent sparsity
 /// - Inverted-index compatible
 /// - Learned term weighting (vs. fixed like BM25)
 ///
 /// # Example Models
-/// - naver/splade-cocondenser-ensembledistil
-/// - `naver/splade_v2_max`
-/// - `naver/splade_v2_distil`
+/// - `splade-pp-en-v1`
+/// - `splade-pp-en-v2`
 pub trait SparseEncoder: Encoder<Output = SparseEmbedding> {
     /// Get the vocabulary size (dimension of full dense vector).
     ///
@@ -402,294 +408,4 @@ pub trait SparseEncoder: Encoder<Output = SparseEmbedding> {
     ///
     /// This is a guideline value; actual sparsity varies by input.
     fn expected_sparsity(&self) -> f32;
-}
-
-/// Vision embedding representation for ColPali-style vision-language models.
-///
-/// Represents an image as a collection of patch embeddings, similar to how
-/// `TokenEmbeddings` represents text as token embeddings. Each patch corresponds
-/// to a spatial region of the input image (e.g., 448×448 → 32×32 patches = 1024 total).
-///
-/// Used for vision-language retrieval where queries are text and documents
-/// are page images (PDFs, scans, screenshots). Compatible with late interaction
-/// scoring (`MaxSim`) similar to `ColBERT`.
-///
-/// # Example Models
-/// - wanghaofan/colpali-v1.2
-/// - vidore/colpali-v1
-#[derive(Debug, Clone)]
-pub struct VisionEmbedding {
-    /// Patch embeddings: shape [`num_patches`, `embedding_dim`]
-    ///
-    /// Typically 1024 patches for 448×448 images (32×32 grid).
-    /// Each patch embedding is a vector of dimension `embedding_dim`.
-    pub embeddings: Vec<Vec<f32>>,
-
-    /// Number of patches in the image grid.
-    ///
-    /// For `ColPali` with 448×448 input, this is 32×32 = 1024 patches.
-    pub num_patches: usize,
-
-    /// Embedding dimension per patch.
-    ///
-    /// Typically 128 for `ColPali` (matches `ColBERT` dimension for compatibility).
-    pub embedding_dim: usize,
-
-    /// Optional: Source image path or identifier.
-    ///
-    /// Used for tracking the origin of the image embedding.
-    pub source: Option<String>,
-}
-
-impl VisionEmbedding {
-    /// Create a new vision embedding.
-    ///
-    /// # Arguments
-    /// * `embeddings` - The patch embeddings (shape [`num_patches`, `embedding_dim`])
-    /// * `num_patches` - Number of patches (typically 1024 for `ColPali`)
-    /// * `embedding_dim` - Dimension per patch (typically 128 for `ColPali`)
-    /// * `source` - Optional source image path/identifier
-    ///
-    /// # Returns
-    /// A new `VisionEmbedding` instance
-    #[must_use]
-    pub const fn new(
-        embeddings: Vec<Vec<f32>>,
-        num_patches: usize,
-        embedding_dim: usize,
-        source: Option<String>,
-    ) -> Self {
-        Self {
-            embeddings,
-            num_patches,
-            embedding_dim,
-            source,
-        }
-    }
-
-    /// Get the number of patches.
-    ///
-    /// # Returns
-    /// Number of patches in this image embedding
-    #[must_use]
-    pub const fn num_patches(&self) -> usize {
-        self.num_patches
-    }
-
-    /// Get the embedding dimension per patch.
-    ///
-    /// # Returns
-    /// Dimensionality of each patch embedding vector
-    #[must_use]
-    pub const fn embedding_dim(&self) -> usize {
-        self.embedding_dim
-    }
-
-    /// Get the source image path/identifier if available.
-    ///
-    /// # Returns
-    /// Optional reference to the source identifier
-    #[must_use]
-    pub fn source(&self) -> Option<&str> {
-        self.source.as_deref()
-    }
-
-    /// Get the shape of the embedding matrix as (`num_patches`, `embedding_dim`).
-    ///
-    /// # Returns
-    /// Tuple of (number of patches, embedding dimension)
-    #[must_use]
-    pub const fn shape(&self) -> (usize, usize) {
-        (self.num_patches, self.embedding_dim)
-    }
-}
-
-/// Vision encoder producing patch-level embeddings (ColPali-style).
-///
-/// Encodes images into multi-vector representations where each vector
-/// corresponds to a spatial patch. This enables late interaction scoring
-/// with text queries for vision-language retrieval, similar to `ColBERT`'s
-/// token-level interactions.
-///
-/// # Characteristics
-/// - Variable-length output (depends on image size)
-/// - Patch-level granularity (typically 32×32 = 1024 patches per image)
-/// - Designed for late interaction scoring with text queries
-/// - Typically 128-384 dimensions per patch
-/// - Compatible with `MaxSim` scoring used in `ColBERT`
-///
-/// # Example Models
-/// - wanghaofan/colpali-v1.2
-/// - vidore/colpali-v1
-pub trait VisionEncoder: Encoder<Output = VisionEmbedding> {
-    /// Get the number of patches per image.
-    ///
-    /// # Returns
-    /// Number of patches the encoder produces per image.
-    /// Typically 1024 for `ColPali` (32×32 grid of 14×14 pixel patches from 448×448 images).
-    fn num_patches(&self) -> usize;
-
-    /// Get the embedding dimension per patch.
-    ///
-    /// # Returns
-    /// Dimensionality of each patch embedding vector.
-    /// Typically 128 for `ColPali` (matches `ColBERT` dimension for compatibility).
-    fn embedding_dim(&self) -> usize;
-
-    /// Get the input image resolution.
-    ///
-    /// # Returns
-    /// Tuple of (width, height) in pixels that the encoder expects.
-    /// Typically (448, 448) for `ColPali`.
-    fn image_resolution(&self) -> (u32, u32);
-}
-
-/// Time series embedding representation for time series foundation models.
-///
-/// Represents time series data as fixed-size embedding vectors suitable for
-/// similarity search, clustering, and retrieval. Unlike forecasting outputs,
-/// embeddings are designed to capture the temporal patterns in a compressed
-/// representation for downstream tasks.
-///
-/// # Example Models
-/// - amazon/chronos-bolt-small
-/// - google/timesfm-1.0-200m
-#[cfg(feature = "timeseries")]
-#[derive(Debug, Clone)]
-pub struct TimeSeriesEmbedding {
-    /// Embedding vectors: [`num_series`, `embedding_dim`]
-    ///
-    /// For batch processing, this contains embeddings for multiple time series.
-    /// Each row represents the embedding for one time series.
-    pub embeddings: Vec<Vec<f32>>,
-
-    /// Number of time series in the batch.
-    pub num_series: usize,
-
-    /// Embedding dimension (e.g., 512 for Chronos Bolt).
-    pub embedding_dim: usize,
-
-    /// Optional: Original time series lengths before padding.
-    ///
-    /// Useful for tracking which series were padded/truncated during preprocessing.
-    pub original_lengths: Option<Vec<usize>>,
-
-    /// Optional: Source identifier for tracking data origin.
-    pub source: Option<String>,
-}
-
-#[cfg(feature = "timeseries")]
-impl TimeSeriesEmbedding {
-    /// Create a new time series embedding.
-    ///
-    /// # Arguments
-    /// * `embeddings` - The embedding vectors [`num_series`, `embedding_dim`]
-    /// * `num_series` - Number of time series in the batch
-    /// * `embedding_dim` - Dimension of each embedding vector
-    /// * `original_lengths` - Optional original lengths before preprocessing
-    /// * `source` - Optional source identifier
-    ///
-    /// # Returns
-    /// A new `TimeSeriesEmbedding` instance
-    #[must_use]
-    pub const fn new(
-        embeddings: Vec<Vec<f32>>,
-        num_series: usize,
-        embedding_dim: usize,
-        original_lengths: Option<Vec<usize>>,
-        source: Option<String>,
-    ) -> Self {
-        Self {
-            embeddings,
-            num_series,
-            embedding_dim,
-            original_lengths,
-            source,
-        }
-    }
-
-    /// Get the number of time series in this embedding.
-    #[must_use]
-    pub const fn num_series(&self) -> usize {
-        self.num_series
-    }
-
-    /// Get the embedding dimension.
-    #[must_use]
-    pub const fn embedding_dim(&self) -> usize {
-        self.embedding_dim
-    }
-
-    /// Get the shape of the embedding matrix as (`num_series`, `embedding_dim`).
-    #[must_use]
-    pub const fn shape(&self) -> (usize, usize) {
-        (self.num_series, self.embedding_dim)
-    }
-
-    /// Get the source identifier if available.
-    #[must_use]
-    pub fn source(&self) -> Option<&str> {
-        self.source.as_deref()
-    }
-}
-
-/// Time series encoder producing fixed-size embeddings from temporal data.
-///
-/// Encodes time series into fixed-size vector representations suitable for
-/// similarity search, clustering, and retrieval. These models can typically
-/// also perform forecasting, but the primary use case is embedding extraction.
-///
-/// # Characteristics
-/// - Fixed-length output (one vector per time series)
-/// - Temporal pattern compression
-/// - Designed for similarity-based retrieval
-/// - Typically 192-1280 dimensions
-/// - Context lengths from 512 to 2048+ timesteps
-///
-/// # Example Models
-/// - amazon/chronos-bolt-small (512-dim)
-/// - google/timesfm-1.0-200m (1280-dim)
-#[cfg(feature = "timeseries")]
-pub trait TimeSeriesEncoder: Encoder<Output = TimeSeriesEmbedding> {
-    /// Get the embedding dimension.
-    ///
-    /// # Returns
-    /// Dimensionality of the output embedding vector
-    fn embedding_dim(&self) -> usize;
-
-    /// Get the context length (maximum input timesteps).
-    ///
-    /// # Returns
-    /// Maximum number of timesteps the encoder can process
-    fn context_length(&self) -> usize;
-
-    /// Get the prediction length (forecast horizon).
-    ///
-    /// # Returns
-    /// Number of future timesteps the model can predict (if forecasting is supported)
-    fn prediction_length(&self) -> usize;
-
-    /// Forecast future values from historical data.
-    ///
-    /// # Arguments
-    /// * `input` - Historical time series data [batch, channels, timesteps]
-    ///
-    /// # Returns
-    /// Predicted future values [batch, channels, `prediction_length`]
-    ///
-    /// # Errors
-    /// Returns error if forecasting fails or is not supported
-    fn forecast(&self, input: &candle_core::Tensor) -> Result<candle_core::Tensor>;
-
-    /// Extract embeddings for similarity search.
-    ///
-    /// # Arguments
-    /// * `input` - Time series data [batch, channels, timesteps]
-    ///
-    /// # Returns
-    /// Fixed-size embeddings [batch, `embedding_dim`]
-    ///
-    /// # Errors
-    /// Returns error if embedding extraction fails
-    fn extract_embeddings(&self, input: &candle_core::Tensor) -> Result<candle_core::Tensor>;
 }

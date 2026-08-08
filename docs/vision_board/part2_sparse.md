@@ -1,5 +1,10 @@
 # Part 2: Sparse Embedding Models
 
+> [!CAUTION]
+> Historical January 2025 research snapshot. Model availability, production
+> claims, recommendations, and roadmap items are not current Tessera status.
+> See the [maintained documentation](../README.md).
+
 ## Overview
 
 Sparse embeddings output **high-dimensional vectors with mostly zeros** (99%+ sparsity). Unlike dense embeddings, sparse vectors are interpretable (non-zero dimensions correspond to specific terms/concepts) and compatible with traditional inverted indexes, combining neural semantic understanding with the efficiency of lexical search.

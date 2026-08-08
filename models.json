@@ -11,6 +11,10 @@
           "huggingface_id": "BAAI/bge-m3",
           "organization": "BAAI",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Unified BGE-M3 architecture has no Tessera runtime adapter."
+          },
           "architecture": {
             "type": "xlm-roberta",
             "variant": "xlm-roberta-large",
@@ -63,9 +67,13 @@
           "huggingface_id": "answerdotai/answerai-colbert-small-v1",
           "organization": "Answer.AI",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT ColBERT path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
-            "type": "distilbert",
-            "variant": "distilbert-base",
+            "type": "bert",
+            "variant": "bert-small",
             "has_projection": true,
             "projection_dims": 96
           },
@@ -96,7 +104,7 @@
             "ms_marco_mrr10": 0.32
           },
           "license": "Apache-2.0",
-          "description": "Compact ColBERT variant based on DistilBERT. Recommended for development and testing due to smaller size and faster inference."
+          "description": "Compact ColBERT variant based on a small BERT model. Recommended for development and testing due to smaller size and faster inference."
         },
         {
           "id": "colbert-v2",
@@ -105,6 +113,10 @@
           "huggingface_id": "colbert-ir/colbertv2.0",
           "organization": "Stanford NLP",
           "release_date": "2022",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT ColBERT path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "bert",
             "variant": "bert-base",
@@ -147,6 +159,10 @@
           "huggingface_id": "vidore/colpali-v1.2-merged",
           "organization": "vidore",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "PaliGemma vision path exists; document retrieval remains experimental."
+          },
           "architecture": {
             "type": "paligemma",
             "variant": "paligemma-3b-mix-448",
@@ -191,6 +207,10 @@
           "huggingface_id": "vidore/colpali-v1.3-hf",
           "organization": "vidore",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Checkpoint namespaces vlm.* and embedding_proj_layer.* do not match the current PaliGemma adapter."
+          },
           "architecture": {
             "type": "paligemma",
             "variant": "paligemma-3b-mix-448",
@@ -235,15 +255,19 @@
           "huggingface_id": "lightonai/GTE-ModernColBERT-v1",
           "organization": "LightOn AI",
           "release_date": "2025",
+          "support": {
+            "tier": "catalog_only",
+            "note": "ModernBERT ColBERT architecture has no Tessera runtime adapter."
+          },
           "architecture": {
             "type": "modernbert",
             "variant": "gte-modernbert-base",
-            "has_projection": false,
-            "projection_dims": null
+            "has_projection": true,
+            "projection_dims": 128
           },
           "specs": {
             "parameters": "130M",
-            "embedding_dim": 768,
+            "embedding_dim": 128,
             "hidden_dim": 768,
             "context_length": 8192,
             "max_position_embeddings": 8192,
@@ -274,22 +298,26 @@
           "id": "jina-colbert-v2-64",
           "type": "colbert",
           "name": "Jina ColBERT v2 (64-dim)",
-          "huggingface_id": "jinaai/jina-colbert-v2",
+          "huggingface_id": "jinaai/jina-colbert-v2-64",
           "organization": "Jina AI",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Rotary XLM-R ColBERT checkpoint has no compatible Candle or Tessera adapter."
+          },
           "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": true,
+            "projection_dims": 64
           },
           "specs": {
             "parameters": "560M",
             "embedding_dim": 64,
-            "hidden_dim": 768,
+            "hidden_dim": 1024,
             "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
+            "max_position_embeddings": 8194,
+            "vocab_size": 250004
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -319,29 +347,33 @@
             "beir_avg": 0.51,
             "ms_marco_mrr10": 0.39
           },
-          "license": "Apache-2.0",
+          "license": "CC-BY-NC-4.0",
           "description": "Jina ColBERT v2 at 64 dimensions for maximum compactness."
         },
         {
           "id": "jina-colbert-v2-96",
           "type": "colbert",
           "name": "Jina ColBERT v2 (96-dim)",
-          "huggingface_id": "jinaai/jina-colbert-v2",
+          "huggingface_id": "jinaai/jina-colbert-v2-96",
           "organization": "Jina AI",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Rotary XLM-R ColBERT checkpoint has no compatible Candle or Tessera adapter."
+          },
           "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": true,
+            "projection_dims": 96
           },
           "specs": {
             "parameters": "560M",
             "embedding_dim": 96,
-            "hidden_dim": 768,
+            "hidden_dim": 1024,
             "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
+            "max_position_embeddings": 8194,
+            "vocab_size": 250004
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -371,7 +403,7 @@
             "beir_avg": 0.53,
             "ms_marco_mrr10": 0.41
           },
-          "license": "Apache-2.0",
+          "license": "CC-BY-NC-4.0",
           "description": "Jina ColBERT v2 at 96 dimensions for compact storage with minimal quality loss."
         },
         {
@@ -381,27 +413,23 @@
           "huggingface_id": "jinaai/jina-colbert-v2",
           "organization": "Jina AI",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Rotary XLM-R ColBERT checkpoint has no compatible Candle or Tessera adapter."
+          },
           "architecture": {
-            "type": "jina-bert",
-            "variant": "jina-bert-v2-base-en",
-            "has_projection": false,
-            "projection_dims": null
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": true,
+            "projection_dims": 128
           },
           "specs": {
             "parameters": "560M",
-            "embedding_dim": {
-              "default": 768,
-              "matryoshka": {
-                "min": 64,
-                "max": 768,
-                "supported": [64, 96, 128, 256, 384, 512, 768],
-                "strategy": "truncate_output"
-              }
-            },
-            "hidden_dim": 768,
+            "embedding_dim": 128,
+            "hidden_dim": 1024,
             "context_length": 8192,
-            "max_position_embeddings": 8192,
-            "vocab_size": 30528
+            "max_position_embeddings": 8194,
+            "vocab_size": 250004
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -431,8 +459,8 @@
             "beir_avg": 0.54,
             "ms_marco_mrr10": 0.42
           },
-          "license": "Apache-2.0",
-          "description": "Multilingual ColBERT supporting 89 languages with extended 8K context length. Supports Matryoshka representations from 64 to 768 dimensions."
+          "license": "CC-BY-NC-4.0",
+          "description": "Multilingual XLM-R ColBERT model with a 128-dimensional projection and extended 8K context length."
         }
       ]
     },
@@ -446,6 +474,10 @@
           "huggingface_id": "BAAI/bge-base-en-v1.5",
           "organization": "BAAI",
           "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT dense path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "bert",
             "variant": "bert-base",
@@ -453,7 +485,7 @@
             "projection_dims": null
           },
           "pooling": {
-            "strategy": "mean",
+            "strategy": "cls",
             "normalize": true
           },
           "specs": {
@@ -492,6 +524,10 @@
           "huggingface_id": "jinaai/jina-embeddings-v2-small-en",
           "organization": "Jina AI",
           "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "JinaBERT dense path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "jina-bert",
             "variant": "jina-bert-small-en",
@@ -538,6 +574,10 @@
           "huggingface_id": "jinaai/jina-embeddings-v2-base-en",
           "organization": "Jina AI",
           "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "JinaBERT dense path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "jina-bert",
             "variant": "jina-bert-base-en",
@@ -584,6 +624,10 @@
           "huggingface_id": "jinaai/jina-embeddings-v2-base-code",
           "organization": "Jina AI",
           "release_date": "2023",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Code-specific JinaBERT checkpoint is not supported by the current dense adapter."
+          },
           "architecture": {
             "type": "jina-bert-v2",
             "variant": "jina-bert-v2-base-code",
@@ -630,6 +674,10 @@
           "huggingface_id": "jinaai/jina-embeddings-v3",
           "organization": "Jina AI",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Rotary XLM-R with fused QKV and LoRA task banks has no Tessera runtime adapter."
+          },
           "architecture": {
             "type": "xlm-roberta",
             "variant": "jina-xlm-roberta",
@@ -684,6 +732,10 @@
           "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
           "organization": "Nomic AI",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "Nomic BERT adapter exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "bert",
             "variant": "nomic-bert",
@@ -738,14 +790,18 @@
           "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
           "organization": "Snowflake",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "XLM-R dense path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
-            "type": "bert",
-            "variant": "bert-large",
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
             "has_projection": false,
             "projection_dims": null
           },
           "pooling": {
-            "strategy": "mean",
+            "strategy": "cls",
             "normalize": true
           },
           "specs": {
@@ -760,9 +816,9 @@
               }
             },
             "hidden_dim": 1024,
-            "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 30522
+            "context_length": 8192,
+            "max_position_embeddings": 8194,
+            "vocab_size": 250002
           },
           "files": {
             "tokenizer": "tokenizer.json",
@@ -797,6 +853,10 @@
           "huggingface_id": "Qdrant/minicoil-v1",
           "organization": "Qdrant",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "The repository ships ONNX and NumPy artifacts, not weights the Candle sparse adapter can load."
+          },
           "architecture": {
             "type": "bert",
             "variant": "distilbert-base",
@@ -839,6 +899,10 @@
           "huggingface_id": "naver/splade-v3",
           "organization": "Naver Labs",
           "release_date": "2023",
+          "support": {
+            "tier": "catalog_only",
+            "note": "This SPLADE checkpoint layout is not supported by the current sparse adapter."
+          },
           "architecture": {
             "type": "bert",
             "variant": "distilbert-base",
@@ -881,6 +945,10 @@
           "huggingface_id": "prithivida/Splade_PP_en_v1",
           "organization": "prithivida",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT MLM sparse path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "bert",
             "variant": "bert-base-uncased",
@@ -924,6 +992,10 @@
           "huggingface_id": "prithivida/Splade_PP_en_v2",
           "organization": "prithivida",
           "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT MLM sparse path exists; remote checkpoint execution remains experimental."
+          },
           "architecture": {
             "type": "bert",
             "variant": "bert-base-uncased",
@@ -972,6 +1044,10 @@
           "huggingface_id": "amazon/chronos-bolt-small",
           "organization": "Amazon",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Chronos requires fork-only Candle T5 continuous-embedding and hidden-state APIs."
+          },
           "architecture": {
             "type": "t5",
             "variant": "t5-encoder-decoder",
@@ -1022,6 +1098,10 @@
           "huggingface_id": "google/timesfm-1.0-200m",
           "organization": "Google Research",
           "release_date": "2024",
+          "support": {
+            "tier": "catalog_only",
+            "note": "TimesFM decoder architecture has no Tessera runtime adapter."
+          },
           "architecture": {
             "type": "decoder-transformer",
             "variant": "patched-decoder",

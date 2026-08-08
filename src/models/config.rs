@@ -1,8 +1,7 @@
 //! Model configuration for BERT-based encoders.
 //!
-//! Provides pre-configured settings for popular models including:
-//! - Standard BERT models (bert-base-uncased, distilbert-base-uncased)
-//! - `ColBERT` models optimized for late-interaction retrieval
+//! Provides registry-backed settings for audited model paths, including
+//! `ColBERT` models optimized for late-interaction retrieval.
 //!
 //! Models can be loaded from the registry using `from_registry()`:
 //!
@@ -18,7 +17,7 @@
 
 use anyhow::{anyhow, Result};
 
-use super::registry::PoolingStrategy;
+use super::registry::{ModelInfo, PoolingStrategy};
 
 /// Configuration for a BERT-based model.
 #[derive(Debug, Clone)]
@@ -47,24 +46,7 @@ pub const JINA_COLBERT_V2: &str = "jinaai/jina-colbert-v2";
 /// `AnswerAI` `ColBERT` Small model identifier
 pub const COLBERT_SMALL: &str = "answerdotai/answerai-colbert-small-v1";
 
-// Standard BERT models for comparison
-/// `DistilBERT` Base Uncased model identifier
-pub const DISTILBERT_BASE_UNCASED: &str = "distilbert-base-uncased";
-
 impl ModelConfig {
-    /// Creates a new model configuration.
-    #[must_use]
-    pub const fn new(model_name: String, embedding_dim: usize, max_seq_length: usize) -> Self {
-        Self {
-            model_name,
-            embedding_dim,
-            max_seq_length,
-            target_dimension: None,
-            pooling_strategy: None,
-            normalize_embeddings: false,
-        }
-    }
-
     /// Sets the target dimension for Matryoshka truncation.
     ///
     /// If set, the encoder will truncate embeddings to this dimension.
@@ -75,7 +57,7 @@ impl ModelConfig {
     /// ```no_run
     /// use tessera::models::ModelConfig;
     ///
-    /// let config = ModelConfig::from_registry("jina-colbert-v2")
+    /// let config = ModelConfig::from_registry("colbert-v2")
     ///     .unwrap()
     ///     .with_target_dimension(128);
     /// ```
@@ -121,8 +103,7 @@ impl ModelConfig {
     ///     .expect("Model not found in registry");
     /// ```
     pub fn from_registry(id: &str) -> Result<Self> {
-        let model = super::registry::get_model(id)
-            .ok_or_else(|| anyhow!("Model '{id}' not found in registry"))?;
+        let model = runnable_registry_model(id)?;
 
         let (pooling_strategy, normalize_embeddings) = model
             .pooling
@@ -148,12 +129,11 @@ impl ModelConfig {
     /// ```no_run
     /// use tessera::models::ModelConfig;
     ///
-    /// let config = ModelConfig::from_registry_with_dimension("jina-colbert-v2", 128)
+    /// let config = ModelConfig::from_registry_with_dimension("colbert-v2", 128)
     ///     .expect("Invalid dimension");
     /// ```
     pub fn from_registry_with_dimension(id: &str, target_dim: usize) -> Result<Self> {
-        let model = super::registry::get_model(id)
-            .ok_or_else(|| anyhow!("Model '{id}' not found in registry"))?;
+        let model = runnable_registry_model(id)?;
 
         // Validate dimension is supported
         if !model.embedding_dim.supports_dimension(target_dim) {
@@ -179,24 +159,6 @@ impl ModelConfig {
         })
     }
 
-    /// Creates a configuration for distilbert-base-uncased.
-    ///
-    /// This is recommended for prototyping with standard BERT models as it's faster than full BERT.
-    ///
-    /// Note: This is a multi-vector model without pooling. For dense embeddings with pooling,
-    /// use models from the registry like "bge-base-en-v1.5" or "nomic-embed-v1.5".
-    #[must_use]
-    pub fn distilbert_base_uncased() -> Self {
-        Self {
-            model_name: DISTILBERT_BASE_UNCASED.to_string(),
-            embedding_dim: 768,
-            max_seq_length: 512,
-            target_dimension: None,
-            pooling_strategy: None,
-            normalize_embeddings: false,
-        }
-    }
-
     /// Creates a configuration for `ColBERT` v2.
     ///
     /// `ColBERT` v2 is a BERT-based model specifically trained for late-interaction retrieval.
@@ -218,26 +180,14 @@ impl ModelConfig {
         }
     }
 
-    /// Creates a configuration for Jina `ColBERT` v2.
+    /// Attempts to create a configuration for Jina `ColBERT` v2.
     ///
-    /// Jina's multilingual `ColBERT` model supporting 89 languages.
-    /// Larger than standard `ColBERT` but provides excellent multilingual support.
-    ///
-    /// Model: jinaai/jina-colbert-v2
-    /// Size: ~2.1GB (560M parameters)
-    /// Languages: 89 languages
-    /// Embedding dim: 768
-    /// Max sequence length: 8192 tokens
-    #[must_use]
-    pub fn jina_colbert_v2() -> Self {
-        Self {
-            model_name: JINA_COLBERT_V2.to_string(),
-            embedding_dim: 768,
-            max_seq_length: 8192,
-            target_dimension: None,
-            pooling_strategy: None,
-            normalize_embeddings: false,
-        }
+    /// This entry is currently catalog-only because its rotary XLM-R checkpoint
+    /// is incompatible with Tessera's `ColBERT` loader. The method returns an
+    /// actionable error instead of constructing a configuration that will fail
+    /// after downloading model artifacts.
+    pub fn jina_colbert_v2() -> Result<Self> {
+        Self::from_registry("jina-colbert-v2")
     }
 
     /// Creates a configuration for `ColBERT` Small.
@@ -247,7 +197,7 @@ impl ModelConfig {
     ///
     /// Model: answerdotai/answerai-colbert-small-v1
     /// Size: ~130MB (33M parameters)
-    /// Embedding dim: 96 (after projection from 384-dim `DistilBERT`)
+    /// Embedding dim: 96 (after projection from 384-dim BERT)
     /// Max sequence length: 512 tokens
     #[must_use]
     pub fn colbert_small() -> Self {
@@ -260,18 +210,6 @@ impl ModelConfig {
             normalize_embeddings: false,
         }
     }
-
-    /// Creates a configuration for a custom model.
-    ///
-    /// The custom configuration defaults to no pooling (multi-vector mode).
-    /// Use `with_pooling()` to configure dense embeddings if needed.
-    pub fn custom(
-        model_name: impl Into<String>,
-        embedding_dim: usize,
-        max_seq_length: usize,
-    ) -> Self {
-        Self::new(model_name.into(), embedding_dim, max_seq_length)
-    }
 }
 
 impl Default for ModelConfig {
@@ -280,8 +218,42 @@ impl Default for ModelConfig {
     /// `ColBERT` Small is recommended as the default because:
     /// - It's a real `ColBERT` model optimized for retrieval
     /// - Small size (~130MB) means faster downloads
-    /// - Based on `DistilBERT` for good performance
+    /// - Based on a compact BERT encoder for good performance
     fn default() -> Self {
         Self::colbert_small()
+    }
+}
+
+fn runnable_registry_model(id: &str) -> Result<&'static ModelInfo> {
+    let model = super::registry::get_model(id)
+        .ok_or_else(|| anyhow!("Model '{id}' not found in registry"))?;
+    if !model.is_runnable() {
+        return Err(anyhow!(
+            "Model '{}' is catalog-only and cannot be configured for loading: {}",
+            model.id,
+            model.support_note
+        ));
+    }
+    Ok(model)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ModelConfig;
+
+    #[test]
+    fn registry_config_rejects_catalog_only_models() {
+        let error = ModelConfig::from_registry("jina-colbert-v2").unwrap_err();
+
+        assert!(error.to_string().contains("catalog-only"));
+        assert!(error.to_string().contains("Rotary XLM-R"));
+    }
+
+    #[test]
+    fn registry_config_keeps_runnable_long_context_metadata() {
+        let config = ModelConfig::from_registry("nomic-embed-v1.5").unwrap();
+
+        assert_eq!(config.max_seq_length, 8192);
+        assert_eq!(config.embedding_dim, 768);
     }
 }

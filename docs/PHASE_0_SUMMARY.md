@@ -1,5 +1,10 @@
 # Phase 0 Summary: Quick Reference
 
+> [!CAUTION]
+> Historical phase summary. Model counts, test results, future-work lists, and
+> readiness claims are obsolete. This file is excluded from the crate; see the
+> [documentation index](README.md).
+
 **Status:** ✅ COMPLETE AND APPROVED  
 **Date:** 2025-10-16
 

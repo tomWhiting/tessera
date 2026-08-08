@@ -1,5 +1,10 @@
 # Tessera: Comprehensive Completion Plan
 
+> [!CAUTION]
+> Historical pre-revival roadmap. Checkboxes, model counts, paths, forecasts,
+> and production-readiness claims are not current status. This file is excluded
+> from the crate; see the [documentation index](README.md).
+
 **Version:** 1.0
 **Date:** January 2025
 **Project:** Tessera - Multi-vector embedding library for Rust

@@ -3,12 +3,33 @@ name = "tessera-embeddings"
 version = "0.1.1"
 edition = "2021"
 license = "Apache-2.0"
-description = "Multi-paradigm embedding library: ColBERT, dense, sparse, vision-language, and time series models"
+description = "Multi-paradigm embedding library for dense, sparse, multi-vector, and vision-language retrieval"
 repository = "https://github.com/tomWhiting/tessera"
 homepage = "https://github.com/tomWhiting/tessera"
 documentation = "https://docs.rs/tessera-embeddings"
 keywords = ["embeddings", "colbert", "semantic-search", "ml", "nlp"]
 categories = ["science", "text-processing"]
+exclude = [
+    "/CODE_QUALITY_REPORT.md",
+    "/OPTIMIZATION_PLAN.md",
+    "/PUBLICATION_SUMMARY.md",
+    "/docs/archive/**",
+    "/docs/vision_board/**",
+    "/docs/ARCHITECTURE_REVIEW.md",
+    "/docs/CHRONOS_BOLT_*.md",
+    "/docs/COLPALI_SHAPE_FIX.md",
+    "/docs/COMPLETION_PLAN.md",
+    "/docs/PHASE_0_*.md",
+    "/docs/PYENTRY_*.md",
+    "/docs/PYTHON_BINDINGS_COMPLETE.md",
+    "/docs/TESSERA_ARCHITECTURE_PYENTRY.md",
+    "/examples/fixtures/**",
+    "/tests/*.md",
+]
+
+[workspace]
+members = [".", "xtask"]
+resolver = "2"
 
 [lib]
 name = "tessera"  # Keep as "tessera" so users can `use tessera::...`
@@ -20,18 +41,24 @@ path = "src/main.rs"
 
 [features]
 default = ["pdf"]  # PDF support enabled by default for ColPali document processing
-metal = ["candle-core/metal", "candle-nn/metal", "candle-transformers/metal"]
+metal = [
+    "candle-core/metal",
+    "candle-nn/metal",
+    "candle-transformers/metal",
+    "dep:candle-metal-kernels",
+]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
 pdf = ["pdf2image"]  # PDF rendering support for ColPali document processing
-python = ["dep:pyo3", "dep:numpy", "timeseries"]  # PyO3 bindings with NumPy support (includes timeseries)
+python = ["dep:pyo3", "dep:numpy"]  # PyO3 bindings over supported embedding models
 wasm = []    # WebAssembly bindings (TODO: add wasm-bindgen when implementing)
-timeseries = []  # Time series forecasting with Chronos Bolt (requires candle fork with T5 hidden states)
+timeseries = []  # Generic time-series types only; the legacy Chronos runtime is quarantined
 
 [dependencies]
 anyhow = "1.0.100"
-candle-core = "0.9.1"
-candle-nn = "0.9.1"
-candle-transformers = "0.9.1"
+candle-core = "0.11.0"
+candle-metal-kernels = { version = "0.11.0", optional = true }
+candle-nn = "0.11.0"
+candle-transformers = "0.11.0"
 clap = { version = "4.5.49", features = ["derive"] }
 hf-hub = { version = "0.4.3", default-features = false, features = ["tokio", "rustls-tls", "ureq"] }
 ndarray = "0.16.1"
@@ -84,10 +111,3 @@ inherits = "release"   # Use release settings for benchmarks
 [profile.release-with-debug]
 inherits = "release"
 debug = true           # Keep debug symbols for profiling
-
-# Patch candle to use local fork with T5 hidden states support
-[patch.crates-io]
-# Use fork with T5 hidden states, JinaBERT Code, Qwen2 embeddings, and prefix detection
-candle-core = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }
-candle-nn = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }
-candle-transformers = { git = "https://github.com/tomWhiting/candle.git", rev = "b014c086" }

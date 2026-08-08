@@ -1,5 +1,10 @@
 # Tessera Embedding Library - Architecture & PyO3 Bindings Preparation
 
+> [!CAUTION]
+> Historical pre-implementation survey. Its architecture, model-support, and
+> Python status claims are obsolete and it is excluded from the crate. See the
+> [documentation index](README.md).
+
 ## Executive Summary
 
 Tessera is a production-ready multi-paradigm embedding library for Rust with support for 5 embedding paradigms and 23 models. The codebase is well-structured with a clear separation between core types, encoders, and high-level APIs. Python bindings via PyO3 are planned but not yet implemented (currently a stub).

@@ -1,5 +1,10 @@
 # Tessera Crate-Level Documentation Publication Summary
 
+> [!CAUTION]
+> Historical pre-revival publication snapshot. Its production-readiness and
+> model-support claims are obsolete and it is excluded from the published
+> crate. See the [maintained documentation](docs/README.md).
+
 ## Overview
 
 Comprehensive documentation updates for the Tessera embedding library have been completed, preparing the crate for publication to crates.io and PyPI. The documentation now provides clear guidance on all five embedding paradigms, GPU acceleration options, feature flags, and production-ready APIs.

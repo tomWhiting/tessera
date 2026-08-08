@@ -1,5 +1,10 @@
 # Tessera PyO3 Python Bindings - Entry Point Index
 
+> [!CAUTION]
+> Historical pre-implementation brief. The proposed classes, model list, paths,
+> and status no longer match the PyO3 module. See the maintained
+> [Python development guide](PYTHON_DEV_GUIDE.md).
+
 ## Overview
 
 This directory contains comprehensive documentation for implementing PyO3 Python bindings for the Tessera multi-paradigm embedding library. The codebase has been thoroughly explored and cataloged for maximum efficiency in binding development.

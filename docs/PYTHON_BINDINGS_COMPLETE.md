@@ -1,5 +1,10 @@
 # Python Bindings Implementation Complete ✅
 
+> [!CAUTION]
+> Historical proof-of-concept report. Its old single-wrapper layout, paths,
+> version, and production claims do not describe the current bindings. See the
+> maintained [Python development guide](PYTHON_DEV_GUIDE.md).
+
 ## Overview
 
 Successfully implemented PyO3 Python bindings for Tessera's `TesseraMultiVector` (ColBERT) embedder as a **proof of concept**. All functionality is fully working with no mocks, placeholders, or TODO comments.

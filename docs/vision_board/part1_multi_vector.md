@@ -1,4 +1,9 @@
 # The Embedding Models Vision Board
+
+> [!CAUTION]
+> Historical January 2025 research snapshot. Model availability, production
+> claims, recommendations, and roadmap items are not current Tessera status.
+> See the [maintained documentation](../README.md).
 ## A Comprehensive Survey of Exotic, Unusual, and Cutting-Edge Embedding Models (2024-2025)
 
 **Compiled:** January 2025

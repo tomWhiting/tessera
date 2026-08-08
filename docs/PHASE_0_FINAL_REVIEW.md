@@ -1,5 +1,10 @@
 # Phase 0 Final Review: Architectural Refactoring
 
+> [!CAUTION]
+> Historical phase review. It freezes an older source layout, test count, and
+> readiness assessment and is excluded from the published crate. See the
+> [documentation index](README.md) for current guidance.
+
 **Review Date:** 2025-10-16  
 **Reviewer:** Claude Code (Sonnet 4.5)  
 **Location:** `/Users/tom/Developer/spaces/projects/hyperspatial/main/hypiler`

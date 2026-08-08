@@ -1,5 +1,10 @@
 # Phase 0: Architectural Refactoring
 
+> [!CAUTION]
+> Historical phase plan. Its progress markers, paths, and success criteria do
+> not describe the current revival. This file is excluded from the crate; see
+> the [documentation index](README.md).
+
 **Duration:** 1 week
 **Goal:** Fix critical architectural issues before scaling to multiple paradigms
 **Status:** In Progress

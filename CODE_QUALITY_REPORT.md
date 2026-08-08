@@ -1,5 +1,10 @@
 # Tessera Code Quality Report
 
+> [!CAUTION]
+> Historical pre-revival snapshot. Its findings and completion claims do not
+> describe the current tree and it is excluded from the published crate. See
+> the [maintained documentation](docs/README.md).
+
 ## Executive Summary
 
 This exhaustive code review analyzed all Rust modules in the Tessera embedding library. The codebase demonstrates **strong architectural foundations** with excellent documentation and well-designed trait hierarchies. Several critical issues were identified that affect performance, stability, and code quality—particularly around **GPU memory management**, which directly relates to the reported issue of the library "burning hot and fast."

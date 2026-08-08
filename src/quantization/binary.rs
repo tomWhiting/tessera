@@ -147,6 +147,10 @@ impl Quantization for BinaryQuantization {
 mod tests {
     use super::*;
 
+    fn assert_close(actual: f32, expected: f32) {
+        assert!((actual - expected).abs() < f32::EPSILON);
+    }
+
     #[test]
     fn test_binary_quantization_single_vector() {
         let quantizer = BinaryQuantization::new();
@@ -172,7 +176,7 @@ mod tests {
         let dist = quantizer.distance(&b1, &b2);
         // Hamming distance = 2 (differ in positions 1 and 3)
         // Similarity = 4 - 2 = 2
-        assert_eq!(dist, 2.0);
+        assert_close(dist, 2.0);
     }
 
     #[test]
@@ -186,7 +190,7 @@ mod tests {
         let dist = quantizer.distance(&b1, &b2);
         // Identical vectors should have zero Hamming distance
         // Similarity = 5 - 0 = 5
-        assert_eq!(dist, 5.0);
+        assert_close(dist, 5.0);
     }
 
     #[test]
@@ -201,7 +205,7 @@ mod tests {
         let dist = quantizer.distance(&b1, &b2);
         // Completely opposite: Hamming distance = 4
         // Similarity = 4 - 4 = 0
-        assert_eq!(dist, 0.0);
+        assert_close(dist, 0.0);
     }
 
     #[test]
@@ -211,11 +215,11 @@ mod tests {
         let quantizer = BinaryQuantization::new();
         let vectors = vec![vec![0.5, -0.3], vec![0.8, 0.2], vec![-0.1, -0.9]];
 
-        let quantized = quantize_multi(&quantizer, &vectors);
-        assert_eq!(quantized.len(), 3);
-        assert_eq!(quantized[0].dim, 2);
-        assert_eq!(quantized[1].dim, 2);
-        assert_eq!(quantized[2].dim, 2);
+        let packed_vectors = quantize_multi(&quantizer, &vectors);
+        assert_eq!(packed_vectors.len(), 3);
+        assert_eq!(packed_vectors[0].dim, 2);
+        assert_eq!(packed_vectors[1].dim, 2);
+        assert_eq!(packed_vectors[2].dim, 2);
     }
 
     #[test]
@@ -243,7 +247,7 @@ mod tests {
         //   vs [-1, 1]: Hamming=0, Sim=2-0=2
         //   Max = 2
         // Total = 1 + 2 = 3
-        assert_eq!(score, 3.0);
+        assert_close(score, 3.0);
     }
 
     #[test]

@@ -8,17 +8,17 @@ fn print_error_chain<E: StdError>(e: &E) {
     eprintln!("\n=== ERROR CHAIN ===");
     let mut source: Option<&dyn StdError> = e.source();
     let mut level = 0;
-    eprintln!("Level {}: {}", level, e);
+    eprintln!("Level {level}: {e}");
     while let Some(s) = source {
         level += 1;
-        eprintln!("Level {}: {}", level, s);
+        eprintln!("Level {level}: {s}");
         source = s.source();
     }
     eprintln!("=== END ERROR CHAIN ===\n");
 }
 
 #[test]
-#[ignore] // Requires downloading model - run with --ignored
+#[ignore = "requires remote model artifacts"]
 fn test_jina_code_v2_base() {
     println!("Loading jina-embeddings-v2-base-code (JinaBERT Code variant)...");
 
@@ -33,7 +33,7 @@ fn test_jina_code_v2_base() {
                     println!("Encoded! Dimension: {}", emb.dim());
                     assert_eq!(emb.dim(), 768, "Expected 768 dimensions");
                 }
-                Err(e) => panic!("Failed to encode: {}", e),
+                Err(e) => panic!("Failed to encode: {e}"),
             }
         }
         Err(e) => {
@@ -44,7 +44,7 @@ fn test_jina_code_v2_base() {
 }
 
 #[test]
-#[ignore] // Requires downloading model - run with --ignored
+#[ignore = "requires remote model artifacts"]
 fn test_jina_code_embeddings_05b() {
     println!("Loading jina-code-embeddings-0.5b (Qwen2 based)...");
 
@@ -59,7 +59,7 @@ fn test_jina_code_embeddings_05b() {
                     println!("Encoded! Dimension: {}", emb.dim());
                     assert_eq!(emb.dim(), 896, "Expected 896 dimensions for 0.5B model");
                 }
-                Err(e) => panic!("Failed to encode: {}", e),
+                Err(e) => panic!("Failed to encode: {e}"),
             }
         }
         Err(e) => {
@@ -70,7 +70,7 @@ fn test_jina_code_embeddings_05b() {
 }
 
 #[test]
-#[ignore] // Requires downloading model - run with --ignored
+#[ignore = "requires remote model artifacts"]
 fn test_jina_code_embeddings_15b() {
     println!("Loading jina-code-embeddings-1.5b (Qwen2 based)...");
 
@@ -85,7 +85,7 @@ fn test_jina_code_embeddings_15b() {
                     println!("Encoded! Dimension: {}", emb.dim());
                     assert_eq!(emb.dim(), 1536, "Expected 1536 dimensions for 1.5B model");
                 }
-                Err(e) => panic!("Failed to encode: {}", e),
+                Err(e) => panic!("Failed to encode: {e}"),
             }
         }
         Err(e) => {

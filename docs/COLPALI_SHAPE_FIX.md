@@ -1,5 +1,10 @@
 # ColPali Shape Incompatibility Fix
 
+> [!CAUTION]
+> Historical fix report, not current compatibility proof. ColPali v1.2 remains
+> experimental, v1.3 is catalog-only, and the referenced examples are no longer
+> present. See the [current model catalog](models/supported_models.md).
+
 ## Issue Summary
 
 The ColPali PDF demo was failing with a shape mismatch error when computing similarity between text queries and image embeddings:

@@ -3,6 +3,7 @@
 use tessera::{QuantizationConfig, Result, TesseraMultiVectorBuilder};
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_quantization_workflow() -> Result<()> {
     // Create embedder with binary quantization
     let embedder = TesseraMultiVectorBuilder::new()
@@ -25,19 +26,18 @@ fn test_quantization_workflow() -> Result<()> {
     let ratio = quantized.compression_ratio();
     assert!(
         ratio > 30.0,
-        "Expected compression ratio > 30x, got {:.1}x",
-        ratio
+        "Expected compression ratio > 30x, got {ratio:.1}x"
     );
     assert!(
         ratio < 34.0,
-        "Expected compression ratio < 34x, got {:.1}x",
-        ratio
+        "Expected compression ratio < 34x, got {ratio:.1}x"
     );
 
     Ok(())
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_encode_quantized_convenience() -> Result<()> {
     let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
@@ -55,6 +55,7 @@ fn test_encode_quantized_convenience() -> Result<()> {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_similarity_quantized() -> Result<()> {
     let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
@@ -71,15 +72,14 @@ fn test_similarity_quantized() -> Result<()> {
     // Relevant document should score higher than irrelevant
     assert!(
         score1 > score2,
-        "Expected AI-related doc to score higher: {} > {}",
-        score1,
-        score2
+        "Expected AI-related doc to score higher: {score1} > {score2}"
     );
 
     Ok(())
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_quantization_error_without_config() -> Result<()> {
     // Create embedder WITHOUT quantization
     let embedder = TesseraMultiVectorBuilder::new()
@@ -99,6 +99,7 @@ fn test_quantization_error_without_config() -> Result<()> {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_quantization_memory_savings() -> Result<()> {
     let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
@@ -113,8 +114,8 @@ fn test_quantization_memory_savings() -> Result<()> {
     let float_bytes = embeddings.num_tokens * embeddings.embedding_dim * 4;
     let binary_bytes = quantized.memory_bytes();
 
-    println!("Float32: {} bytes", float_bytes);
-    println!("Binary: {} bytes", binary_bytes);
+    println!("Float32: {float_bytes} bytes");
+    println!("Binary: {binary_bytes} bytes");
     println!("Ratio: {:.1}x", quantized.compression_ratio());
 
     // Binary should be much smaller
@@ -124,6 +125,7 @@ fn test_quantization_memory_savings() -> Result<()> {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_ranking_preservation() -> Result<()> {
     let embedder = TesseraMultiVectorBuilder::new()
         .model("colbert-v2")
@@ -131,7 +133,7 @@ fn test_ranking_preservation() -> Result<()> {
         .build()?;
 
     let query = "machine learning algorithms";
-    let docs = vec![
+    let docs = [
         "Machine learning uses statistical algorithms", // High relevance
         "Deep learning is a subset of machine learning", // High relevance
         "The weather forecast predicts rain",           // Low relevance
@@ -163,14 +165,14 @@ fn test_ranking_preservation() -> Result<()> {
     quant_ranking.sort_by(|&i, &j| quant_scores[j].partial_cmp(&quant_scores[i]).unwrap());
     full_ranking.sort_by(|&i, &j| full_scores[j].partial_cmp(&full_scores[i]).unwrap());
 
-    println!("Quantized ranking: {:?}", quant_ranking);
-    println!("Full ranking: {:?}", full_ranking);
+    println!("Quantized ranking: {quant_ranking:?}");
+    println!("Full ranking: {full_ranking:?}");
 
     // Top 2 should be the same (high relevance docs)
     let mut quant_top2 = quant_ranking[0..2].to_vec();
     let mut full_top2 = full_ranking[0..2].to_vec();
-    quant_top2.sort();
-    full_top2.sort();
+    quant_top2.sort_unstable();
+    full_top2.sort_unstable();
 
     assert_eq!(
         quant_top2, full_top2,
@@ -181,6 +183,7 @@ fn test_ranking_preservation() -> Result<()> {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_no_quantization_config_default() -> Result<()> {
     // Default should be no quantization
     let embedder = TesseraMultiVectorBuilder::new()

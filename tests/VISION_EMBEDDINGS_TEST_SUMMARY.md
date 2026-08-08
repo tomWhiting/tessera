@@ -1,5 +1,10 @@
 # Vision Embeddings Integration Test Summary
 
+> [!CAUTION]
+> Historical test summary, not current compatibility proof. ColPali v1.2 remains
+> experimental, v1.3 is catalog-only, and old completion claims are obsolete.
+> See the [current model catalog](../docs/models/supported_models.md).
+
 **Phase:** 3.1 - Vision-Language Embeddings (ColPali)
 **Test File:** `tests/vision_embeddings_test.rs`
 **Total Tests:** 29

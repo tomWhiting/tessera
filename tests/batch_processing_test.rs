@@ -1,8 +1,10 @@
 //! Integration tests for batch processing functionality
 
+use tessera::utils::max_sim;
 use tessera::Tessera;
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_empty() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
     let empty_batch: Vec<&str> = vec![];
@@ -18,6 +20,7 @@ fn test_batch_empty() {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_single() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
@@ -40,12 +43,17 @@ fn test_batch_single() {
     // Results should be identical for single-item batch
     for i in 0..single.num_tokens {
         for j in 0..single.embedding_dim {
-            assert_eq!(single.embeddings[[i, j]], batch[0].embeddings[[i, j]]);
+            assert_eq!(
+                single.embeddings[[i, j]].partial_cmp(&batch[0].embeddings[[i, j]]),
+                Some(std::cmp::Ordering::Equal),
+                "Embedding differs at token {i}, dimension {j}",
+            );
         }
     }
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_same_length() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
@@ -81,6 +89,7 @@ fn test_batch_same_length() {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_different_lengths() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
@@ -100,7 +109,7 @@ fn test_batch_different_lengths() {
 
     // Verify each result has the correct dimensions
     for (i, result) in batch.iter().enumerate() {
-        assert!(result.num_tokens > 0, "Text {} has no tokens", i);
+        assert!(result.num_tokens > 0, "Text {i} has no tokens");
         assert_eq!(result.embedding_dim, 128, "Incorrect embedding dimension");
         assert_eq!(result.text, texts[i], "Text mismatch");
     }
@@ -110,6 +119,7 @@ fn test_batch_different_lengths() {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_similarity_consistency() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
@@ -128,7 +138,6 @@ fn test_batch_similarity_consistency() {
 
             let batch_embeddings = mv.encode_batch(&texts).expect("Failed to encode batch");
 
-            use tessera::utils::max_sim;
             let batch_sim = max_sim(&batch_embeddings[0], &batch_embeddings[1])
                 .expect("Failed to compute batch similarity");
 
@@ -153,6 +162,7 @@ fn test_batch_similarity_consistency() {
 }
 
 #[test]
+#[ignore = "requires remote ColBERT artifacts"]
 fn test_batch_preserves_order() {
     let embedder = Tessera::new("colbert-v2").expect("Failed to load model");
 
@@ -171,6 +181,6 @@ fn test_batch_preserves_order() {
 
     // Verify order is preserved
     for (i, result) in batch.iter().enumerate() {
-        assert_eq!(result.text, texts[i], "Order not preserved at index {}", i);
+        assert_eq!(result.text, texts[i], "Order not preserved at index {i}");
     }
 }
