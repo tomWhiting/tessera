@@ -15,6 +15,9 @@ source of truth for model metadata and support tiers.
   the catalog and select only runnable entries.
 - [Python development guide](PYTHON_DEV_GUIDE.md) covers the current split PyO3
   bindings and model-free test lane.
+- [Local model certification](../certification/README.md) covers immutable
+  artifact verification, resource-bounded serial inference, and promotion
+  evidence.
 - [Time-series legacy note](legacy/TIMESERIES.md) records why Chronos and
   TimesFM are not active runtimes.
 - [Notebook guide](../examples/notebooks/README.md) covers the exploratory
@@ -22,8 +25,9 @@ source of truth for model metadata and support tiers.
 
 The generated registry currently has 22 entries: 10 `Experimental`, 12
 `CatalogOnly`, and no `Supported` entries. `Experimental` means an adapter path
-exists but still needs repeatable remote-checkpoint and output validation.
-`CatalogOnly` means metadata is discoverable but Tessera rejects execution.
+and immutable checkpoint pin exist but still need repeatable offline inference
+and checked quality evidence. `CatalogOnly` means metadata is discoverable but
+Tessera rejects execution.
 
 ## Historical material
 

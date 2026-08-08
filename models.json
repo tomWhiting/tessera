@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "model_categories": {
     "multi_vector": {
       "description": "Multi-vector models outputting one vector per token (ColBERT, ColPali)",
@@ -9,6 +9,7 @@
           "type": "unified",
           "name": "BGE-M3 (Multi-Vector Mode)",
           "huggingface_id": "BAAI/bge-m3",
+          "revision": "5617a9f61b028005a4858fdac845db406aefb181",
           "organization": "BAAI",
           "release_date": "2024",
           "support": {
@@ -65,6 +66,7 @@
           "type": "colbert",
           "name": "ColBERT Small",
           "huggingface_id": "answerdotai/answerai-colbert-small-v1",
+          "revision": "c72aa89bc61afdd85373643f3a1a75b2aad6e0fe",
           "organization": "Answer.AI",
           "release_date": "2024",
           "support": {
@@ -111,6 +113,7 @@
           "type": "colbert",
           "name": "ColBERT v2",
           "huggingface_id": "colbert-ir/colbertv2.0",
+          "revision": "c1e84128e85ef755c096a95bdb06b47793b13acf",
           "organization": "Stanford NLP",
           "release_date": "2022",
           "support": {
@@ -157,6 +160,7 @@
           "type": "vision-language",
           "name": "ColPali v1.2 Merged",
           "huggingface_id": "vidore/colpali-v1.2-merged",
+          "revision": "537a46ee5663ab3b1fd60d09dea3c641fff6e5da",
           "organization": "vidore",
           "release_date": "2024",
           "support": {
@@ -183,7 +187,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
+              "safetensors": "model.safetensors.index.json",
               "pytorch": "pytorch_model.bin"
             }
           },
@@ -205,6 +209,7 @@
           "type": "vision-language",
           "name": "ColPali v1.3 HF",
           "huggingface_id": "vidore/colpali-v1.3-hf",
+          "revision": "7d3c8ab1c1908b32d701308fb1dfb2968d150c67",
           "organization": "vidore",
           "release_date": "2024",
           "support": {
@@ -253,6 +258,7 @@
           "type": "colbert",
           "name": "GTE-ModernColBERT v1",
           "huggingface_id": "lightonai/GTE-ModernColBERT-v1",
+          "revision": "cbbe53366e564450558f5e639dd499171f127538",
           "organization": "LightOn AI",
           "release_date": "2025",
           "support": {
@@ -299,6 +305,7 @@
           "type": "colbert",
           "name": "Jina ColBERT v2 (64-dim)",
           "huggingface_id": "jinaai/jina-colbert-v2-64",
+          "revision": "7c9f323b61e6f96754300dea81bb51c3cc1d3f34",
           "organization": "Jina AI",
           "release_date": "2024",
           "support": {
@@ -355,11 +362,12 @@
           "type": "colbert",
           "name": "Jina ColBERT v2 (96-dim)",
           "huggingface_id": "jinaai/jina-colbert-v2-96",
+          "revision": null,
           "organization": "Jina AI",
           "release_date": "2024",
           "support": {
             "tier": "catalog_only",
-            "note": "Rotary XLM-R ColBERT checkpoint has no compatible Candle or Tessera adapter."
+            "note": "Repository is not publicly resolvable, so no revision is pinned; the rotary XLM-R checkpoint also lacks a compatible Candle/Tessera adapter."
           },
           "architecture": {
             "type": "xlm-roberta",
@@ -411,6 +419,7 @@
           "type": "colbert",
           "name": "Jina ColBERT v2",
           "huggingface_id": "jinaai/jina-colbert-v2",
+          "revision": "4552c4dc1ffd7d7a635b6a41a1077fe9c9cdd974",
           "organization": "Jina AI",
           "release_date": "2024",
           "support": {
@@ -472,6 +481,7 @@
           "type": "dense",
           "name": "BGE-Base-EN-v1.5",
           "huggingface_id": "BAAI/bge-base-en-v1.5",
+          "revision": "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a",
           "organization": "BAAI",
           "release_date": "2023",
           "support": {
@@ -522,6 +532,7 @@
           "type": "dense",
           "name": "Jina Embeddings v2 Small EN",
           "huggingface_id": "jinaai/jina-embeddings-v2-small-en",
+          "revision": "44e7d1d6caec8c883c2d4b207588504d519788d0",
           "organization": "Jina AI",
           "release_date": "2023",
           "support": {
@@ -572,6 +583,7 @@
           "type": "dense",
           "name": "Jina Embeddings v2 Base EN",
           "huggingface_id": "jinaai/jina-embeddings-v2-base-en",
+          "revision": "322d4d7e2f35e84137961a65af894fda0385eb7a",
           "organization": "Jina AI",
           "release_date": "2023",
           "support": {
@@ -622,6 +634,7 @@
           "type": "dense",
           "name": "Jina Embeddings v2 Base Code",
           "huggingface_id": "jinaai/jina-embeddings-v2-base-code",
+          "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
           "organization": "Jina AI",
           "release_date": "2023",
           "support": {
@@ -672,6 +685,7 @@
           "type": "dense",
           "name": "Jina Embeddings v3",
           "huggingface_id": "jinaai/jina-embeddings-v3",
+          "revision": "ab036b023d30b4d1138c4c3bfa9f0c445ab455d6",
           "organization": "Jina AI",
           "release_date": "2024",
           "support": {
@@ -730,6 +744,7 @@
           "type": "dense",
           "name": "Nomic Embed v1.5",
           "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
+          "revision": "e9b6763023c676ca8431644204f50c2b100d9aab",
           "organization": "Nomic AI",
           "release_date": "2024",
           "support": {
@@ -788,6 +803,7 @@
           "type": "dense",
           "name": "Snowflake Arctic Embed L",
           "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
+          "revision": "ac6544c8a46e00af67e330e85a9028c66b8cfd9a",
           "organization": "Snowflake",
           "release_date": "2024",
           "support": {
@@ -805,7 +821,7 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "335M",
+            "parameters": "568M",
             "embedding_dim": {
               "default": 1024,
               "matryoshka": {
@@ -851,6 +867,7 @@
           "type": "sparse",
           "name": "miniCOIL v1",
           "huggingface_id": "Qdrant/minicoil-v1",
+          "revision": "4a7b05822a7a246d25778508593fff58fe574dfe",
           "organization": "Qdrant",
           "release_date": "2024",
           "support": {
@@ -897,6 +914,7 @@
           "type": "sparse",
           "name": "SPLADE v3",
           "huggingface_id": "naver/splade-v3",
+          "revision": "fdfeceb91d7b9de7985b38addd3ba9f53a59a355",
           "organization": "Naver Labs",
           "release_date": "2023",
           "support": {
@@ -943,6 +961,7 @@
           "type": "sparse",
           "name": "SPLADE++ EN v1",
           "huggingface_id": "prithivida/Splade_PP_en_v1",
+          "revision": "762be6a7206e2f299182705972a65e5c46e62be2",
           "organization": "prithivida",
           "release_date": "2024",
           "support": {
@@ -967,7 +986,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
+              "safetensors": null,
               "pytorch": "pytorch_model.bin",
               "onnx": "onnx/model.onnx"
             }
@@ -990,6 +1009,7 @@
           "type": "sparse",
           "name": "SPLADE++ EN v2",
           "huggingface_id": "prithivida/Splade_PP_en_v2",
+          "revision": "f0d4aa214dcb60c274052a52c0497535e3aec64c",
           "organization": "prithivida",
           "release_date": "2024",
           "support": {
@@ -1014,7 +1034,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
+              "safetensors": null,
               "pytorch": "pytorch_model.bin",
               "onnx": "onnx/model.onnx"
             }
@@ -1042,6 +1062,7 @@
           "type": "timeseries",
           "name": "Chronos Bolt Small",
           "huggingface_id": "amazon/chronos-bolt-small",
+          "revision": "772f3d25d38aec6d914c8949dab4462e2d46f5d8",
           "organization": "Amazon",
           "release_date": "2024",
           "support": {
@@ -1096,6 +1117,7 @@
           "type": "timeseries",
           "name": "TimesFM 1.0 200M",
           "huggingface_id": "google/timesfm-1.0-200m",
+          "revision": "8775f7531211ac864b739fe776b0b255c277e2be",
           "organization": "Google Research",
           "release_date": "2024",
           "support": {

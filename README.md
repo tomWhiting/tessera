@@ -10,11 +10,11 @@ It uses Candle for inference and offers optional Python bindings through PyO3.
 > deliberately conservative: 10 entries have an `Experimental` runtime path,
 > 12 are `CatalogOnly`, and none are `Supported` yet.
 
-`Experimental` means that a Tessera adapter exists, but the remote checkpoint
-path still needs repeatable inference and quality validation. `CatalogOnly`
-means the metadata is retained for discovery while builders reject execution.
-An entry will move to `Supported` only after it has a pinned, repeatable model
-smoke test and checked inference output.
+`Experimental` means that a Tessera adapter and immutable checkpoint pin exist,
+but the path still needs repeatable offline inference and quality validation.
+`CatalogOnly` means the metadata is retained for discovery while builders
+reject execution. An entry will move to `Supported` only after it satisfies the
+checked certification evidence contract.
 
 ## Current priorities
 
@@ -32,13 +32,16 @@ for the exact incompatibilities and reactivation criteria.
 
 ## Build locally
 
-The checked-in toolchain and lockfile are part of the reproducible build.
+The checked-in toolchain and lockfile are part of the reproducible build. Run
+the complete model-free repository gate locally before committing:
 
 ```bash
-cargo build --locked
-cargo test --locked
-cargo clippy --locked --all-targets -- -D warnings
+./scripts/check
 ```
+
+The script checks formatting, generated-registry and 500-line policies, strict
+Clippy, model-free Rust tests, documentation tests, and the Python lockfile
+without downloading model artifacts.
 
 Optional acceleration and bindings are feature-gated:
 
@@ -54,11 +57,11 @@ are built together:
 
 ```bash
 uv run maturin develop
-uv run pytest -m "not model"
+uv run pytest tests/python/test_python_bindings.py
 ```
 
-Model smoke tests are opt-in because they download remote checkpoints. The
-normal unit-test suite is intended to remain hermetic.
+Python tests are model-free. Remote checkpoint execution belongs to the
+explicit local certification workflow, not ordinary test discovery.
 
 ## Rust quick start
 
@@ -214,7 +217,8 @@ budgets.
 
 ## Model catalog
 
-`models.json` is the source of truth. Build-time generation exposes the same
+`models.json` is the source of truth, including immutable checkpoint revisions
+and exact runtime artifact filenames. Build-time generation exposes the same
 metadata through `tessera::model_registry`. `get_model` is catalog-complete;
 use `ModelInfo::is_runnable()` or `runnable_models()` before selecting a model
 for execution.
@@ -276,8 +280,8 @@ lower layers, but it is not yet a high-level PDF-document API.
 ## Python
 
 The Python module mirrors the active dense, multi-vector, sparse, and vision
-façades. Model-free API tests run without downloads; tests marked `model`
-exercise remote checkpoints serially.
+façades. Its API tests are model-free and run without downloads; checkpoint
+execution is kept out of Python test discovery.
 
 ```python
 from tessera import TesseraDense
@@ -292,14 +296,18 @@ Chronos and TimesFM are not exported by the active Python module.
 ## Project checks
 
 Handwritten Rust and Python files are kept to 500 lines or fewer. The repository
-task runner checks that policy and validates registry generation:
+task runner checks that policy as part of the complete local gate:
 
 ```bash
-cargo run --locked --offline -p tessera-xtask -- all
-cargo fmt --all -- --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo test --locked --offline --all-targets
+./scripts/check
 ```
+
+Model certification is a separate, opt-in local operation. It downloads exactly
+one pinned checkpoint into a dedicated cache, verifies artifact sizes and
+SHA-256 hashes, and runs each model in a fresh resource-bounded CPU process.
+Start with the [certification guide](certification/README.md); certification
+evidence is required before any entry can move from `Experimental` to
+`Supported`.
 
 ## License
 

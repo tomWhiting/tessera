@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repository_root"
+
+cargo fmt --all -- --check
+cargo metadata --locked --offline --format-version 1 >/dev/null
+cargo run --locked --offline -p tessera-xtask -- all
+cargo clippy --locked --offline --workspace --all-targets --no-default-features -- -D warnings
+cargo clippy --locked --offline --workspace --all-targets -- -D warnings
+cargo clippy --locked --offline --workspace --all-targets --no-default-features --features timeseries -- -D warnings
+PYO3_PYTHON=/usr/bin/python3 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features python -- -D warnings
+cargo clippy --locked --offline -p tessera-xtask --all-targets --features certification -- -D warnings
+cargo test --locked --offline --workspace --all-targets --no-default-features
+cargo test --locked --offline --lib
+cargo test --locked --offline --no-default-features --doc
+cargo test --locked --offline -p tessera-xtask --features certification
+cargo run --locked --offline -p tessera-xtask --features certification -- cert list
+
+if command -v uv >/dev/null 2>&1; then
+    uv lock --check --offline
+else
+    echo "error: uv is required for Python lock validation" >&2
+    exit 1
+fi

@@ -1,10 +1,5 @@
-"""Pytest coverage for the Tessera extension.
+"""Network-free public-contract coverage for the Tessera extension."""
 
-The default lane is model-free. Tests marked ``model`` intentionally download
-and run exactly one registered model and belong in a serial smoke workflow.
-"""
-
-import numpy as np
 import pytest
 
 import tessera
@@ -15,6 +10,13 @@ EMBEDDER_CLASSES = (
     tessera.TesseraMultiVector,
     tessera.TesseraSparse,
     tessera.TesseraVision,
+)
+
+CATALOG_ONLY_MODELS = (
+    (tessera.TesseraDense, "jina-embeddings-v3"),
+    (tessera.TesseraMultiVector, "gte-modern-colbert"),
+    (tessera.TesseraSparse, "minicoil-v1"),
+    (tessera.TesseraVision, "colpali-v1.3-hf"),
 )
 
 
@@ -82,6 +84,12 @@ def test_unknown_model_fails_without_network(embedder_class):
         embedder_class("not-a-real-tessera-model")
 
 
+@pytest.mark.parametrize(("embedder_class", "model_id"), CATALOG_ONLY_MODELS)
+def test_catalog_only_model_fails_without_network(embedder_class, model_id):
+    with pytest.raises(ValueError, match="catalog-only"):
+        embedder_class(model_id)
+
+
 def test_dense_rejects_wrong_model_paradigm_before_loading():
     with pytest.raises(ValueError, match="not a dense model"):
         tessera.TesseraDense("colbert-v2")
@@ -95,50 +103,3 @@ def test_sparse_rejects_wrong_model_paradigm_before_loading():
 def test_large_vision_model_requires_explicit_resource_budget():
     with pytest.raises(ValueError, match="model parameter bytes"):
         tessera.TesseraVision("colpali-v1.2")
-
-
-@pytest.mark.model
-def test_dense_bge_base_smoke():
-    embedder = tessera.TesseraDense("bge-base-en-v1.5")
-
-    embedding = embedder.encode("What is machine learning?")
-    assert embedding.shape == (768,)
-    assert embedding.dtype == np.float32
-    assert np.isfinite(embedding).all()
-
-    batch = embedder.encode_batch(["machine learning", "neural networks"])
-    assert len(batch) == 2
-    assert all(value.shape == (768,) for value in batch)
-    assert isinstance(embedder.similarity("machine learning", "deep learning"), float)
-    assert embedder.dimension() == 768
-    assert embedder.model() == "bge-base-en-v1.5"
-
-
-@pytest.mark.model
-def test_colbert_small_smoke():
-    embedder = tessera.TesseraMultiVector("colbert-small")
-
-    embeddings = embedder.encode("What is machine learning?")
-    assert embeddings.ndim == 2
-    assert embeddings.shape[0] > 0
-    assert embeddings.shape[1] == 96
-    assert embeddings.dtype == np.float32
-    assert np.isfinite(embeddings).all()
-    assert isinstance(embedder.similarity("machine learning", "deep learning"), float)
-    assert embedder.dimension() == 96
-    assert embedder.model() == "colbert-small"
-
-
-@pytest.mark.model
-def test_splade_pp_v1_smoke():
-    embedder = tessera.TesseraSparse("splade-pp-en-v1")
-
-    indices, values = embedder.encode("machine learning")
-    assert indices.ndim == values.ndim == 1
-    assert len(indices) == len(values)
-    assert indices.dtype == np.int32
-    assert values.dtype == np.float32
-    assert np.isfinite(values).all()
-    assert isinstance(embedder.similarity("machine learning", "deep learning"), float)
-    assert embedder.vocab_size() == 30_522
-    assert embedder.model() == "splade-pp-en-v1"

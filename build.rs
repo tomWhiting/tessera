@@ -282,6 +282,16 @@ pub struct ModelInfo {
     pub name: &'static str,
     /// HuggingFace Hub repository ID
     pub huggingface_id: &'static str,
+    /// Exact HuggingFace repository commit used for artifact loading
+    pub revision: Option<&'static str>,
+    /// Tokenizer artifact within the pinned repository
+    pub tokenizer_file: &'static str,
+    /// Model configuration artifact within the pinned repository
+    pub config_file: &'static str,
+    /// Safetensors artifact or shard index, when published
+    pub safetensors_file: Option<&'static str>,
+    /// PyTorch weight artifact within the pinned repository
+    pub pytorch_file: &'static str,
     /// Organization that released the model
     pub organization: &'static str,
     /// Release year or date

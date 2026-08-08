@@ -9,6 +9,8 @@ mod schema;
 #[path = "../../build_support/validation.rs"]
 mod validation;
 
+#[cfg(feature = "certification")]
+mod certification;
 mod policy;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -17,15 +19,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         .expect("xtask must be located under the repository root")
         .to_path_buf();
 
-    match std::env::args().nth(1).as_deref() {
+    let mut arguments = std::env::args();
+    let _program = arguments.next();
+    match arguments.next().as_deref() {
         Some("all") => {
             policy::check_file_sizes(&repository)?;
             check_registry(&repository)?;
         }
         Some("file-size") => policy::check_file_sizes(&repository)?,
         Some("registry") => check_registry(&repository)?,
+        #[cfg(feature = "certification")]
+        Some("cert") => certification::run(&repository, arguments)?,
+        #[cfg(not(feature = "certification"))]
+        Some("cert") => {
+            return Err("certification commands require `--features certification`".into());
+        }
         _ => {
-            return Err("usage: cargo run -p tessera-xtask -- <all|file-size|registry>".into());
+            return Err(
+                "usage: cargo run -p tessera-xtask -- <all|file-size|registry|cert>".into(),
+            );
         }
     }
 

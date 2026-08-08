@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model": { "id": "jina-embeddings-v2-base-en", "repository": "jinaai/jina-embeddings-v2-base-en", "revision": "322d4d7e2f35e84137961a65af894fda0385eb7a", "representation": "dense" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 1176, "sha256": "93d07cb65c3fc338e2f67f6a039f4c0857de9f8f7b377a6a60afc53532722d4e" },
+    { "path": "tokenizer.json", "size_bytes": 711577, "sha256": "65253d92409e63bf4cf61361085cd4657c735713aa239002d496d8413a6ed5dc" },
+    { "path": "model.safetensors", "size_bytes": 274757256, "sha256": "6b70f1386f05b9703ea4edf7f1550a8925399f9580e4cc754cc099efc1e736d8" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 350000000, "min_free_disk_bytes": 1200000000, "max_peak_rss_bytes": 2200000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 768, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

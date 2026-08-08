@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model": { "id": "bge-base-en-v1.5", "repository": "BAAI/bge-base-en-v1.5", "revision": "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a", "representation": "dense" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 777, "sha256": "bc00af31a4a31b74040d73370aa83b62da34c90b75eb77bfa7db039d90abd591" },
+    { "path": "tokenizer.json", "size_bytes": 711396, "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66" },
+    { "path": "model.safetensors", "size_bytes": 437955512, "sha256": "c7c1988aae201f80cf91a5dbbd5866409503b89dcaba877ca6dba7dd0a5167d7" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 600000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 600, "max_artifact_bytes": 500000000, "min_free_disk_bytes": 1500000000, "max_peak_rss_bytes": 2200000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 768, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

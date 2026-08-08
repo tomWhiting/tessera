@@ -46,10 +46,10 @@
 use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use candle_nn::VarBuilder;
-use hf_hub::api::sync::Api;
 
 use crate::core::{Encoder, SparseEmbedding, SparseEncoder, Tokenizer};
 use crate::error::TesseraError;
+use crate::models::loader::ModelFileResolver;
 use crate::models::{registry::ModelType, ModelConfig};
 use crate::runtime::{preflight_registered_model, ResourcePolicy};
 
@@ -175,7 +175,7 @@ impl CandleSparseEncoder {
     ) -> Result<Self> {
         let model_name = &config.model_name;
 
-        preflight_registered_model(
+        let model_info = preflight_registered_model(
             model_name,
             config.max_seq_length,
             ModelType::Sparse,
@@ -183,13 +183,11 @@ impl CandleSparseEncoder {
             &resource_policy,
         )?;
 
-        // Download model from HuggingFace
-        let api = Api::new().context("Failed to initialize HuggingFace Hub API")?;
-        let repo = api.model(model_name.clone());
+        let files = ModelFileResolver::new(model_info)?;
 
         // Load config to get vocab size and architecture
-        let config_path = repo
-            .get("config.json")
+        let config_path = files
+            .get(model_info.config_file)
             .with_context(|| format!("Downloading config for {model_name}"))?;
 
         let config_str =
@@ -214,9 +212,8 @@ impl CandleSparseEncoder {
             .ok_or_else(|| TesseraError::ConfigError("Missing hidden_size/dim in config".into()))?;
 
         // Try to load safetensors first, fall back to pytorch_model.bin
-        let weights_path = repo
-            .get("model.safetensors")
-            .or_else(|_| repo.get("pytorch_model.bin"))
+        let weights_path = files
+            .weights()
             .with_context(|| format!("Downloading model weights for {model_name}"))?;
 
         // Load model weights
@@ -249,7 +246,7 @@ impl CandleSparseEncoder {
             .context("Loading MLM head for sparse encoding")?;
 
         // Load tokenizer
-        let tokenizer = Tokenizer::from_pretrained_with_policy(model_name, resource_policy)
+        let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
             .with_context(|| format!("Loading tokenizer for {model_name}"))?;
 
         Ok(Self {

@@ -59,3 +59,21 @@ fn registered_context_cannot_be_bypassed_by_a_custom_config() {
 
     assert!(error.to_string().contains("model context limit 512"));
 }
+
+#[test]
+fn successful_preflight_returns_the_immutable_registry_entry() {
+    let model = preflight_registered_model(
+        "BAAI/bge-base-en-v1.5",
+        512,
+        ModelType::Dense,
+        &Device::Cpu,
+        &ResourcePolicy::default(),
+    )
+    .expect("BGE should pass preflight");
+
+    assert_eq!(model.id, "bge-base-en-v1.5");
+    assert_eq!(
+        model.revision,
+        Some("a5beb1e3e68b9ab74eb54cfd186867f64f240e1a")
+    );
+}

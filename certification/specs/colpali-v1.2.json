@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "model": { "id": "colpali-v1.2", "repository": "vidore/colpali-v1.2-merged", "revision": "537a46ee5663ab3b1fd60d09dea3c641fff6e5da", "representation": "vision" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 999, "sha256": "c465a09374f7c6cef023d591158ed25d75c443d134441052bfdcb8deeda528aa" },
+    { "path": "preprocessor_config.json", "size_bytes": 700, "sha256": "5fc342baea95529a5eb9746a0232fb88941d759812d7b616c382f2f87ba6123f" },
+    { "path": "tokenizer.json", "size_bytes": 17763459, "sha256": "ffd310e50986db7a039948ab83441d612689e7f989198e31b5c8984ca458adf6" },
+    { "path": "model.safetensors.index.json", "size_bytes": 66301, "sha256": "4e5df353aaefc5ed9b2f6407cea6d127dfad2b3b8f6fa0c8132f6bb8395dc966" },
+    { "path": "model-00001-of-00002.safetensors", "size_bytes": 4986817288, "sha256": "ba72c097015135dfee1ffae55b056ea22cdfa665be8b0ae041942bbedfddc188" },
+    { "path": "model-00002-of-00002.safetensors", "size_bytes": 862495528, "sha256": "cf083d7c0f64061cbfe41ee5f9e6ffb8f8e934723417cb5ce739505457ff8d0a" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 1, "max_batch_tokens": 128, "max_model_bytes": 12000000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 16384 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 3600, "max_artifact_bytes": 6200000000, "min_free_disk_bytes": 16000000000, "max_peak_rss_bytes": 16000000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 128, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.0, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

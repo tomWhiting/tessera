@@ -15,6 +15,7 @@ use candle_nn::VarBuilder;
 use ndarray::Array2;
 
 use crate::core::{Encoder, MultiVectorEncoder, TokenEmbedder, TokenEmbeddings, Tokenizer};
+use crate::models::loader::ModelFileResolver;
 use crate::models::{registry::ModelType, ModelConfig};
 use crate::runtime::{preflight_registered_model, ResourcePolicy};
 
@@ -66,7 +67,7 @@ impl CandleBertEncoder {
     ) -> Result<Self> {
         let model_name = &model_config.model_name;
 
-        preflight_registered_model(
+        let model_info = preflight_registered_model(
             model_name,
             model_config.max_seq_length,
             ModelType::Colbert,
@@ -74,18 +75,15 @@ impl CandleBertEncoder {
             &resource_policy,
         )?;
 
+        let files = ModelFileResolver::new(model_info)?;
+
         // Load tokenizer
-        let tokenizer = Tokenizer::from_pretrained_with_policy(model_name, resource_policy)
+        let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
             .with_context(|| format!("Loading tokenizer for {model_name}"))?;
 
-        // Download model files from HuggingFace Hub
-        let api =
-            hf_hub::api::sync::Api::new().context("Failed to initialize HuggingFace Hub API")?;
-        let repo = api.model(model_name.clone());
-
         // Load config to detect model type
-        let config_path = repo
-            .get("config.json")
+        let config_path = files
+            .get(model_info.config_file)
             .with_context(|| format!("Downloading config for {model_name}"))?;
 
         let config_str =
@@ -99,9 +97,8 @@ impl CandleBertEncoder {
             .with_context(|| format!("Detecting model type for {model_name}"))?;
 
         // Try to load safetensors first, fall back to pytorch_model.bin
-        let weights_path = repo
-            .get("model.safetensors")
-            .or_else(|_| repo.get("pytorch_model.bin"))
+        let weights_path = files
+            .weights()
             .with_context(|| format!("Downloading model weights for {model_name}"))?;
 
         // Load model weights

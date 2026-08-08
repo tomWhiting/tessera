@@ -2,6 +2,10 @@ use crate::schema::{EmbeddingDimSpec, ModelMetadata, ModelRegistry, SupportTier}
 use std::collections::HashSet;
 
 pub fn validate_registry(registry: &ModelRegistry) {
+    assert_eq!(
+        registry.version, "1.1",
+        "Unsupported model registry schema version"
+    );
     let mut ids = HashSet::new();
 
     for model in registry.models() {
@@ -24,6 +28,8 @@ pub fn validate_registry(registry: &ModelRegistry) {
             model.id,
             model.huggingface_id
         );
+        validate_revision(model);
+        validate_weight_metadata(model);
         assert!(
             !model.architecture.has_projection || model.architecture.projection_dims.is_some(),
             "Model {} has has_projection=true but no projection_dims",
@@ -44,6 +50,54 @@ pub fn validate_registry(registry: &ModelRegistry) {
 
         validate_pooling(model);
     }
+}
+
+fn validate_weight_metadata(model: &ModelMetadata) {
+    assert!(
+        !model.files.tokenizer.trim().is_empty(),
+        "Model {} must declare a tokenizer artifact",
+        model.id
+    );
+    assert!(
+        !model.files.config.trim().is_empty(),
+        "Model {} must declare a config artifact",
+        model.id
+    );
+    assert!(
+        !model.files.weights.pytorch.trim().is_empty(),
+        "Model {} must declare a PyTorch weight artifact",
+        model.id
+    );
+
+    let Some(safetensors) = model.files.weights.safetensors.as_deref() else {
+        return;
+    };
+    assert!(
+        safetensors.ends_with(".safetensors") || safetensors.ends_with(".safetensors.index.json"),
+        "Model {} has an invalid safetensors artifact path: {}",
+        model.id,
+        safetensors
+    );
+}
+
+fn validate_revision(model: &ModelMetadata) {
+    let Some(revision) = model.revision.as_deref() else {
+        assert!(
+            !model.support.tier.is_runnable(),
+            "Runnable model {} must pin a HuggingFace revision",
+            model.id
+        );
+        return;
+    };
+
+    assert!(
+        revision.len() == 40
+            && revision
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+        "Model {} revision must be an exact lowercase 40-hex commit SHA",
+        model.id
+    );
 }
 
 fn validate_support(model: &ModelMetadata) {

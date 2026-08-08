@@ -3550,8 +3550,13 @@ dependencies = [
 name = "tessera-xtask"
 version = "0.0.0"
 dependencies = [
+ "candle-core",
+ "clap",
+ "hf-hub",
  "serde",
  "serde_json",
+ "sha2",
+ "tessera-embeddings",
 ]
 
 [[package]]

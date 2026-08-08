@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model": { "id": "nomic-embed-v1.5", "repository": "nomic-ai/nomic-embed-text-v1.5", "revision": "e9b6763023c676ca8431644204f50c2b100d9aab", "representation": "dense" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 2538, "sha256": "9ab00bd92cee80a569f708140b7b6c1661a65891ff3765b1519e181ba2f2c92b" },
+    { "path": "tokenizer.json", "size_bytes": 711396, "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66" },
+    { "path": "model.safetensors", "size_bytes": 546938168, "sha256": "9e7d262b1fe5ea350782829496efa831901b77486bbde1cea54a4c822d010d5c" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 650000000, "min_free_disk_bytes": 1800000000, "max_peak_rss_bytes": 2700000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 768, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

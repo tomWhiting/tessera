@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model": { "id": "colbert-v2", "repository": "colbert-ir/colbertv2.0", "revision": "c1e84128e85ef755c096a95bdb06b47793b13acf", "representation": "multi_vector" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 743, "sha256": "cbdcc01dc7772fd0e5e1d85d5de695faf8c4935ae3c7ea3fdb6c24397b284f3c" },
+    { "path": "tokenizer.json", "size_bytes": 466081, "sha256": "5fd1c882abbd30517dced455a2c9768945ec726b96727927e4959348d9de550b" },
+    { "path": "model.safetensors", "size_bytes": 438349816, "sha256": "3f58890b1dfdfec066ef12ba431fa9d56992da9e30a53489242c4156e37e9017" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 600000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 500000000, "min_free_disk_bytes": 1500000000, "max_peak_rss_bytes": 2300000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 128, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

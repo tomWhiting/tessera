@@ -84,6 +84,10 @@ fn test_colbert_v2_constant() {
     let model = get_model("colbert-v2").expect("registered ColBERT v2");
     assert_eq!(model.id, "colbert-v2");
     assert_eq!(model.huggingface_id, "colbert-ir/colbertv2.0");
+    assert_eq!(
+        model.revision,
+        Some("c1e84128e85ef755c096a95bdb06b47793b13acf")
+    );
     assert_eq!(model.embedding_dim.default_dim(), 128);
     assert_eq!(model.context_length, 512);
     assert!(model.has_projection);
@@ -217,6 +221,7 @@ fn corrected_checkpoint_metadata_is_exposed() {
     );
 
     let snowflake = get_model("snowflake-arctic-l").expect("registered Snowflake model");
+    assert_eq!(snowflake.parameters, "568M");
     assert_eq!(snowflake.architecture_type, "xlm-roberta");
     assert_eq!(snowflake.context_length, 8192);
     assert_eq!(snowflake.max_position_embeddings, 8194);
@@ -227,6 +232,18 @@ fn corrected_checkpoint_metadata_is_exposed() {
             .expect("Snowflake pooling metadata")
             .strategy,
         PoolingStrategy::Cls
+    );
+
+    for id in ["splade-pp-en-v1", "splade-pp-en-v2"] {
+        let splade = get_model(id).expect("registered SPLADE model");
+        assert_eq!(splade.safetensors_file, None);
+        assert_eq!(splade.pytorch_file, "pytorch_model.bin");
+    }
+
+    let colpali = get_model("colpali-v1.2").expect("registered ColPali model");
+    assert_eq!(
+        colpali.safetensors_file,
+        Some("model.safetensors.index.json")
     );
 
     for (id, huggingface_id, dimension) in [
@@ -244,6 +261,7 @@ fn corrected_checkpoint_metadata_is_exposed() {
 
 #[test]
 fn test_all_models_have_valid_metadata() {
+    let mut models_without_revision = Vec::new();
     for model in MODEL_REGISTRY {
         assert!(!model.id.is_empty(), "Model ID should not be empty");
         assert!(!model.name.is_empty(), "Model name should not be empty");
@@ -259,6 +277,25 @@ fn test_all_models_have_valid_metadata() {
             model.context_length > 0,
             "Context length should be positive"
         );
+        if let Some(revision) = model.revision {
+            assert_eq!(revision.len(), 40, "{} revision length", model.id);
+            assert!(
+                revision
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+                "{} must use a lowercase commit SHA",
+                model.id
+            );
+        } else {
+            models_without_revision.push(model.id);
+        }
+        if model.is_runnable() {
+            assert!(
+                model.revision.is_some(),
+                "runnable model {} must have a pinned revision",
+                model.id
+            );
+        }
         // Only text/vision models need languages; timeseries models don't
         if model.modalities.contains(&"text") || model.modalities.contains(&"vision") {
             assert!(
@@ -268,4 +305,6 @@ fn test_all_models_have_valid_metadata() {
             );
         }
     }
+
+    assert_eq!(models_without_revision, ["jina-colbert-v2-96"]);
 }

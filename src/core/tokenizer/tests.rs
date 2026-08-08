@@ -118,3 +118,23 @@ fn raw_input_bytes_are_rejected_before_tokenization() {
         "Input byte count 4 exceeds resource policy limit 3"
     );
 }
+
+#[test]
+fn unregistered_tokenizers_are_rejected_before_network_access() {
+    let error = Tokenizer::from_pretrained("example/unregistered-tokenizer")
+        .err()
+        .expect("unregistered tokenizer must fail");
+
+    assert!(error.to_string().contains("not registered"));
+}
+
+#[test]
+fn tokenizers_without_a_registry_pin_are_rejected_before_network_access() {
+    let error = Tokenizer::from_pretrained("jinaai/jina-colbert-v2-96")
+        .err()
+        .expect("an unpinned tokenizer must fail");
+
+    assert!(error
+        .to_string()
+        .contains("has no pinned HuggingFace revision"));
+}

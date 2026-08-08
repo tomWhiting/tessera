@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "model": { "id": "splade-pp-en-v2", "repository": "prithivida/Splade_PP_en_v2", "revision": "f0d4aa214dcb60c274052a52c0497535e3aec64c", "representation": "sparse" },
+  "artifacts": [
+    { "path": "config.json", "size_bytes": 848, "sha256": "555d7cad5035628c69ae46c9e7cd153b6dae606cc81f8cd0b33d63e1f2532e7c" },
+    { "path": "tokenizer.json", "size_bytes": 711649, "sha256": "2fc687b11de0bc1b3d8348f92e3b49ef1089a621506c7661fbf3248fcd54947e" },
+    { "path": "pytorch_model.bin", "size_bytes": 438131062, "sha256": "a5c6c3009d6344040d0d86c4c9a5586811b54f22cfb3a41b050e8da4f4387aff" }
+  ],
+  "profiles": { "smoke": {
+    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 600000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768 },
+    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 500000000, "min_free_disk_bytes": 1500000000, "max_peak_rss_bytes": 2500000000 }
+  } },
+  "smoke": {
+    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
+    "expected_dimension": 30522, "expected_vocabulary_size": 30522, "normalized": false, "minimum_score_margin": 0.0, "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": { "minimum_successful_runs": 2, "require_clean_source": true, "require_enforced_rss": true, "official_reference_sha256": null }
+}

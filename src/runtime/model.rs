@@ -2,7 +2,7 @@ use anyhow::{bail, Result};
 use candle_core::Device;
 
 use super::{configure_cpu_threads, ResourcePolicy};
-use crate::models::registry::{self, ModelType};
+use crate::models::registry::{self, ModelInfo, ModelType};
 
 #[cfg(test)]
 mod tests;
@@ -14,7 +14,7 @@ pub fn preflight_registered_model(
     expected_model_type: ModelType,
     device: &Device,
     resource_policy: &ResourcePolicy,
-) -> Result<()> {
+) -> Result<&'static ModelInfo> {
     resource_policy
         .validate_model_context(model_context_tokens)
         .map_err(|error| anyhow::anyhow!("Invalid configured model context policy: {error}"))?;
@@ -39,6 +39,12 @@ pub fn preflight_registered_model(
             expected_model_type
         );
     }
+    model_info.revision.ok_or_else(|| {
+        anyhow::anyhow!(
+            "Model '{}' has no pinned HuggingFace revision and cannot be loaded",
+            model_info.id
+        )
+    })?;
     resource_policy
         .validate_model_context(model_info.context_length)
         .map_err(|error| anyhow::anyhow!("Invalid registered model context policy: {error}"))?;
@@ -50,5 +56,5 @@ pub fn preflight_registered_model(
         configure_cpu_threads(2)
             .map_err(|error| anyhow::anyhow!("Failed to configure Candle CPU threads: {error}"))?;
     }
-    Ok(())
+    Ok(model_info)
 }

@@ -10,7 +10,7 @@ The authoritative per-model metadata and notes live in
 | Tier | Count | Meaning |
 |---|---:|---|
 | `Supported` | 0 | Passed the project's repeatable compatibility and output-validation bar |
-| `Experimental` | 10 | Runtime adapter exists; remote checkpoint and output quality remain provisional |
+| `Experimental` | 10 | Runtime adapter and immutable checkpoint pin exist; inference and output quality remain provisional |
 | `CatalogOnly` | 12 | Metadata only; builders reject execution |
 
 Use `tessera::model_registry::runnable_models()` to get the `Supported` and
@@ -54,9 +54,14 @@ request can still exhaust CPU, GPU, or Metal shared memory.
 
 ## Promotion criteria
 
-An entry should move to `Supported` only with a pinned, repeatable checkpoint
-smoke test, checked output shape and numerical sanity, and representation-level
-quality evidence appropriate to that model. Metadata completeness alone is not
+An entry should move to `Supported` only after the checked certification
+contract passes: byte-verified pinned artifacts, two matching clean offline CPU
+runs from one source commit, enforced peak-RSS evidence, checked shape and
+numerical behavior, and a pinned official-reference fingerprint.
+
+No current entry meets that bar. See the
+[local certification guide](../../certification/README.md) for the explicit
+fetch, run, readiness, and purge workflow. Metadata completeness alone is not
 runtime support.
 
 See the [registry quick start](../guides/quick_start_registry.md) for selection

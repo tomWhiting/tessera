@@ -23,8 +23,8 @@ Every entry has a non-empty support note and one of three tiers:
 
 - `SupportTier::Supported`: the runtime path has passed the project's support
   and verification bar.
-- `SupportTier::Experimental`: an adapter exists, but checkpoint compatibility
-  and output quality remain provisional.
+- `SupportTier::Experimental`: an adapter and immutable checkpoint pin exist,
+  but repeatable inference and output quality remain provisional.
 - `SupportTier::CatalogOnly`: metadata is retained, but Tessera cannot execute
   the model with its current adapters.
 
@@ -80,8 +80,16 @@ assert!(get_model("not-a-model").is_none());
    cargo run --locked --offline -p tessera-xtask -- all
    ```
 
-5. Run formatting, Clippy, and the relevant model-free tests. A tier promotion
-   requires its own pinned checkpoint smoke test and checked inference output.
+5. Run the complete local, model-free repository gate:
+
+   ```bash
+   ./scripts/check
+   ```
+
+6. For a runnable model, update its checked certification specification and run
+   the explicit local certification workflow. A tier promotion requires the
+   complete evidence contract documented in
+   [`certification/README.md`](../../certification/README.md).
 
 The build validates unique IDs, positive and internally consistent dimensions,
 Hugging Face repository IDs, projection metadata, and support metadata. See

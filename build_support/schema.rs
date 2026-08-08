@@ -3,8 +3,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize)]
 pub struct ModelRegistry {
-    #[serde(rename = "version")]
-    pub _version: String,
+    pub version: String,
     pub model_categories: BTreeMap<String, ModelCategory>,
 }
 
@@ -30,6 +29,7 @@ pub struct ModelMetadata {
     pub model_type: String,
     pub name: String,
     pub huggingface_id: String,
+    pub revision: Option<String>,
     pub organization: String,
     pub release_date: String,
     pub support: SupportMetadata,
@@ -37,8 +37,7 @@ pub struct ModelMetadata {
     #[serde(default)]
     pub pooling: Option<PoolingConfig>,
     pub specs: Specs,
-    #[serde(rename = "files")]
-    pub _files: Files,
+    pub files: Files,
     pub capabilities: Capabilities,
     pub performance: Performance,
     pub license: String,
@@ -115,20 +114,15 @@ pub struct Specs {
 
 #[derive(Debug, Deserialize)]
 pub struct Files {
-    #[serde(rename = "tokenizer")]
-    pub _tokenizer: String,
-    #[serde(rename = "config")]
-    pub _config: String,
-    #[serde(rename = "weights")]
-    pub _weights: Weights,
+    pub tokenizer: String,
+    pub config: String,
+    pub weights: Weights,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Weights {
-    #[serde(rename = "safetensors")]
-    pub _safetensors: String,
-    #[serde(rename = "pytorch")]
-    pub _pytorch: String,
+    pub safetensors: Option<String>,
+    pub pytorch: String,
 }
 
 #[derive(Debug, Deserialize)]

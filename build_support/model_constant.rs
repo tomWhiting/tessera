@@ -9,25 +9,15 @@ pub fn generate_model_constant(model: &ModelMetadata) -> String {
         |dimension| format!("Some({dimension})"),
     );
 
-    let (pooling_definition, pooling_reference) = model.pooling.as_ref().map_or_else(
-        || (String::new(), "None".to_string()),
-        |pooling| {
-            let pooling_name = format!("{constant_name}_POOLING");
-            let strategy = pooling_strategy_to_enum(&pooling.strategy);
-            let normalize = pooling.normalize;
-            let definition = format!(
-                "/// Pooling configuration for {}.\npub const {}: PoolingConfig = PoolingConfig {{\n    strategy: {},\n    normalize: {},\n}};\n\n",
-                model.name, pooling_name, strategy, normalize
-            );
-            (definition, format!("Some({pooling_name})"))
-        },
-    );
+    let (pooling_definition, pooling_reference) = pooling_config(model, &constant_name);
 
     let languages = quoted_list(&model.capabilities.languages);
     let modalities = quoted_list(&model.capabilities.modalities);
     let quantization = quoted_list(&model.capabilities.quantization);
     let (embedding_dimension, embedding_dimension_display) = embedding_dimension(model);
     let support_note = format!("{:?}", model.support.note);
+    let revision = optional_string_literal(model.revision.as_deref());
+    let safetensors_file = optional_string_literal(model.files.weights.safetensors.as_deref());
 
     format!(
         r#"{}/// {}
@@ -48,6 +38,11 @@ pub const {}: ModelInfo = ModelInfo {{
     support_note: {},
     name: "{}",
     huggingface_id: "{}",
+    revision: {},
+    tokenizer_file: "{}",
+    config_file: "{}",
+    safetensors_file: {},
+    pytorch_file: "{}",
     organization: "{}",
     release_date: "{}",
     architecture_type: "{}",
@@ -87,6 +82,11 @@ pub const {}: ModelInfo = ModelInfo {{
         support_note,
         model.name,
         model.huggingface_id,
+        revision,
+        model.files.tokenizer,
+        model.files.config,
+        safetensors_file,
+        model.files.weights.pytorch,
         model.organization,
         model.release_date,
         model.architecture.arch_type,
@@ -109,6 +109,25 @@ pub const {}: ModelInfo = ModelInfo {{
         model.license,
         model.description,
     )
+}
+
+fn pooling_config(model: &ModelMetadata, constant_name: &str) -> (String, String) {
+    model.pooling.as_ref().map_or_else(
+        || (String::new(), "None".to_string()),
+        |pooling| {
+            let pooling_name = format!("{constant_name}_POOLING");
+            let strategy = pooling_strategy_to_enum(&pooling.strategy);
+            let definition = format!(
+                "/// Pooling configuration for {}.\npub const {}: PoolingConfig = PoolingConfig {{\n    strategy: {},\n    normalize: {},\n}};\n\n",
+                model.name, pooling_name, strategy, pooling.normalize
+            );
+            (definition, format!("Some({pooling_name})"))
+        },
+    )
+}
+
+fn optional_string_literal(value: Option<&str>) -> String {
+    value.map_or_else(|| "None".to_string(), |value| format!("Some({value:?})"))
 }
 
 pub fn to_pascal_case(value: &str) -> String {

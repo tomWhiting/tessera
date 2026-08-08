@@ -70,6 +70,3 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-markers = [
-    "model: downloads and runs one external model; execute serially outside pull-request CI",
-]

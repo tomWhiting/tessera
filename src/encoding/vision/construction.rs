@@ -1,5 +1,6 @@
 use super::ColPaliEncoder;
 use crate::core::Tokenizer;
+use crate::models::loader::ModelFileResolver;
 use crate::models::{registry::ModelType, ModelConfig};
 use crate::runtime::{preflight_registered_model, ResourcePolicy};
 use crate::vision::ImageProcessor;
@@ -51,7 +52,7 @@ impl ColPaliEncoder {
         device: Device,
         resource_policy: ResourcePolicy,
     ) -> Result<Self> {
-        preflight_registered_model(
+        let model_info = preflight_registered_model(
             &config.model_name,
             config.max_seq_length,
             ModelType::VisionLanguage,
@@ -59,48 +60,53 @@ impl ColPaliEncoder {
             &resource_policy,
         )?;
 
-        // 1. Initialize HuggingFace API
-        let api = hf_hub::api::sync::Api::new().context("Failed to initialize HuggingFace API")?;
-        let repo = api.model(config.model_name.clone());
+        // 1. Initialize the pinned model artifact resolver.
+        let files = ModelFileResolver::new(model_info)?;
 
         // 2. Load tokenizer
-        let tokenizer = Tokenizer::from_pretrained_with_policy(&config.model_name, resource_policy)
+        let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
             .context("Failed to load tokenizer")?;
 
         // 3. Download model weights (handle both single file and sharded models)
-        let weights_paths: Vec<PathBuf> =
-            if let Ok(index_path) = repo.get("model.safetensors.index.json") {
-                // Sharded model - load all shards
-                let index: serde_json::Value = serde_json::from_reader(
-                    std::fs::File::open(&index_path).context("Failed to open safetensors index")?,
-                )
-                .context("Failed to parse safetensors index")?;
+        let safetensors_file = model_info.safetensors_file.ok_or_else(|| {
+            anyhow::anyhow!(
+                "Vision model '{}' has no registered safetensors artifact",
+                model_info.id
+            )
+        })?;
+        let weights_paths: Vec<PathBuf> = if safetensors_file.ends_with(".safetensors.index.json") {
+            let index_path = files.get(safetensors_file)?;
+            // Sharded model - load all shards
+            let index: serde_json::Value = serde_json::from_reader(
+                std::fs::File::open(&index_path).context("Failed to open safetensors index")?,
+            )
+            .context("Failed to parse safetensors index")?;
 
-                // Get unique weight files from index
-                let weight_map = index["weight_map"].as_object().ok_or_else(|| {
-                    anyhow::anyhow!("Invalid safetensors index: missing weight_map")
-                })?;
+            // Get unique weight files from index
+            let weight_map = index["weight_map"]
+                .as_object()
+                .ok_or_else(|| anyhow::anyhow!("Invalid safetensors index: missing weight_map"))?;
 
-                let mut files: Vec<String> = weight_map
-                    .values()
-                    .filter_map(|v| v.as_str())
-                    .map(std::string::ToString::to_string)
-                    .collect();
-                files.sort();
-                files.dedup();
+            let mut weight_files: Vec<String> = weight_map
+                .values()
+                .filter_map(|v| v.as_str())
+                .map(std::string::ToString::to_string)
+                .collect();
+            weight_files.sort();
+            weight_files.dedup();
 
-                // Download all shard files
-                files
-                    .iter()
-                    .map(|f| repo.get(f))
-                    .collect::<std::result::Result<Vec<_>, _>>()
-                    .context("Failed to download model shard files")?
-            } else {
-                // Single file model
-                vec![repo
-                    .get("model.safetensors")
-                    .context("Failed to download model.safetensors")?]
-            };
+            // Download all shard files
+            weight_files
+                .iter()
+                .map(|f| files.get(f))
+                .collect::<std::result::Result<Vec<_>, _>>()
+                .context("Failed to download model shard files")?
+        } else {
+            // Single file model
+            vec![files
+                .get(safetensors_file)
+                .context("Failed to download safetensors weights")?]
+        };
 
         // 4. Load VarBuilder from safetensors
         let vb = unsafe {

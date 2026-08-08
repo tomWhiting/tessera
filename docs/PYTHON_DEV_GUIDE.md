@@ -4,8 +4,9 @@ Tessera's optional PyO3 module exposes the active dense, sparse, multi-vector,
 and vision façades plus the immutable `ResourcePolicy`. Time-series models are
 not exported.
 
-All model paths are currently experimental. The normal Python test lane is
-model-free; model-marked smoke tests download and run one checkpoint at a time.
+All model paths are currently experimental. Python test discovery is entirely
+model-free; remote checkpoint execution is handled by the separate local
+certification tool.
 
 ## Development environment
 
@@ -31,21 +32,24 @@ uv run maturin build --release
 Run the hermetic, model-free Python contract after each binding change:
 
 ```bash
-uv run pytest tests/python/test_python_bindings.py -m "not model"
+uv run pytest tests/python/test_python_bindings.py
 ```
 
-Model-marked tests access Hugging Face and can consume substantial memory. Run
-one explicitly selected smoke test at a time, outside the normal pull-request
-lane:
+Do not add remote model downloads to ordinary Python tests. To exercise a real
+checkpoint, use the repository's certification workflow instead:
 
 ```bash
-uv run pytest tests/python/test_python_bindings.py \
-  -m model -k dense_bge_base_smoke
+cargo run --locked -p tessera-xtask --features certification -- \
+  cert fetch --model jina-embeddings-v2-small-en
+cargo run --locked --offline --release -p tessera-xtask \
+  --features certification -- cert run \
+  --model jina-embeddings-v2-small-en --device cpu --profile smoke --repeat 2
 ```
 
-Do not run the whole model marker as a convenient “all models” check. Dense,
-ColBERT, SPLADE, and especially ColPali checkpoints can overlap in memory if a
-runner or notebook keeps embedders alive.
+The tool verifies pinned artifacts, then runs fresh offline CPU child processes
+serially with the checked model-specific resource policy. See the
+[certification guide](../certification/README.md) before attempting larger
+checkpoints such as Snowflake or ColPali.
 
 ## Module layout
 
@@ -57,7 +61,7 @@ src/bindings/python/dense.rs           TesseraDense
 src/bindings/python/multivector.rs     TesseraMultiVector
 src/bindings/python/sparse.rs          TesseraSparse
 src/bindings/python/vision.rs          TesseraVision
-tests/python/test_python_bindings.py   model-free contract and opt-in smokes
+tests/python/test_python_bindings.py   model-free binding contract
 ```
 
 The extension releases the GIL around inference. Batch inputs are validated in
@@ -108,18 +112,19 @@ account for heads, layers, temporary tensors, or allocator overhead.
 4. Accept `resource_policy` as a keyword-only constructor argument and pass it
    to the matching Rust builder.
 5. Register the class in `src/bindings/python.rs`.
-6. Add model-free constructor, validation, and shape-contract tests. Keep any
-   networked inference proof behind `@pytest.mark.model`.
+6. Add model-free constructor, validation, and shape-contract tests. Put real
+   checkpoint inference assertions in the certification specification and
+   harness rather than `pytest`.
 
 ## Repository checks
 
 ```bash
-cargo run --locked --offline -p tessera-xtask -- all
-cargo fmt --all -- --check
-cargo clippy --locked --all-targets --features python -- -D warnings
-cargo test --locked --offline --all-targets --features python
-uv run pytest tests/python/test_python_bindings.py -m "not model"
+./scripts/check
+cargo clippy --locked --all-targets --no-default-features --features python -- -D warnings
+cargo test --locked --offline --all-targets --no-default-features --features python
+uv run pytest tests/python/test_python_bindings.py
 ```
 
 Handwritten Rust and Python files must remain at or below 500 lines. The model
-smoke lane is separate because it is networked, slow, and hardware-sensitive.
+certification lane is separate because it is networked during fetch, slow, and
+hardware-sensitive.

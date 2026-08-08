@@ -10,6 +10,7 @@
 use anyhow::{Context, Result};
 use tokenizers::Tokenizer as HfTokenizer;
 
+use crate::models::loader::ModelFileResolver;
 use crate::runtime::ResourcePolicy;
 
 #[cfg(test)]
@@ -27,8 +28,8 @@ pub struct Tokenizer {
 impl Tokenizer {
     /// Loads a tokenizer from the `HuggingFace` Hub.
     ///
-    /// Uses the tokenizers crate's built-in `from_pretrained` which handles
-    /// different tokenizer formats automatically (tokenizer.json, vocab.json + merges.txt, etc.)
+    /// The model must be registered with an immutable Hub revision. Set
+    /// `TESSERA_OFFLINE=1` to permit pinned cache lookup only.
     ///
     /// # Arguments
     /// * `model_name` - Name of the model on `HuggingFace` Hub (e.g., "bert-base-uncased")
@@ -47,27 +48,22 @@ impl Tokenizer {
         model_name: &str,
         resource_policy: ResourcePolicy,
     ) -> Result<Self> {
-        // Use tokenizers crate's built-in from_pretrained (requires "http" feature)
-        // This handles different tokenizer formats: tokenizer.json, vocab.json + merges.txt, etc.
-        let mut inner = match HfTokenizer::from_pretrained(model_name, None) {
-            Ok(inner) => inner,
-            Err(e) => {
-                // A redirect is used only when an audited model explicitly declares one.
-                Self::get_base_model_tokenizer(model_name).map_or_else(
-                    || {
-                        Err(anyhow::anyhow!("Failed to load tokenizer: {e}"))
-                            .with_context(|| format!("Loading tokenizer for model: {model_name}"))
-                    },
-                    |base_model| {
-                        HfTokenizer::from_pretrained(base_model, None)
-                        .map_err(|e2| anyhow::anyhow!(
-                            "Failed to load tokenizer from {model_name} or base model {base_model}: {e2}"
-                        ))
-                        .with_context(|| format!("Loading tokenizer for model: {model_name}"))
-                    },
-                )?
-            }
-        };
+        let model = crate::models::registry::get_model_by_hf_id(model_name).ok_or_else(|| {
+            anyhow::anyhow!("Model '{model_name}' is not registered for tokenizer loading")
+        })?;
+        let files = ModelFileResolver::new(model)?;
+        Self::from_model_files_with_policy(&files, resource_policy)
+    }
+
+    /// Loads `tokenizer.json` through the shared pinned artifact resolver.
+    pub(crate) fn from_model_files_with_policy(
+        files: &ModelFileResolver,
+        resource_policy: ResourcePolicy,
+    ) -> Result<Self> {
+        let tokenizer_path = files.get(files.model().tokenizer_file)?;
+        let mut inner = HfTokenizer::from_file(&tokenizer_path)
+            .map_err(|error| anyhow::anyhow!("Failed to load tokenizer: {error}"))
+            .with_context(|| format!("Loading tokenizer from {}", tokenizer_path.display()))?;
 
         inner
             .with_truncation(None)
@@ -78,15 +74,6 @@ impl Tokenizer {
             inner,
             resource_policy,
         })
-    }
-
-    /// Returns an explicitly audited base-tokenizer redirect, when one exists.
-    ///
-    /// # Returns
-    /// Tessera currently has no active redirects. Unknown or incomplete model
-    /// repositories fail instead of silently borrowing a tokenizer.
-    fn get_base_model_tokenizer(_model_name: &str) -> Option<&'static str> {
-        None
     }
 
     /// Encodes text into token IDs.
