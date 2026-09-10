@@ -18,6 +18,12 @@ source of truth for model metadata and support tiers.
 - [Local model certification](../certification/README.md) covers immutable
   artifact verification, resource-bounded serial inference, and promotion
   evidence.
+- [Threading](THREADING.md) records what a multi-threaded caller gets today:
+  the `Send + Sync` verdict per embedder, and the process-wide single-forward-
+  pass gate that bounds it.
+- [Metal](METAL.md) records how the Metal device is selected and which dtypes
+  Tessera itself accepts on an accelerator.
+- [CUDA](CUDA.md) records the CUDA build path and the unproven smoke script.
 - [Time-series legacy note](legacy/TIMESERIES.md) records why Chronos and
   TimesFM are not active runtimes.
 - [Notebook guide](../examples/notebooks/README.md) covers the exploratory
