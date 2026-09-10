@@ -7,8 +7,9 @@ It uses Candle for inference and offers optional Python bindings through PyO3.
 > [!IMPORTANT]
 > Tessera is currently an alpha-quality revival, not a production-ready model
 > suite. The registry contains 22 model entries, but support metadata is
-> deliberately conservative: 10 entries have an `Experimental` runtime path,
-> 12 are `CatalogOnly`, and none are `Supported` yet.
+> deliberately conservative: `bge-base-en-v1.5` is `Supported` against a checked
+> upstream reference, 9 entries have an `Experimental` runtime path, and 12 are
+> `CatalogOnly`.
 
 `Experimental` means that a Tessera adapter and immutable checkpoint pin exist,
 but the path still needs repeatable offline inference and quality validation.

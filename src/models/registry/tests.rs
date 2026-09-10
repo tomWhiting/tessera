@@ -140,7 +140,7 @@ fn support_contract_matches_the_audited_catalog() {
     actual.sort_unstable_by(|left, right| left.0.cmp(right.0));
 
     let expected = [
-        ("bge-base-en-v1.5", SupportTier::Experimental),
+        ("bge-base-en-v1.5", SupportTier::Supported),
         ("bge-m3-multi", SupportTier::CatalogOnly),
         ("chronos-bolt-small", SupportTier::CatalogOnly),
         ("colbert-small", SupportTier::Experimental),
@@ -165,9 +165,26 @@ fn support_contract_matches_the_audited_catalog() {
     ];
 
     assert_eq!(actual.as_slice(), expected);
-    assert!(MODEL_REGISTRY
+    // A Supported tier is earned, never declared: every Supported entry must pin a
+    // checked official reference in its certification specification.
+    let supported = MODEL_REGISTRY
         .iter()
-        .all(|model| model.support_tier != SupportTier::Supported));
+        .filter(|model| model.support_tier == SupportTier::Supported)
+        .map(|model| model.id)
+        .collect::<Vec<_>>();
+    assert_eq!(supported, ["bge-base-en-v1.5"]);
+    for id in supported {
+        let spec_path = format!(
+            "{}/certification/specs/{id}.json",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let spec = std::fs::read_to_string(&spec_path)
+            .unwrap_or_else(|error| panic!("Supported model {id} needs {spec_path}: {error}"));
+        assert!(
+            spec.contains("\"official_reference\": {"),
+            "Supported model {id} must pin a checked official reference in {spec_path}"
+        );
+    }
     assert!(MODEL_REGISTRY
         .iter()
         .all(|model| !model.support_note.trim().is_empty()));

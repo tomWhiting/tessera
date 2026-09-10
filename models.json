@@ -449,8 +449,8 @@
           "organization": "BAAI",
           "release_date": "2023",
           "support": {
-            "tier": "experimental",
-            "note": "BERT dense path exists; remote checkpoint execution remains experimental."
+            "tier": "supported",
+            "note": "Certified against the checked sentence-transformers reference: two clean-HEAD smoke runs, 2e-7 absolute error, cosine 0.99999994, RSS enforced."
           },
           "architecture": {
             "type": "bert",
