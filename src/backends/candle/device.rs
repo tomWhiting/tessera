@@ -26,15 +26,30 @@ fn metal_device_at(ordinal: usize) -> Result<Device> {
 
 /// Selects the best available device for computation.
 ///
-/// On macOS with Apple Silicon, this will attempt to use Metal if available.
-/// Otherwise, it falls back to CPU.
+/// Selection order is fixed and feature-gated at compile time:
+///
+/// 1. Metal ordinal 0, when the target is macOS **and** the `metal` feature is
+///    enabled. The ordinal is validated against `Device::all()` first because
+///    Candle 0.11 panics rather than erring on an empty Metal device list.
+/// 2. CUDA ordinal 0, when the `cuda` feature is enabled.
+/// 3. CPU.
+///
+/// Each accelerator step is a *fallback*, not a guarantee: if the accelerator
+/// device cannot be created, the failure is discarded and selection continues
+/// to the next step, so a machine with a broken driver silently returns
+/// [`Device::Cpu`]. Callers that must fail loudly on a missing accelerator
+/// should construct the device themselves — [`metal_device`] or
+/// [`cuda_device`], or `Device::new_metal`/`Device::new_cuda` for a non-zero
+/// ordinal — and pass it to a builder's `device` selector.
 ///
 /// # Returns
-/// The selected device
+///
+/// The selected device.
 ///
 /// # Errors
 ///
-/// This function currently does not return errors, but returns a Result for API consistency.
+/// Returns an error only if a future selection step becomes fallible; the
+/// current steps all fall through to [`Device::Cpu`].
 pub fn get_device() -> Result<Device> {
     #[cfg(all(target_os = "macos", feature = "metal"))]
     {

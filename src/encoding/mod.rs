@@ -14,3 +14,6 @@
 pub mod dense;
 pub mod sparse;
 pub mod vision;
+
+#[cfg(test)]
+mod thread_safety;

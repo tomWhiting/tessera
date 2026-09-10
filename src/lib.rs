@@ -271,6 +271,12 @@ pub use api::{
     TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
     TesseraVision, TesseraVisionBuilder,
 };
+#[cfg(feature = "cuda")]
+pub use backends::candle::device::cuda_device;
+#[cfg(all(target_os = "macos", feature = "metal"))]
+pub use backends::candle::device::metal_device;
+pub use backends::candle::get_device;
+pub use candle_core::Device;
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
@@ -278,8 +284,8 @@ pub use quantization::{multi_vector_distance, quantize_multi, BinaryQuantization
 pub use runtime::{
     configure_cpu_threads, configure_inference_gate, try_acquire_inference, ContextWindowConfig,
     ContextWindowError, CpuThreadConfig, CpuThreadConfigError, InferenceGateConfig,
-    InferenceGateConfigError, InferenceGateError, ModelDType, ModelDTypeError, ResourcePolicy,
-    ResourcePolicyError,
+    InferenceGateConfigError, InferenceGateError, InferencePermit, ModelDType, ModelDTypeError,
+    ResourcePolicy, ResourcePolicyError,
 };
 pub use utils::similarity::max_sim;
 

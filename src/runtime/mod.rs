@@ -14,7 +14,7 @@ pub(crate) use estimate::TransformerProfile;
 pub(crate) use inference::acquire_inference_permit;
 pub use inference::{
     configure_inference_gate, try_acquire_inference, InferenceGateConfig, InferenceGateConfigError,
-    InferenceGateError,
+    InferenceGateError, InferencePermit,
 };
 pub(crate) use job::{f32_output_bytes, JobTracker};
 pub use load::{ModelDType, ModelDTypeError};

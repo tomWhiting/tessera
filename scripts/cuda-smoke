@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+#
+# CUDA smoke: prove that one dense Tessera model produces the same embeddings on
+# an NVIDIA GPU as it does on CPU, and report what each pass cost in wall time.
+#
+# STATUS: UNPROVEN. This script has never been executed. It was written on a
+# machine with no NVIDIA GPU, where `cargo check --features cuda` cannot get
+# past the `cudarc` and `candle-kernels` build scripts (both require `nvcc`).
+# Treat the first run on real hardware as a debugging session, not a gate.
+#
+# Requires: Linux, an NVIDIA GPU, the CUDA toolkit (`nvcc` on PATH), a Rust
+# toolchain matching rust-toolchain.toml, and network access for the first run
+# so the checkpoint can be fetched from HuggingFace.
+
+set -euo pipefail
+
+readonly SCRIPT_NAME="${0##*/}"
+repository_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly repository_root
+readonly manifest_path="${repository_root}/Cargo.toml"
+
+model="bge-base-en-v1.5"
+ordinal="0"
+tolerance="0.999"
+profile="release"
+
+usage() {
+    cat <<USAGE
+usage: ${SCRIPT_NAME} [options]
+
+  --model <id>       registry model id            (default: ${model})
+  --ordinal <n>      CUDA device ordinal          (default: ${ordinal})
+  --tolerance <f>    minimum cross-device cosine  (default: ${tolerance})
+  --debug            build the debug profile instead of release
+  -h, --help         show this message
+
+Exits non-zero when any prerequisite is missing, the build fails, or any
+sentence's CUDA embedding disagrees with its CPU embedding beyond --tolerance.
+USAGE
+}
+
+die() {
+    printf '%s: error: %s\n' "${SCRIPT_NAME}" "$*" >&2
+    exit 1
+}
+
+note() {
+    printf '%s: %s\n' "${SCRIPT_NAME}" "$*"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --model)
+            [[ $# -ge 2 ]] || die "--model needs a value"
+            model="$2"
+            shift 2
+            ;;
+        --ordinal)
+            [[ $# -ge 2 ]] || die "--ordinal needs a value"
+            ordinal="$2"
+            shift 2
+            ;;
+        --tolerance)
+            [[ $# -ge 2 ]] || die "--tolerance needs a value"
+            tolerance="$2"
+            shift 2
+            ;;
+        --debug)
+            profile="debug"
+            shift
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            usage >&2
+            die "unknown argument '$1'"
+            ;;
+    esac
+done
+
+[[ "${ordinal}" =~ ^[0-9]+$ ]] || die "--ordinal must be a non-negative integer, got '${ordinal}'"
+[[ "${tolerance}" =~ ^[0-9]+(\.[0-9]+)?$ ]] || die "--tolerance must be a decimal, got '${tolerance}'"
+
+# --- prerequisites -----------------------------------------------------------
+
+[[ "$(uname -s)" == "Linux" ]] || die "CUDA builds of Candle 0.11 are supported on Linux only; this is $(uname -s)"
+
+command -v cargo >/dev/null 2>&1 || die "cargo is not on PATH"
+command -v nvcc  >/dev/null 2>&1 || die "nvcc is not on PATH; install the CUDA toolkit (cudarc and candle-kernels both shell out to it at build time)"
+command -v nvidia-smi >/dev/null 2>&1 || die "nvidia-smi is not on PATH; no usable NVIDIA driver"
+
+note "nvcc:       $(nvcc --version | tail -n 1)"
+note "driver/gpu:"
+nvidia-smi --query-gpu=index,name,driver_version,memory.total --format=csv || die "nvidia-smi failed"
+
+gpu_count="$(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | tr -d ' ')"
+[[ "${ordinal}" -lt "${gpu_count}" ]] || die "requested CUDA ordinal ${ordinal} but only ${gpu_count} GPU(s) are visible"
+
+# --- build -------------------------------------------------------------------
+
+build_flags=(--locked --manifest-path "${manifest_path}" --no-default-features --features cuda)
+if [[ "${profile}" == "release" ]]; then
+    build_flags+=(--release)
+fi
+
+note "building the cuda feature (${profile} profile)"
+cargo build "${build_flags[@]}" --example device_parity \
+    || die "cargo build --features cuda failed; see the output above (the usual first failure is a cudarc/candle-kernels build script that cannot find nvcc)"
+
+# --- run ---------------------------------------------------------------------
+
+note "comparing ${model} on cuda:${ordinal} against cpu (tolerance ${tolerance})"
+if cargo run "${build_flags[@]}" --example device_parity -- \
+        --model "${model}" \
+        --device cuda \
+        --ordinal "${ordinal}" \
+        --tolerance "${tolerance}"; then
+    note "PASS: every sentence agreed across cuda:${ordinal} and cpu within ${tolerance}"
+    exit 0
+fi
+
+die "FAIL: the CUDA and CPU embeddings disagreed, or the run could not complete"
