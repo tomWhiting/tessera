@@ -81,11 +81,25 @@ fn build_device(name: &str, ordinal: usize) -> Result<Device> {
     match name {
         "cuda" => Device::new_cuda(ordinal)
             .with_context(|| format!("Creating CUDA device at ordinal {ordinal}")),
-        "metal" => Device::new_metal(ordinal)
+        "metal" => metal_device_at(ordinal)
             .with_context(|| format!("Creating Metal device at ordinal {ordinal}")),
         "cpu" => Ok(Device::Cpu),
         other => anyhow::bail!("unknown device '{other}'"),
     }
+}
+
+/// Opens a Metal device through the library's ordinal guard.
+#[cfg(feature = "metal")]
+fn metal_device_at(ordinal: usize) -> Result<Device> {
+    tessera::metal_device_at(ordinal)
+}
+
+/// Reports that Metal was not compiled into this build.
+#[cfg(not(feature = "metal"))]
+fn metal_device_at(_ordinal: usize) -> Result<Device> {
+    anyhow::bail!(
+        "this binary was built without the `metal` feature; rebuild with --features metal"
+    )
 }
 
 /// Loads the model on `device`, encodes [`SENTENCES`], and drops the model.

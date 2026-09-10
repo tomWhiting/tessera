@@ -275,6 +275,8 @@ pub use api::{
 pub use backends::candle::device::cuda_device;
 #[cfg(all(target_os = "macos", feature = "metal"))]
 pub use backends::candle::device::metal_device;
+#[cfg(all(target_os = "macos", feature = "metal"))]
+pub use backends::candle::device::metal_device_at;
 pub use backends::candle::get_device;
 pub use candle_core::Device;
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
@@ -285,7 +287,7 @@ pub use runtime::{
     configure_cpu_threads, configure_inference_gate, try_acquire_inference, ContextWindowConfig,
     ContextWindowError, CpuThreadConfig, CpuThreadConfigError, InferenceGateConfig,
     InferenceGateConfigError, InferenceGateError, InferencePermit, ModelDType, ModelDTypeError,
-    ResourcePolicy, ResourcePolicyError,
+    ModelPool, PoolError, ResourcePolicy, ResourcePolicyError, SweepReport,
 };
 pub use utils::similarity::max_sim;
 

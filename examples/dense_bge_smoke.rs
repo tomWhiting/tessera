@@ -50,7 +50,7 @@ fn select_device(name: &str) -> Result<Device> {
         "auto" => {
             #[cfg(feature = "metal")]
             {
-                if let Ok(device) = Device::new_metal(0) {
+                if let Ok(device) = tessera::metal_device() {
                     return Ok(device);
                 }
             }
@@ -63,7 +63,7 @@ fn select_device(name: &str) -> Result<Device> {
 /// Builds a Metal device, or explains why this build cannot.
 #[cfg(feature = "metal")]
 fn metal_device() -> Result<Device> {
-    Device::new_metal(0).context("failed to open Metal device 0")
+    tessera::metal_device().context("failed to open Metal device 0")
 }
 
 /// Reports that Metal was not compiled into this build.

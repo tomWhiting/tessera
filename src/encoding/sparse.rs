@@ -402,13 +402,70 @@ impl Encoder for CandleSparseEncoder {
     }
 
     fn encode_batch(&self, inputs: &[&str]) -> Result<Vec<Self::Output>> {
-        // For now, sequential encoding
-        // TODO: Implement true batch processing for better performance
-        inputs
-            .iter()
-            .map(|&text| self.encode(text))
-            .collect::<Result<Vec<_>>>()
-            .context("Batch encoding sparse embeddings")
+        if inputs.is_empty() {
+            return Ok(Vec::new());
+        }
+        if inputs.len() == 1 {
+            return Ok(vec![self.encode(inputs[0])?]);
+        }
+        let batch = self
+            .tokenizer
+            .encode_batch(inputs, true)
+            .context("Batch tokenization")?;
+        let batch_size = batch.len();
+        let max_seq_len = batch[0].0.len();
+        self.resource_policy
+            .validate_transformer_activations(
+                self.transformer_profile,
+                batch_size,
+                max_seq_len,
+                self.dtype,
+            )
+            .map_err(|error| {
+                anyhow::anyhow!("Sparse batch activation preflight failed: {error}")
+            })?;
+
+        let mut all_token_ids = Vec::with_capacity(batch_size * max_seq_len);
+        let mut model_masks = Vec::with_capacity(batch_size * max_seq_len);
+        for (token_ids, attention_mask) in &batch {
+            all_token_ids.extend(token_ids.iter().map(|&id| i64::from(id)));
+            model_masks.extend(attention_mask.iter().map(|&mask| match &self.model {
+                BertVariant::DistilBert(_) => i64::from(mask != 1),
+                _ => i64::from(mask),
+            }));
+        }
+        let token_ids_tensor =
+            Tensor::from_vec(all_token_ids, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch token IDs tensor")?;
+        let attention_mask_tensor =
+            Tensor::from_vec(model_masks, (batch_size, max_seq_len), &self.device)
+                .context("Creating batch attention mask tensor")?;
+
+        // One admission for the whole batch: the transformer runs once, the MLM head
+        // and pooling then run per row on the shared hidden states.
+        let inference_permit = crate::runtime::acquire_inference_permit()
+            .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
+        let hidden_states = self
+            .model
+            .forward(&token_ids_tensor, &attention_mask_tensor)
+            .context("BERT batch forward pass")?;
+        let mut outputs = Vec::with_capacity(batch_size);
+        for (row, (text, (_, attention_mask))) in inputs.iter().zip(&batch).enumerate() {
+            let hidden_row = hidden_states
+                .get(row)
+                .with_context(|| format!("Selecting batch row {row}"))?;
+            let logits = self
+                .mlm_head
+                .forward(&hidden_row)
+                .context("MLM head forward pass")?;
+            let pooled_logits = max_pool_token_logits(&logits, attention_mask, self.vocab_size)
+                .context("Max pooling vocabulary logits across tokens")?;
+            let pooled =
+                splade_transform(&pooled_logits).context("Applying SPLADE transformation")?;
+            outputs.push(self.to_sparse(&pooled, (*text).to_string())?);
+        }
+        drop(inference_permit);
+        Ok(outputs)
     }
 }
 

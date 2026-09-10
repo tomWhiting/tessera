@@ -14,8 +14,9 @@ fn validate_metal_ordinal(ordinal: usize, device_count: usize) -> Result<()> {
     Ok(())
 }
 
+/// Opens the Metal device at `ordinal`, refusing ordinals the system does not have.
 #[cfg(all(target_os = "macos", feature = "metal"))]
-fn metal_device_at(ordinal: usize) -> Result<Device> {
+pub fn metal_device_at(ordinal: usize) -> Result<Device> {
     // Candle 0.11 calls `swap_remove(ordinal)` without checking this list first,
     // which panics when Metal is unavailable rather than returning an error.
     let device_count = candle_metal_kernels::metal::Device::all().len();
@@ -79,6 +80,7 @@ pub fn get_device() -> Result<Device> {
 ///
 /// Returns an error if Metal device creation fails.
 #[cfg(all(target_os = "macos", feature = "metal"))]
+/// Opens Metal device 0 through the same ordinal guard as [`metal_device_at`].
 pub fn metal_device() -> Result<Device> {
     metal_device_at(0)
 }

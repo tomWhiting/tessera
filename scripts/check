@@ -12,6 +12,11 @@ cargo clippy --locked --offline --workspace --all-targets --no-default-features 
 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features pdf -- -D warnings
 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features timeseries -- -D warnings
 PYO3_PYTHON=/usr/bin/python3 cargo clippy --locked --offline --workspace --all-targets --no-default-features --features python -- -D warnings
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    # Metal is a shipped feature: lint and test it wherever the gate runs on macOS.
+    cargo clippy --locked --offline --workspace --all-targets --no-default-features --features metal -- -D warnings
+    cargo test --locked --offline --no-default-features --features metal --lib
+fi
 cargo clippy --locked --offline -p tessera-xtask --all-targets --features certification -- -D warnings
 cargo test --locked --offline --workspace --all-targets --no-default-features
 cargo test --locked --offline --lib

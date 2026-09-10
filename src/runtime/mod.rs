@@ -6,6 +6,7 @@ mod job;
 mod load;
 mod model;
 mod policy;
+mod pool;
 mod residency;
 mod threading;
 mod window;
@@ -23,6 +24,7 @@ pub(crate) use model::preflight_registered_model;
 pub(crate) use model::preflight_registered_model_with_dtype;
 pub(crate) use policy::resolve_registry_policy_with_dtype;
 pub use policy::{ResourcePolicy, ResourcePolicyError};
+pub use pool::{ModelPool, PoolError, SweepReport};
 pub(crate) use residency::{
     preflight_and_reserve_registered_model_with_dtype, ModelResidencyPermit,
 };

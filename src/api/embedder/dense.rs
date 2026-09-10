@@ -224,7 +224,12 @@ impl TesseraDense {
                 .map_err(|error| resource_error("Dense batch input exceeds job limits", error))?;
         }
 
-        let batch_size = self.batch_size.unwrap_or(NonZeroUsize::MIN);
+        // No explicit size means the policy's batch ceiling: one inference admission per
+        // chunk, never one per text.
+        let batch_size = self
+            .batch_size
+            .or_else(|| NonZeroUsize::new(self.resource_policy.max_batch_items()))
+            .unwrap_or(NonZeroUsize::MIN);
 
         // Process in chunks with optional yielding
         let mut all_embeddings = Vec::with_capacity(texts.len());

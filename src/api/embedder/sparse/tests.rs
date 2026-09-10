@@ -21,12 +21,14 @@ fn sparse_dot_merges_sorted_indices() {
 #[test]
 fn collecting_batch_stops_before_encoding_past_output_budget() {
     let calls = Cell::new(0_usize);
-    let policy = ResourcePolicy::default().with_max_output_bytes(sparse_output_bytes(2));
+    let policy = ResourcePolicy::default()
+        .with_max_batch_items(1)
+        .with_max_output_bytes(sparse_output_bytes(2));
     let texts = ["first", "second", "third", "must-not-run"];
 
-    let error = collect_sparse_batch(&texts, policy, |_, text| {
-        calls.set(calls.get().saturating_add(1));
-        Ok(one_entry_embedding(text))
+    let error = collect_sparse_batch(&texts, policy, |_, chunk| {
+        calls.set(calls.get().saturating_add(chunk.len()));
+        Ok(chunk.iter().map(|text| one_entry_embedding(text)).collect())
     })
     .unwrap_err();
 
@@ -39,9 +41,9 @@ fn collecting_batch_preflights_the_complete_input_job() {
     let calls = Cell::new(0_usize);
     let policy = ResourcePolicy::default().with_max_job_items(1);
 
-    let error = collect_sparse_batch(&["first", "second"], policy, |_, text| {
-        calls.set(calls.get().saturating_add(1));
-        Ok(one_entry_embedding(text))
+    let error = collect_sparse_batch(&["first", "second"], policy, |_, chunk| {
+        calls.set(calls.get().saturating_add(chunk.len()));
+        Ok(chunk.iter().map(|text| one_entry_embedding(text)).collect())
     })
     .unwrap_err();
 
@@ -53,8 +55,8 @@ fn collecting_batch_preflights_the_complete_input_job() {
 fn collecting_batch_preserves_input_order() {
     let texts = ["first", "second", "third"];
 
-    let embeddings = collect_sparse_batch(&texts, ResourcePolicy::default(), |_, text| {
-        Ok(one_entry_embedding(text))
+    let embeddings = collect_sparse_batch(&texts, ResourcePolicy::default(), |_, chunk| {
+        Ok(chunk.iter().map(|text| one_entry_embedding(text)).collect())
     })
     .unwrap();
 
@@ -63,4 +65,20 @@ fn collecting_batch_preserves_input_order() {
         .map(SparseEmbedding::text)
         .collect::<Vec<_>>();
     assert_eq!(encoded_texts, texts);
+}
+
+#[test]
+fn collecting_batch_chunks_by_the_policy_batch_ceiling() {
+    let chunk_sizes = std::cell::RefCell::new(Vec::new());
+    let policy = ResourcePolicy::default().with_max_batch_items(2);
+    let texts = ["a", "b", "c", "d", "e"];
+
+    let embeddings = collect_sparse_batch(&texts, policy, |chunk_index, chunk| {
+        chunk_sizes.borrow_mut().push((chunk_index, chunk.len()));
+        Ok(chunk.iter().map(|text| one_entry_embedding(text)).collect())
+    })
+    .unwrap();
+
+    assert_eq!(embeddings.len(), 5);
+    assert_eq!(chunk_sizes.into_inner(), vec![(0, 2), (1, 2), (2, 1)]);
 }

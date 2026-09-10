@@ -189,12 +189,12 @@ impl TesseraSparse {
     /// ])?;
     /// ```
     pub fn encode_batch(&self, texts: &[&str]) -> Result<Vec<SparseEmbedding>> {
-        collect_sparse_batch(texts, self.resource_policy, |item_index, text| {
-            <CandleSparseEncoder as Encoder>::encode(&self.encoder, text).map_err(|source| {
+        collect_sparse_batch(texts, self.resource_policy, |chunk_index, chunk| {
+            <CandleSparseEncoder as Encoder>::encode_batch(&self.encoder, chunk).map_err(|source| {
                 TesseraError::EncodingError {
                     context: format!(
-                        "Failed to encode sparse batch item {item_index} ({} UTF-8 bytes)",
-                        text.len()
+                        "Failed to encode sparse batch chunk {chunk_index} ({} texts)",
+                        chunk.len()
                     ),
                     source,
                 }
@@ -314,10 +314,10 @@ fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> 
 fn collect_sparse_batch<F>(
     texts: &[&str],
     resource_policy: ResourcePolicy,
-    mut encode: F,
+    mut encode_chunk: F,
 ) -> Result<Vec<SparseEmbedding>>
 where
-    F: FnMut(usize, &str) -> Result<SparseEmbedding>,
+    F: FnMut(usize, &[&str]) -> Result<Vec<SparseEmbedding>>,
 {
     let mut tracker = JobTracker::new(resource_policy);
     for text in texts {
@@ -326,15 +326,18 @@ where
             .map_err(|error| resource_error("Sparse batch input exceeds job limits", error))?;
     }
 
+    // One inference admission per chunk, never one per text.
+    let chunk_size = resource_policy.max_batch_items().max(1);
     let mut embeddings = Vec::with_capacity(texts.len());
-    for (item_index, text) in texts.iter().copied().enumerate() {
-        let embedding = encode(item_index, text)?;
-        tracker
-            .retain_output(sparse_output_bytes(embedding.nnz()))
-            .map_err(|error| {
-                resource_error("Sparse batch output exceeds collection limit", error)
-            })?;
-        embeddings.push(embedding);
+    for (chunk_index, chunk) in texts.chunks(chunk_size).enumerate() {
+        for embedding in encode_chunk(chunk_index, chunk)? {
+            tracker
+                .retain_output(sparse_output_bytes(embedding.nnz()))
+                .map_err(|error| {
+                    resource_error("Sparse batch output exceeds collection limit", error)
+                })?;
+            embeddings.push(embedding);
+        }
     }
     Ok(embeddings)
 }
