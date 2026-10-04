@@ -161,13 +161,16 @@ impl CandleDenseEncoder {
     }
 
     /// Facts the model identity needs that the registry entry does not hold.
-    pub(crate) fn loaded_facts(&self) -> crate::api::embedder::LoadedFacts {
-        crate::api::embedder::LoadedFacts {
+    pub(crate) fn loaded_facts(&self) -> anyhow::Result<crate::api::embedder::LoadedFacts> {
+        Ok(crate::api::embedder::LoadedFacts {
             dimensions: self.embedding_dim(),
             special_tokens: self.tokenizer.cut_special_tokens(),
+            prefix_tokens: self
+                .tokenizer
+                .longest_prefix_tokens(&[self.prompts.query, self.prompts.document])?,
             normalised: self.normalize,
             position_table: self.position_table,
-        }
+        })
     }
 }
 

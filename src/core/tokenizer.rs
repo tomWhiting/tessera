@@ -181,14 +181,7 @@ impl Tokenizer {
     /// Checks the limit holds the special tokens, the longest prompt and one token.
     pub(crate) fn validate_cut_configuration_with(&self, prompts: &[&str]) -> Result<()> {
         self.validate_cut_configuration()?;
-        let mut prompt_tokens = 0;
-        for prompt in prompts {
-            let encoding = self
-                .inner
-                .encode(*prompt, false)
-                .map_err(|error| anyhow::anyhow!("Failed to encode prompt: {error}"))?;
-            prompt_tokens = prompt_tokens.max(encoding.len());
-        }
+        let prompt_tokens = self.longest_prefix_tokens(prompts)?;
         let special_tokens = self.cut_special_tokens();
         let limit = self.resource_policy.max_sequence_tokens();
         if limit <= special_tokens + prompt_tokens {
@@ -200,6 +193,18 @@ impl Tokenizer {
             .into());
         }
         Ok(())
+    }
+
+    pub(crate) fn longest_prefix_tokens(&self, prefixes: &[&str]) -> Result<usize> {
+        let mut longest = 0;
+        for prefix in prefixes {
+            let encoding = self
+                .inner
+                .encode(*prefix, false)
+                .map_err(|error| anyhow::anyhow!("Failed to encode prompt: {error}"))?;
+            longest = longest.max(encoding.len());
+        }
+        Ok(longest)
     }
 
     pub(crate) fn prepare_cut(&mut self) -> Result<()> {

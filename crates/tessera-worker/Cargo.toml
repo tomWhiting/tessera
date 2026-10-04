@@ -1,0 +1,41 @@
+[package]
+name = "tessera-worker"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.97"
+license = "Apache-2.0"
+publish = false
+description = "Installed dense embedding worker with bounded Rust heap and shared framing"
+
+[dependencies]
+tessera-embeddings = { path = "../..", default-features = false }
+haem-frames = { git = "https://github.com/ablative-io/haematite", branch = "main" }
+haem-worker = { git = "https://github.com/ablative-io/haematite", branch = "main" }
+
+[dev-dependencies]
+serde_json = "1.0.145"
+sha2 = "0.10.9"
+tempfile = "3.27.0"
+
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+all = "warn"
+pedantic = "warn"
+nursery = "warn"
+
+# Its own workspace, outside the library's: resolving it needs the private
+# haematite repository, and the library must build without that access.
+[workspace]
+
+# Kept equal to the library's profiles.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 8
+strip = "symbols"
+panic = "unwind"
+
+[profile.dev]
+opt-level = 1

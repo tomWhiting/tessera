@@ -32,6 +32,9 @@ exclude = [
 
 [workspace]
 members = [".", "xtask"]
+# The worker depends on the private haematite repository, so it is its own
+# workspace: the library and xtask resolve and build without that access.
+exclude = ["crates/tessera-worker"]
 resolver = "2"
 
 [lib]

@@ -95,7 +95,12 @@ impl CandleDenseEncoder {
                 resource_policy.max_sequence_tokens(),
                 dtype,
             )
-            .map_err(|error| anyhow::anyhow!("Dense activation preflight failed: {error}"))?;
+            .map_err(|error| {
+                anyhow::Error::new(crate::api::embedder::EmbedFailure::Limits {
+                    limit: "max_activation_bytes",
+                    message: format!("Dense activation preflight failed: {error}"),
+                })
+            })?;
 
         // Detect model type
         let detector: ModelTypeDetector =
