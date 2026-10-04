@@ -54,7 +54,7 @@
       },
       "official_reference": {
         "path": "mxbai-embed-large-v1/smoke.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "257dd4dd548ac0147c208c4f19591546c6a9b7ef510e5068f9dd7616f1fe8a27"
       }
     },
     "paragraph": {
@@ -87,7 +87,7 @@
       },
       "official_reference": {
         "path": "mxbai-embed-large-v1/paragraph.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "df0cc11db2ad42a329e06ef80ac68cf733cae547e7912e911dcaaf44de2a0ea7"
       }
     },
     "non-ascii": {
@@ -120,7 +120,7 @@
       },
       "official_reference": {
         "path": "mxbai-embed-large-v1/non-ascii.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "5261ae51126552623bdf021556c32b8228b394454212ff721be4c5b3bc91faf5"
       }
     },
     "whitespace": {
@@ -153,7 +153,7 @@
       },
       "official_reference": {
         "path": "mxbai-embed-large-v1/whitespace.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "82d3ae979946c36c1c4e1319417c335307fc2e8a10a5691eb1dc6a66a7012abb"
       }
     }
   },

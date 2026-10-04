@@ -54,7 +54,7 @@
       },
       "official_reference": {
         "path": "bge-large-en-v1.5/smoke.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "e7a0f96aa5859e9479e2fb21d5d35289f12e96e8cfdf938a923ff2c6cafeda29"
       }
     },
     "paragraph": {
@@ -87,7 +87,7 @@
       },
       "official_reference": {
         "path": "bge-large-en-v1.5/paragraph.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "bac18f92948678e15c517101a625ebd743aca0466c38b7febcf778ccb0371fad"
       }
     },
     "non-ascii": {
@@ -120,7 +120,7 @@
       },
       "official_reference": {
         "path": "bge-large-en-v1.5/non-ascii.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "783c283b99f704d88330f5d28b3c495b625889ac7f297f8ca4aa4a270618a229"
       }
     },
     "whitespace": {
@@ -153,7 +153,7 @@
       },
       "official_reference": {
         "path": "bge-large-en-v1.5/whitespace.json",
-        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+        "sha256": "a7c6b971c5c537e36ba25a7a3381f936336bd9ab5d7cea692c70d1dd1612aca7"
       }
     }
   },
