@@ -300,6 +300,83 @@ impl DenseEmbedding {
     }
 }
 
+/// A dense vector and the token counts for its bounded input, without source text.
+#[derive(Debug, Clone)]
+pub struct CutDenseEmbedding {
+    embedding: Array1<f32>,
+    tokens_read: usize,
+    tokens_total: usize,
+    cut: bool,
+}
+
+impl CutDenseEmbedding {
+    pub(crate) fn new(
+        embedding: Array1<f32>,
+        tokens_read: usize,
+        tokens_total: usize,
+        cut: bool,
+    ) -> Result<Self> {
+        anyhow::ensure!(
+            !embedding.is_empty(),
+            "Dense embedding dimension must be greater than zero"
+        );
+        anyhow::ensure!(
+            embedding.iter().all(|value| value.is_finite()),
+            "Dense embedding contains NaN or Inf values"
+        );
+        anyhow::ensure!(
+            tokens_read <= tokens_total,
+            "Embedded token count exceeds whole-text token count"
+        );
+        anyhow::ensure!(
+            cut == (tokens_read < tokens_total),
+            "Cut flag disagrees with token counts"
+        );
+        Ok(Self {
+            embedding,
+            tokens_read,
+            tokens_total,
+            cut,
+        })
+    }
+
+    /// Returns the vector dimension.
+    #[must_use]
+    pub fn dim(&self) -> usize {
+        self.embedding.len()
+    }
+
+    /// Borrows the vector values.
+    #[must_use]
+    pub const fn values(&self) -> &Array1<f32> {
+        &self.embedding
+    }
+
+    /// Consumes the result and returns its vector.
+    #[must_use]
+    pub fn into_values(self) -> Array1<f32> {
+        self.embedding
+    }
+
+    /// Returns the number of tokens embedded, including special tokens.
+    #[must_use]
+    pub const fn tokens_read(&self) -> usize {
+        self.tokens_read
+    }
+
+    /// Returns the whole-text token count, including special tokens.
+    #[must_use]
+    pub const fn tokens_total(&self) -> usize {
+        self.tokens_total
+    }
+
+    /// Reports whether content was removed from the end.
+    #[must_use]
+    pub const fn cut(&self) -> bool {
+        self.cut
+    }
+}
+
 /// Single-vector encoder producing pooled embeddings (BERT-style).
 ///
 /// Each input is encoded to a single vector via a pooling strategy

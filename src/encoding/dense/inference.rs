@@ -3,6 +3,8 @@ use candle_core::{DType, Device, Tensor};
 use ndarray::Array1;
 
 use super::{BertVariant, CandleDenseEncoder};
+use crate::core::embeddings::CutDenseEmbedding;
+use crate::core::tokenizer::CutTokenizedInput;
 use crate::core::{DenseEmbedding, PoolingStrategy};
 use crate::runtime::ContextWindowConfig;
 
@@ -117,6 +119,32 @@ impl CandleDenseEncoder {
 
         let final_embedding = self.encode_tokenized(&token_ids, &attention_mask)?;
         DenseEmbedding::new(final_embedding, text.to_string())
+    }
+
+    pub(crate) fn validate_cut_configuration(&self) -> Result<()> {
+        self.tokenizer.validate_cut_configuration()
+    }
+
+    pub(crate) fn encode_cut(&self, text: &str) -> Result<CutDenseEmbedding> {
+        self.encode_cut_input(self.tokenizer.encode_cut(text)?)
+    }
+
+    pub(crate) fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutDenseEmbedding>> {
+        self.tokenizer
+            .encode_batch_cut(texts)?
+            .into_iter()
+            .map(|input| self.encode_cut_input(input))
+            .collect()
+    }
+
+    fn encode_cut_input(&self, input: CutTokenizedInput) -> Result<CutDenseEmbedding> {
+        let embedding = self.encode_tokenized(&input.token_ids, &input.attention_mask)?;
+        CutDenseEmbedding::new(
+            embedding,
+            input.tokens_read(),
+            input.tokens_total,
+            input.cut,
+        )
     }
 
     /// Encodes a long input as bounded overlapping windows and returns their
