@@ -128,7 +128,9 @@ def load_pinned_modules(snapshot, cache, code, classes=None):
     return modules
 
 
-def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
+def read_inputs(
+    spec_path, profile_name, probe, tolerance_arguments=None, representations=("dense",)
+):
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     if profile_name not in spec["profiles"]:
         raise ValueError(f"unknown profile: {profile_name}")
@@ -139,11 +141,18 @@ def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
         raise ValueError("model repository must be an owner/name identifier")
     if not re.fullmatch(r"[0-9a-f]{40}", model["revision"]):
         raise ValueError("model revision must be an immutable 40-digit commit")
-    if model["representation"] != "dense":
-        raise ValueError("only dense references are supported")
+    if model["representation"] not in representations:
+        raise ValueError(
+            f"unsupported reference representation: {model['representation']}"
+        )
     if capability["device"] != "cpu" or capability["dtype"] != "f32":
         raise ValueError("profile must specify cpu and f32")
-    if capability["semantic_mode"] not in ("query", "document"):
+    modes = {
+        "dense": ("query", "document"),
+        "sparse": ("sparse_query", "sparse_document"),
+        "multi_vector": ("late_interaction_query", "late_interaction_document"),
+    }
+    if capability["semantic_mode"] not in modes[model["representation"]]:
         raise ValueError("unsupported semantic mode")
     limit = capability["max_sequence_tokens"]
     if type(limit) is not int or limit <= 0:
@@ -178,7 +187,7 @@ def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
     return spec, capability, tolerance
 
 
-def fetch_model(model, artifacts, cache):
+def fetch_model(model, artifacts, cache, require_modules=True):
     from huggingface_hub import HfApi
 
     repository = model["repository"]
@@ -192,13 +201,16 @@ def fetch_model(model, artifacts, cache):
         "tokenizer_config.json",
         "special_tokens_map.json",
         "vocab.txt",
+        "artifact.metadata",
     }
     selected = sorted(
         name
         for name in files
         if name in required or name in ancillary or name.endswith("/config.json")
     )
-    missing = required.difference(selected) | {"modules.json"}.difference(selected)
+    missing = required.difference(selected)
+    if require_modules:
+        missing |= {"modules.json"}.difference(selected)
     if missing:
         raise ValueError(f"pinned model is missing required files: {sorted(missing)}")
     downloaded = fetch_files(repository, revision, selected, cache)
