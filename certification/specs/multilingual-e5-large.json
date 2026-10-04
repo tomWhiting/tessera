@@ -52,7 +52,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "multilingual-e5-large/smoke.json",
+        "sha256": "c78d4173a55abfe242ffa1404fd192d956e58f7e7ae144f1bf20aa92e9b013cd"
+      }
     },
     "paragraph": {
       "kind": "smoke",
@@ -82,7 +85,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "multilingual-e5-large/paragraph.json",
+        "sha256": "7e811daec2ee6e13ed67561ad9d599ecfc92aea33329bdf0f3482ef9c208b92d"
+      }
     },
     "non-ascii": {
       "kind": "smoke",
@@ -112,7 +118,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "multilingual-e5-large/non-ascii.json",
+        "sha256": "087544ae6d66d98a0ac4affef7488cd1b0c5f3af3dcec5af43b3aff19550bb76"
+      }
     },
     "whitespace": {
       "kind": "smoke",
@@ -142,7 +151,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "multilingual-e5-large/whitespace.json",
+        "sha256": "42483fc09ac9084f3c52bb83dde185fed9b25514dbfc17ffceca134a81cbdb07"
+      }
     }
   },
   "smoke": {

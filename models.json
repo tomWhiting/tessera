@@ -1631,7 +1631,7 @@
           "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Pinned registry and certification inputs only; model loading and numerical parity remain unmeasured."
+            "note": "CPU f32: 1024 dimensions, four profiles twice, up to 100 tokens (limit 128); full 512-token window and prefixed retrieval unqualified."
           },
           "architecture": {
             "type": "xlm-roberta",
