@@ -7,6 +7,7 @@ use haem_frames::embedding::{
     Message, Outcome, Start,
 };
 
+#[path = "support/fixture.rs"]
 mod fixture;
 
 fn limits() -> Limits {

@@ -8,17 +8,19 @@ pub fn installed() -> TempDir {
     installed_with_bias(1.0)
 }
 
-pub fn installed_with_bias(bias: f32) -> TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    let config = serde_json::to_vec(&json!({
+fn configuration() -> Vec<u8> {
+    serde_json::to_vec(&json!({
         "model_type": "bert", "vocab_size": 5, "hidden_size": 768,
         "num_hidden_layers": 1, "num_attention_heads": 12, "intermediate_size": 4,
         "hidden_act": "gelu", "hidden_dropout_prob": 0.0, "max_position_embeddings": 32,
         "type_vocab_size": 2, "initializer_range": 0.02, "layer_norm_eps": 1e-12,
         "pad_token_id": 1, "position_embedding_type": "absolute", "use_cache": true
     }))
-    .unwrap();
-    let tokenizer = serde_json::to_vec(&json!({
+    .unwrap()
+}
+
+fn tokenizer() -> Vec<u8> {
+    serde_json::to_vec(&json!({
         "version": "1.0", "truncation": null, "padding": null, "added_tokens": [],
         "normalizer": null, "pre_tokenizer": {"type": "WhitespaceSplit"},
         "post_processor": {
@@ -37,7 +39,10 @@ pub fn installed_with_bias(bias: f32) -> TempDir {
         "model": {"type":"WordLevel","vocab":{"[UNK]":0,"[PAD]":1,"one":2,"two":3,"three":4},
             "unk_token":"[UNK]"}
     }))
-    .unwrap();
+    .unwrap()
+}
+
+fn weights(bias: f32) -> Vec<u8> {
     let mut header = Map::new();
     let mut data = Vec::new();
     let mut tensor = |name: &str, shape: &[usize], value: f32| {
@@ -93,6 +98,14 @@ pub fn installed_with_bias(bias: f32) -> TempDir {
     let mut weights = u64::try_from(header.len()).unwrap().to_le_bytes().to_vec();
     weights.extend_from_slice(&header);
     weights.extend_from_slice(&data);
+    weights
+}
+
+pub fn installed_with_bias(bias: f32) -> TempDir {
+    let dir = tempfile::tempdir().unwrap();
+    let config = configuration();
+    let tokenizer = tokenizer();
+    let weights = weights(bias);
     let mut artifacts = Vec::<Value>::new();
     for (name, bytes) in [
         ("config.json", config),

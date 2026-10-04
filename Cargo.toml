@@ -31,7 +31,8 @@ exclude = [
 ]
 
 [workspace]
-members = [".", "xtask"]
+members = [".", "xtask", "crates/tessera-worker"]
+default-members = [".", "xtask"]
 resolver = "2"
 
 [lib]
