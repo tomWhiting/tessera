@@ -174,3 +174,10 @@ upstream 8,192-token window still needs two isolated full-window runs; the
 current scratch estimator requires 9,890,168,832 activation bytes at 8,192
 tokens (one item, f32). An 8k profile must be added when the registry window is
 raised; it cannot coexist with the current 2,048-token admission limit.
+
+`snowflake-arctic-l` likewise has no reference or run for its required
+2,048-token profile. Its future 3,000-token source must record the original
+count and the 2,048-token cut. Two isolated full-window runs remain owed for
+the upstream 8,192-token window; the current scratch estimator requires
+13,186,891,776 activation bytes there (one item, f32). The 8k profile must
+be added together with a registry window increase after measurement.
