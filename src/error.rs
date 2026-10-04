@@ -12,6 +12,14 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum TesseraError {
+    /// The registry names weights in a format without a runtime adapter.
+    #[error("unsupported_weights_format: model '{model_id}': {format} format is not supported")]
+    UnsupportedWeightsFormat {
+        /// Requested registry identifier.
+        model_id: String,
+        /// Declared unsupported weight format.
+        format: &'static str,
+    },
     /// A remote or cache source was requested from a build without fetching.
     #[error("FetchingNotBuiltIn: model '{model_id}': fetching is not built in; set model_dir")]
     FetchingNotBuiltIn {

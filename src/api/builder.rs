@@ -36,6 +36,7 @@ use crate::models::ModelInfo;
 
 /// Rejects catalog metadata that does not have a runtime adapter.
 pub(crate) fn ensure_runnable_model(model: &ModelInfo) -> Result<()> {
+    crate::models::loader::supported_weight_filename(model)?;
     if model.is_runnable() {
         return Ok(());
     }

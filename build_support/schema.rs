@@ -141,7 +141,8 @@ pub struct Files {
 #[derive(Debug, Deserialize)]
 pub struct Weights {
     pub safetensors: Option<String>,
-    pub pytorch: String,
+    pub pytorch: Option<String>,
+    pub onnx: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

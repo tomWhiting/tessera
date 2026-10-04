@@ -305,7 +305,7 @@ fn corrected_checkpoint_metadata_is_exposed() {
     for id in ["splade-pp-en-v1", "splade-pp-en-v2"] {
         let splade = get_model(id).expect("registered SPLADE model");
         assert_eq!(splade.safetensors_file, None);
-        assert_eq!(splade.pytorch_file, "pytorch_model.bin");
+        assert_eq!(splade.pytorch_file, Some("pytorch_model.bin"));
     }
 
     let colpali = get_model("colpali-v1.2").expect("registered ColPali model");

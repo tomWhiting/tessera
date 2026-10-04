@@ -346,8 +346,10 @@ pub struct ModelInfo {
     pub config_file: &'static str,
     /// Safetensors artifact or shard index, when published
     pub safetensors_file: Option<&'static str>,
-    /// PyTorch weight artifact within the pinned repository
-    pub pytorch_file: &'static str,
+    /// PyTorch weight artifact within the pinned repository, when published
+    pub pytorch_file: Option<&'static str>,
+    /// ONNX artifact metadata; no ONNX loader is provided
+    pub onnx_file: Option<&'static str>,
     /// Organization that released the model
     pub organization: &'static str,
     /// Release year or date

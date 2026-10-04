@@ -18,6 +18,8 @@ pub fn generate_model_constant(model: &ModelMetadata) -> String {
     let support_note = format!("{:?}", model.support.note);
     let revision = optional_string_literal(model.revision.as_deref());
     let safetensors_file = optional_string_literal(model.files.weights.safetensors.as_deref());
+    let pytorch_file = optional_string_literal(model.files.weights.pytorch.as_deref());
+    let onnx_file = optional_string_literal(model.files.weights.onnx.as_deref());
 
     format!(
         r#"{}/// {}
@@ -42,7 +44,8 @@ pub const {}: ModelInfo = ModelInfo {{
     tokenizer_file: "{}",
     config_file: "{}",
     safetensors_file: {},
-    pytorch_file: "{}",
+    pytorch_file: {},
+    onnx_file: {},
     organization: "{}",
     release_date: "{}",
     architecture_type: "{}",
@@ -87,7 +90,8 @@ pub const {}: ModelInfo = ModelInfo {{
         model.files.tokenizer,
         model.files.config,
         safetensors_file,
-        model.files.weights.pytorch,
+        pytorch_file,
+        onnx_file,
         model.organization,
         model.release_date,
         model.architecture.arch_type,

@@ -12,6 +12,9 @@ use crate::models::registry::{self, ModelInfo};
 /// A failure to validate an installed model, without exposing artifact contents.
 #[derive(Debug, Error)]
 pub enum InstalledModelError {
+    /// The registry weight metadata has no supported runtime format.
+    #[error(transparent)]
+    WeightMetadata(#[from] crate::error::TesseraError),
     /// The requested model is absent from the registry.
     #[error("installed_model_not_registered: manifest.json: unknown model {model_id:?}")]
     ModelNotRegistered {
@@ -182,6 +185,7 @@ impl InstalledModel {
         model: &ModelInfo,
         directory: &Path,
     ) -> Result<Self, InstalledModelError> {
+        let declared_weight = super::supported_weight_filename(model)?;
         let weights = model
             .safetensors_file
             .filter(|filename| {
@@ -190,10 +194,7 @@ impl InstalledModel {
                     .is_some_and(|extension| extension == "safetensors")
             })
             .ok_or_else(|| InstalledModelError::SafetensorsRequired {
-                filename: model
-                    .safetensors_file
-                    .unwrap_or(model.pytorch_file)
-                    .to_string(),
+                filename: declared_weight.to_string(),
             })?;
         let filename = "manifest.json";
         let mut file = regular_file(directory, filename)?;
