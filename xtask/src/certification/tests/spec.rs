@@ -80,3 +80,57 @@ fn checked_specs_have_scoped_smoke_and_distinct_long_context_profiles() {
         }
     }
 }
+
+#[test]
+fn added_dense_specs_bind_their_registry_retrieval_metadata() {
+    use tessera::model_registry::{get_model, Distance, ModelType};
+
+    let repository = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
+    let expected = [
+        (
+            "multilingual-e5-base",
+            "query: ",
+            "passage: ",
+            "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+            "https://huggingface.co/intfloat/multilingual-e5-base/blob/d128750597153bb5987e10b1c3493a34e5a4502a/README.md#L6821",
+        ),
+        (
+            "multilingual-e5-large",
+            "query: ",
+            "passage: ",
+            "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+            "https://huggingface.co/intfloat/multilingual-e5-large/blob/3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3/README.md#L5994",
+        ),
+        (
+            "snowflake-arctic-l",
+            "query: ",
+            "",
+            "# Compute cosine similarity scores",
+            "https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0/blob/ac6544c8a46e00af67e330e85a9028c66b8cfd9a/README.md#L9126",
+        ),
+        (
+            "nomic-embed-v1.5",
+            "search_query: ",
+            "search_document: ",
+            "embeddings = F.normalize(embeddings, p=2, dim=1)",
+            "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/blob/e9b6763023c676ca8431644204f50c2b100d9aab/README.md#L2699",
+        ),
+        (
+            "gte-modernbert-base",
+            "",
+            "",
+            "scores = (embeddings[:1] @ embeddings[1:].T) * 100",
+            "https://huggingface.co/Alibaba-NLP/gte-modernbert-base/blob/e7f32e3c00f91d699e8c43b53106206bcc72bb22/README.md#L77",
+        ),
+    ];
+    for (id, query, document, words, url) in expected {
+        let loaded = super::load_model(repository, id).unwrap();
+        let registered = get_model(&loaded.spec.model.id).unwrap();
+        assert_eq!(registered.model_type, ModelType::Dense, "{id}");
+        let prompts = registered.prompts.unwrap();
+        assert_eq!((prompts.query, prompts.document), (query, document), "{id}");
+        assert_eq!(registered.distance, Some(Distance::Cosine), "{id}");
+        let comparison = registered.card_comparison.unwrap();
+        assert_eq!((comparison.words, comparison.url), (words, url), "{id}");
+    }
+}
