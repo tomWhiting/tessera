@@ -416,11 +416,10 @@ impl ReferenceOutput {
         }
     }
 
-    pub(super) fn row_width(&self) -> Option<usize> {
+    pub(super) fn row_width(&self) -> usize {
         match self {
-            Self::Dense { values } => Some(values.len()),
-            Self::Sparse { values, .. } => Some(values.len()),
-            Self::MultiVector { columns, .. } | Self::Vision { columns, .. } => Some(*columns),
+            Self::Dense { values } | Self::Sparse { values, .. } => values.len(),
+            Self::MultiVector { columns, .. } | Self::Vision { columns, .. } => *columns,
         }
     }
 }
