@@ -409,6 +409,19 @@ impl CandleDenseEncoder {
     }
 
     pub(super) fn modernbert_var_builder(vb: VarBuilder<'_>) -> Result<VarBuilder<'_>> {
-        Ok(vb)
+        const PREFIXED: &str = "model.embeddings.tok_embeddings.weight";
+        const BARE: &str = "embeddings.tok_embeddings.weight";
+        if vb.contains_tensor(PREFIXED) {
+            return Ok(vb);
+        }
+        if vb.contains_tensor(BARE) {
+            return Ok(vb.rename_f(|name| {
+                name.strip_prefix("model.")
+                    .map_or_else(|| name.to_owned(), str::to_owned)
+            }));
+        }
+        anyhow::bail!(
+            "modernbert_weight_name_missing: looked for {PREFIXED} or {BARE} in the weights file"
+        )
     }
 }
