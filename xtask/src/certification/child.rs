@@ -8,7 +8,7 @@ use tessera::{
 };
 
 use super::artifacts;
-use super::evidence::{ChildOutcome, SmokeObservation};
+use super::evidence::{ChildOutcome, DenseBatchPlan, SmokeObservation};
 use super::reference::{
     self, ComparisonStatus, LoadedReference, ReferenceComparison, ReferenceOutput, ReferenceProbe,
 };
@@ -115,11 +115,12 @@ fn execute(
         );
     }
     let policy = resource_policy(profile);
+    let batch_plan = DenseBatchPlan::for_limits(&profile.resource_policy);
     let loaded = super::spec::load_model(repository, &spec.model.id)?;
     let (verified, observation, observed_reference, installed_manifest_sha256) =
         if let Some(directory) = model_dir {
             super::install::require_dense(spec.model.representation)?;
-            let embedder = dense_embedder(spec, policy, Some(directory))?;
+            let embedder = dense_embedder(spec, policy, Some(directory), batch_plan.batch_size)?;
             let verified = artifacts::verify_directory(directory, &loaded)?;
             let digest = embedder
                 .installed_manifest_sha256()
@@ -136,7 +137,7 @@ fn execute(
             let (observation, observed_reference) = match spec.model.representation {
                 Representation::Dense => dense_smoke(
                     spec,
-                    &dense_embedder(spec, policy, None)?,
+                    &dense_embedder(spec, policy, None, batch_plan.batch_size)?,
                     official_reference,
                     false,
                 )?,
@@ -213,11 +214,12 @@ fn dense_embedder(
     spec: &CertificationSpec,
     policy: ResourcePolicy,
     model_dir: Option<&Path>,
+    batch_size: usize,
 ) -> CertResult<TesseraDense> {
     let mut builder = TesseraDense::builder()
         .model(&spec.model.id)
         .device(Device::Cpu)
-        .batch_size(2)
+        .batch_size(batch_size)
         .resource_policy(policy);
     if let Some(directory) = model_dir {
         builder = builder.model_dir(directory);
