@@ -337,6 +337,12 @@ impl Tokenizer {
             .context("Decoding token IDs")
     }
 
+    pub(crate) fn token_string(&self, id: u32) -> Result<String> {
+        self.inner
+            .id_to_token(id)
+            .with_context(|| format!("Tokenizer has no token string for id {id}"))
+    }
+
     /// Returns the vocabulary size of the tokenizer.
     pub fn vocab_size(&self) -> usize {
         self.inner.get_vocab_size(false)

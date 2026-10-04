@@ -282,6 +282,8 @@ pub use candle_core::Device;
 pub use core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
 pub use core::tokenizer::CutConfigurationError;
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
+pub use encoding::minicoil::embedder::MinicoilEmbedder;
+pub use encoding::minicoil::vector::{MinicoilSparse, Role as MinicoilRole};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
 pub use models::{InstalledModel, InstalledModelError};

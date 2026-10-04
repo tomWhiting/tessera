@@ -996,38 +996,97 @@
           "release_date": "2024",
           "support": {
             "tier": "catalog_only",
-            "note": "The repository ships ONNX and NumPy artifacts, not weights the Candle sparse adapter can load."
+            "note": "MinicoilEmbedder uses pinned Jina v2 small encoder weights and the pinned word projection; text fixture qualification is pending. The generic sparse builder cannot load this model."
           },
           "architecture": {
-            "type": "bert",
-            "variant": "distilbert-base",
+            "type": "jinabert",
+            "variant": "jina-bert-v2-small-en",
             "has_projection": true,
             "projection_dims": 4
           },
           "specs": {
-            "parameters": "66M",
+            "parameters": "33M",
             "embedding_dim": 4,
-            "hidden_dim": 768,
+            "hidden_dim": 512,
             "context_length": 512,
-            "max_position_embeddings": 512,
-            "vocab_size": 30522
+            "max_position_embeddings": 8192,
+            "vocab_size": 30528
           },
           "files": {
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "safetensors": null,
+              "pytorch": "onnx/model.onnx",
+              "onnx": "onnx/model.onnx"
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Sparse BERT-family text embedding catalog entry with 4-dimensional outputs and a 512-token context."
+          "description": "Signed sparse term values from unpooled 512-dimensional token vectors, with document or question weighting and no IDF. The legacy pytorch registry slot names the actual ONNX artifact; it is not a PyTorch file.",
+          "minicoil_assets": {
+            "encoder_model": "jina-embeddings-v2-small-en",
+            "encoder_repository": "jinaai/jina-embeddings-v2-small-en",
+            "encoder_revision": "44e7d1d6caec8c883c2d4b207588504d519788d0",
+            "encoder_weights": {
+              "path": "model.safetensors",
+              "size_bytes": 65388544,
+              "sha256": "c9a9a7ec012d01efd780474fbb65e25917f3a2aebdff84b5f87daa00f7e90b27"
+            },
+            "files": [
+              {
+                "path": "config.json",
+                "size_bytes": 1150,
+                "sha256": "7472dfdbfafa39df639cc5e8a23a15f2bd7d26adfde3eb2d6da3612435c39f8e"
+              },
+              {
+                "path": "minicoil.triplet.model.npy",
+                "size_bytes": 156672128,
+                "sha256": "882db5d3bdc993ac6a58a51742da744e22b33111d215e5de029300bce21f7459"
+              },
+              {
+                "path": "minicoil.triplet.model.vocab",
+                "size_bytes": 717484,
+                "sha256": "ee4de72b53516dc1e1657310808a2733b292ef8fb0271f41754aea38a0ecd2da"
+              },
+              {
+                "path": "onnx/model.onnx",
+                "size_bytes": 129799236,
+                "sha256": "8daf59cab0f24c7e0231a1e3ff9c348a97f6662e9a763dd4f15d2ca2f1614e05"
+              },
+              {
+                "path": "special_tokens_map.json",
+                "size_bytes": 125,
+                "sha256": "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3"
+              },
+              {
+                "path": "stopwords.txt",
+                "size_bytes": 743,
+                "sha256": "6d8e6b98440939e713e85dc329b607645db097aa07f2cb57244e4f87c67009b3"
+              },
+              {
+                "path": "tokenizer.json",
+                "size_bytes": 711573,
+                "sha256": "e9f999ac74497843ed9f4303246a8f43d9f100ee8aab8e133667903f447ceb48"
+              },
+              {
+                "path": "tokenizer_config.json",
+                "size_bytes": 367,
+                "sha256": "63d41f24b6076d8f189a9f6e7017655a8596f4f536a06bac5cc4da2c79f2b49d"
+              }
+            ]
+          }
         },
         {
           "id": "splade-v3",

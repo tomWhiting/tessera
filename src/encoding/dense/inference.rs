@@ -190,7 +190,50 @@ impl CandleDenseEncoder {
         DenseEmbedding::new(aggregate, text.to_string())
     }
 
+    pub(crate) fn encode_unpooled(&self, text: &str) -> Result<(Vec<String>, Vec<f32>)> {
+        let (ids, mask) = self.tokenizer.encode(text, true)?;
+        let values = self.forward_tokenized(&ids, &mask)?;
+        let width = values
+            .len()
+            .checked_div(ids.len())
+            .context("Empty token output")?;
+        anyhow::ensure!(
+            width > 0 && values.len() == ids.len() * width,
+            "Token output shape does not match tokenizer positions"
+        );
+        anyhow::ensure!(
+            values.iter().all(|value| value.is_finite()),
+            "Token output contains non-finite values"
+        );
+        let mut tokens = Vec::new();
+        let mut vectors = Vec::new();
+        let values = values
+            .as_slice()
+            .context("Token output is not contiguous")?;
+        for ((&id, &attend), row) in ids.iter().zip(&mask).zip(values.chunks_exact(width)) {
+            if attend != 0 {
+                tokens.push(self.tokenizer.token_string(id)?);
+                vectors.extend_from_slice(row);
+            }
+        }
+        Ok((tokens, vectors))
+    }
+
     fn encode_tokenized(&self, token_ids: &[u32], attention_mask: &[u32]) -> Result<Array1<f32>> {
+        let embeddings_array = self.forward_tokenized(token_ids, attention_mask)?;
+
+        // Apply pooling
+        let pooling_mask = attention_mask
+            .iter()
+            .map(|&value| i64::from(value))
+            .collect::<Vec<_>>();
+        let pooled = self.apply_pooling(&embeddings_array, &pooling_mask)?;
+
+        // Process output (Matryoshka + normalization)
+        self.process_output(pooled)
+    }
+
+    fn forward_tokenized(&self, token_ids: &[u32], attention_mask: &[u32]) -> Result<Array1<f32>> {
         anyhow::ensure!(!token_ids.is_empty(), "Tokenized input cannot be empty");
         anyhow::ensure!(
             token_ids.len() == attention_mask.len(),
@@ -256,17 +299,7 @@ impl CandleDenseEncoder {
             .context("Converting tensor to Vec<f32>")?;
         drop(inference_permit);
 
-        let embeddings_array = Array1::from_vec(embeddings_vec);
-
-        // Apply pooling
-        let pooling_mask = attention_mask
-            .iter()
-            .map(|&value| i64::from(value))
-            .collect::<Vec<_>>();
-        let pooled = self.apply_pooling(&embeddings_array, &pooling_mask)?;
-
-        // Process output (Matryoshka + normalization)
-        self.process_output(pooled)
+        Ok(Array1::from_vec(embeddings_vec))
     }
 
     /// Encodes multiple text inputs in batch.
