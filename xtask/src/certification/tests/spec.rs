@@ -66,17 +66,17 @@ fn checked_specs_have_scoped_smoke_and_distinct_long_context_profiles() {
         if loaded.spec.model.id.starts_with("jina-embeddings")
             || matches!(
                 loaded.spec.model.id.as_str(),
-                "nomic-embed-v1.5" | "snowflake-arctic-l"
+                "nomic-embed-v1.5" | "snowflake-arctic-l" | "gte-modernbert-base"
             )
         {
-            let long = loaded.spec.profile("long-context-8k").unwrap();
+            let long = loaded.spec.profile("long-context-2k").unwrap();
             assert_eq!(long.kind, ProfileKind::LongContext);
-            assert_eq!(long.capability.max_sequence_tokens, 8192);
+            assert_eq!(long.capability.max_sequence_tokens, 2048);
             assert!(loaded
                 .spec
                 .promotion
                 .required_profiles
-                .contains(&"long-context-8k".to_string()));
+                .contains(&"long-context-2k".to_string()));
         }
     }
 }
