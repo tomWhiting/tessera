@@ -165,6 +165,24 @@ pub struct InstalledModel {
 }
 
 impl InstalledModel {
+    /// Reads the strict installed manifest and returns its registered model id.
+    ///
+    /// Artifact integrity is checked separately by [`Self::open`].
+    ///
+    /// # Errors
+    /// Returns a named failure for an unreadable or malformed manifest, an
+    /// unknown registry id, or a manifest identity that disagrees with the registry.
+    pub fn registry_id(directory: impl AsRef<Path>) -> Result<String, InstalledModelError> {
+        let (manifest, _) = read_manifest(directory.as_ref())?;
+        let model = registry::get_model(&manifest.model.id).ok_or_else(|| {
+            InstalledModelError::ModelNotRegistered {
+                model_id: manifest.model.id.clone(),
+            }
+        })?;
+        validate_model(&manifest, model)?;
+        Ok(manifest.model.id)
+    }
+
     /// Validates the installed files against the requested immutable registry entry.
     ///
     /// # Errors
@@ -195,18 +213,7 @@ impl InstalledModel {
                     .unwrap_or(model.pytorch_file)
                     .to_string(),
             })?;
-        let filename = "manifest.json";
-        let mut file = regular_file(directory, filename)?;
-        let mut bytes = Vec::new();
-        file.read_to_end(&mut bytes)
-            .map_err(|source| io_error(filename, source))?;
-        let manifest: Manifest = serde_json::from_slice(&bytes).map_err(|error| {
-            InstalledModelError::InvalidManifest {
-                filename: filename.to_string(),
-                line: error.line(),
-                column: error.column(),
-            }
-        })?;
+        let (manifest, bytes) = read_manifest(directory)?;
         validate_model(&manifest, model)?;
         let mut artifacts = BTreeSet::new();
         for artifact in &manifest.artifacts {
@@ -248,6 +255,21 @@ impl InstalledModel {
         }
         Ok(self.directory.join(filename))
     }
+}
+
+fn read_manifest(directory: &Path) -> Result<(Manifest, Vec<u8>), InstalledModelError> {
+    let filename = "manifest.json";
+    let mut file = regular_file(directory, filename)?;
+    let mut bytes = Vec::new();
+    file.read_to_end(&mut bytes)
+        .map_err(|source| io_error(filename, source))?;
+    let manifest =
+        serde_json::from_slice(&bytes).map_err(|error| InstalledModelError::InvalidManifest {
+            filename: filename.to_string(),
+            line: error.line(),
+            column: error.column(),
+        })?;
+    Ok((manifest, bytes))
 }
 
 fn validate_model(manifest: &Manifest, model: &ModelInfo) -> Result<(), InstalledModelError> {
