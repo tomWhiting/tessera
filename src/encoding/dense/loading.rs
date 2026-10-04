@@ -332,7 +332,7 @@ impl CandleDenseEncoder {
     }
 
     /// Loads the appropriate model variant
-    fn load_model(
+    pub(super) fn load_model(
         config_str: &str,
         vb: VarBuilder,
         model_type: &str,
@@ -383,6 +383,7 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::XlmRoberta(model))
             }
             "modernbert" => {
+                let vb = Self::modernbert_var_builder(vb)?;
                 let config: candle_transformers::models::modernbert::Config =
                     serde_json::from_str(config_str).context("Parsing ModernBERT config")?;
                 let model = candle_transformers::models::modernbert::ModernBert::load(vb, &config)
@@ -405,5 +406,9 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::Bert(model))
             }
         }
+    }
+
+    pub(super) fn modernbert_var_builder(vb: VarBuilder<'_>) -> Result<VarBuilder<'_>> {
+        Ok(vb)
     }
 }
