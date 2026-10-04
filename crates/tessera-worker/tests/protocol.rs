@@ -194,6 +194,7 @@ fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
     assert_eq!(ready.model.max_tokens, 32);
     assert_eq!(ready.model.special_tokens, 2);
     assert!(ready.model.normalised);
+    assert!(ready.model.prefix_tokens > 0);
     let Message::Vectors(vectors) = &decoded[1] else {
         panic!("missing Vectors")
     };
@@ -260,7 +261,7 @@ fn crossing_the_rust_heap_bound_exits_86_without_a_failure_frame() {
     let mut bytes = frames(&[Message::Start(start(model.path(), policy))]);
     bytes.extend_from_slice(&(600_u32 << 20).to_be_bytes());
     let output = execute(&bytes);
-    assert_eq!(output.status.code(), Some(86));
+    assert_eq!(output.status.code(), Some(haem_worker::MEMORY_LIMIT_EXIT));
     let decoded = messages(&output);
     assert!(matches!(decoded.as_slice(), [Message::Ready(_)]));
 }
@@ -274,4 +275,94 @@ fn a_start_memory_estimate_that_cannot_hold_the_model_is_limits() {
         &execute(&frames(&[Message::Start(start(model.path(), policy))])),
         FailedCode::EmbedLimits,
     );
+}
+
+#[test]
+fn activation_and_model_estimates_share_the_start_memory_budget() {
+    let model = fixture::installed();
+    let mut policy = limits();
+    policy.memory_bytes = 436_000_001;
+    assert_failed(
+        &execute(&frames(&[Message::Start(start(model.path(), policy))])),
+        FailedCode::EmbedLimits,
+    );
+}
+
+#[test]
+fn prefix_and_special_tokens_must_leave_content_room_before_ready() {
+    let model = fixture::installed();
+    let mut policy = limits();
+    policy.tokens = 3;
+    let output = execute(&frames(&[Message::Start(start(model.path(), policy))]));
+    assert_failed(&output, FailedCode::EmbedLimits);
+    assert!(matches!(messages(&output).as_slice(), [Message::Failed(_)]));
+}
+
+fn invalid_batch(items: Vec<Input>, expected: FailedCode) {
+    let model = fixture::installed();
+    assert_failed(
+        &execute(&frames(&[
+            Message::Start(start(model.path(), limits())),
+            Message::Embed(Embed {
+                kind: Kind::Document,
+                items,
+            }),
+        ])),
+        expected,
+    );
+}
+
+#[test]
+fn a_batch_over_its_item_count_ends_with_its_named_failure() {
+    invalid_batch(
+        (0..5)
+            .map(|index| Input {
+                id: index.to_string(),
+                text: "one".into(),
+            })
+            .collect(),
+        FailedCode::EmbedBatchTooLarge,
+    );
+}
+
+#[test]
+fn repeated_ids_are_protocol_failure() {
+    invalid_batch(
+        vec![
+            Input {
+                id: "same".into(),
+                text: "one".into(),
+            },
+            Input {
+                id: "same".into(),
+                text: "two".into(),
+            },
+        ],
+        FailedCode::EmbedProtocol,
+    );
+}
+
+#[test]
+fn an_empty_batch_is_protocol_failure() {
+    invalid_batch(Vec::new(), FailedCode::EmbedProtocol);
+}
+
+#[test]
+fn nonfinite_model_output_is_named_and_ends_without_vectors() {
+    let model = fixture::installed_with_bias(f32::NAN);
+    let output = execute(&frames(&[
+        Message::Start(start(model.path(), limits())),
+        Message::Embed(Embed {
+            kind: Kind::Document,
+            items: vec![Input {
+                id: "bad".into(),
+                text: "one".into(),
+            }],
+        }),
+    ]));
+    assert_failed(&output, FailedCode::EmbedOutputInvalid);
+    assert!(matches!(
+        messages(&output).as_slice(),
+        [Message::Ready(_), Message::Failed(_)]
+    ));
 }

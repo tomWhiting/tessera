@@ -5,6 +5,10 @@ use sha2::{Digest, Sha256};
 use tempfile::TempDir;
 
 pub fn installed() -> TempDir {
+    installed_with_bias(1.0)
+}
+
+pub fn installed_with_bias(bias: f32) -> TempDir {
     let dir = tempfile::tempdir().unwrap();
     let config = serde_json::to_vec(&json!({
         "model_type": "bert", "vocab_size": 5, "hidden_size": 768,
@@ -60,7 +64,7 @@ pub fn installed() -> TempDir {
         "encoder.layer.0.output.LayerNorm",
     ] {
         tensor(&format!("{name}.weight"), &[768], 1.0);
-        tensor(&format!("{name}.bias"), &[768], 1.0);
+        tensor(&format!("{name}.bias"), &[768], bias);
     }
     for name in ["query", "key", "value"] {
         tensor(
