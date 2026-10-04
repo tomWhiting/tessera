@@ -40,8 +40,16 @@ fn frames(messages: &[Message]) -> Vec<u8> {
 }
 
 fn execute(bytes: &[u8]) -> Output {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_tessera-worker"))
-        .env_clear()
+    execute_with_environment(bytes, None)
+}
+
+fn execute_with_environment(bytes: &[u8], environment: Option<(&str, &str)>) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_tessera-worker"));
+    command.env_clear();
+    if let Some((name, value)) = environment {
+        command.env(name, value);
+    }
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -51,6 +59,21 @@ fn execute(bytes: &[u8]) -> Output {
     input.write_all(bytes).unwrap();
     drop(input);
     child.wait_with_output().unwrap()
+}
+
+#[test]
+fn other_environment_variables_are_still_reported() {
+    let model = fixture::installed();
+    let output = execute_with_environment(
+        &frames(&[Message::Start(start(model.path(), limits()))]),
+        Some(("TESSERA_ENVIRONMENT_TEST", "present")),
+    );
+    assert!(output.status.success(), "{:?}", output.stderr);
+    let decoded = messages(&output);
+    let [Message::Ready(ready)] = decoded.as_slice() else {
+        panic!("expected Ready, got {decoded:?}")
+    };
+    assert_eq!(ready.environment, 1);
 }
 
 fn messages(output: &Output) -> Vec<Message> {

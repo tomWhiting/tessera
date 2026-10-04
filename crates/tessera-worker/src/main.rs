@@ -12,6 +12,11 @@ mod session;
 static ALLOCATOR: haem_worker::allocator::Counting = haem_worker::allocator::Counting;
 
 fn main() -> ExitCode {
+    #[cfg(all(target_os = "macos", feature = "accelerate"))]
+    {
+        // CoreFoundation's initializer sets this before main, outside the caller's environment.
+        std::env::remove_var("__CF_USER_TEXT_ENCODING");
+    }
     let resources = match process::prepare() {
         Ok(resources) => resources,
         Err(error) => {
