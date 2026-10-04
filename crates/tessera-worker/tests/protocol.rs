@@ -12,7 +12,7 @@ use haem_frames::embedding::{
 #[path = "support/fixture.rs"]
 mod fixture;
 
-fn limits() -> Limits {
+const fn limits() -> Limits {
     Limits {
         memory_bytes: 1 << 30,
         threads: 1,
@@ -147,11 +147,10 @@ fn derived_limit_overflow_is_a_named_refusal() {
     );
 }
 
-#[test]
-fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
-    let model = fixture::installed();
+/// A short text, a text over the token limit, an empty text and a text over the byte limit.
+fn mixed_documents() -> Embed {
     let long = vec!["one"; 24].join(" ");
-    let batch = Embed {
+    Embed {
         kind: Kind::Document,
         items: vec![
             Input {
@@ -171,7 +170,13 @@ fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
                 text: "é".repeat(257),
             },
         ],
-    };
+    }
+}
+
+#[test]
+fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
+    let model = fixture::installed();
+    let batch = mixed_documents();
     let query = Embed {
         kind: Kind::Query,
         items: vec![Input {

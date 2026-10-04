@@ -3,24 +3,24 @@ use std::path::Path;
 use haem_frames::embedding::{Failed, FailedCode};
 use tessera::{EmbedFailure, InstalledModelError, ResourcePolicyError, TesseraError};
 
-pub(crate) struct Failure {
+pub struct Failure {
     code: FailedCode,
     message: String,
 }
 
 impl Failure {
-    pub(crate) fn new(code: FailedCode, message: impl Into<String>) -> Self {
+    pub fn new(code: FailedCode, message: impl Into<String>) -> Self {
         Self {
             code,
             message: message.into(),
         }
     }
 
-    pub(crate) fn limits(message: impl Into<String>) -> Self {
+    pub fn limits(message: impl Into<String>) -> Self {
         Self::new(FailedCode::EmbedLimits, message)
     }
 
-    pub(crate) fn installed(error: &InstalledModelError, directory: &Path) -> Self {
+    pub fn installed(error: &InstalledModelError, directory: &Path) -> Self {
         match error {
             InstalledModelError::ArtifactIo { filename, source } => Self::new(
                 FailedCode::EmbedModelMissing,
@@ -33,7 +33,7 @@ impl Failure {
         }
     }
 
-    pub(crate) fn model_load(error: &TesseraError, directory: &Path) -> Self {
+    pub fn model_load(error: &TesseraError, directory: &Path) -> Self {
         if let TesseraError::ModelLoadError { source, .. }
         | TesseraError::EncodingError { source, .. }
         | TesseraError::Other(source) = error
@@ -70,7 +70,7 @@ impl Failure {
         }
     }
 
-    pub(crate) fn inference(error: &TesseraError) -> Self {
+    pub fn inference(error: &TesseraError) -> Self {
         let code = match error.embed_failure() {
             Some(EmbedFailure::Limits { .. }) => FailedCode::EmbedLimits,
             Some(EmbedFailure::OutputInvalid { .. }) => FailedCode::EmbedOutputInvalid,
@@ -92,7 +92,7 @@ impl Failure {
         )
     }
 
-    pub(crate) fn into_message(self) -> Failed {
+    pub fn into_message(self) -> Failed {
         Failed {
             code: self.code,
             message: self

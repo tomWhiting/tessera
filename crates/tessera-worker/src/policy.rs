@@ -3,9 +3,9 @@ use tessera::ResourcePolicy;
 
 use crate::failure::Failure;
 
-pub(crate) struct Budget {
-    pub(crate) memory: usize,
-    pub(crate) threads: usize,
+pub struct Budget {
+    pub memory: usize,
+    pub threads: usize,
     batch: usize,
     input: usize,
     tokens: usize,
@@ -24,7 +24,7 @@ fn product(left: usize, right: usize, name: &str) -> Result<usize, Failure> {
 }
 
 impl Budget {
-    pub(crate) fn new(limits: &Limits) -> Result<Self, Failure> {
+    pub fn new(limits: &Limits) -> Result<Self, Failure> {
         let batch = number(limits.batch_items, "batch_items")?;
         let input = number(limits.input_bytes, "input_bytes")?;
         let tokens = number(limits.tokens, "tokens")?;
@@ -41,11 +41,7 @@ impl Budget {
         })
     }
 
-    pub(crate) fn policy(
-        &self,
-        dimensions: usize,
-        parameters: &str,
-    ) -> Result<ResourcePolicy, Failure> {
+    pub fn policy(&self, dimensions: usize, parameters: &str) -> Result<ResourcePolicy, Failure> {
         let output = product(
             product(self.batch, dimensions, "output dimensions")?,
             4,

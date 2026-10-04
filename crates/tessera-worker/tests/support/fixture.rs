@@ -92,7 +92,7 @@ fn weights(bias: f32) -> Vec<u8> {
         tensor(&format!("encoder.layer.0.{name}.bias"), &[bias], 0.0);
     }
     let mut header = serde_json::to_vec(&header).unwrap();
-    while header.len() % 8 != 0 {
+    while !header.len().is_multiple_of(8) {
         header.push(b' ');
     }
     let mut weights = u64::try_from(header.len()).unwrap().to_le_bytes().to_vec();

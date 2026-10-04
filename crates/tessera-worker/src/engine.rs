@@ -12,7 +12,7 @@ use tessera::{
 use crate::failure::Failure;
 use crate::policy::Budget;
 
-pub(crate) struct Engine {
+pub struct Engine {
     model: TesseraDense,
     ready: Message,
 }
@@ -22,7 +22,7 @@ fn wire_number(value: usize, name: &str) -> Result<u64, Failure> {
 }
 
 impl Engine {
-    pub(crate) fn load(
+    pub fn load(
         start: &Start,
         budget: &Budget,
         resources: &haem_worker::setup::Resources,
@@ -109,11 +109,11 @@ impl Engine {
         })
     }
 
-    pub(crate) const fn ready_message(&self) -> &Message {
+    pub const fn ready_message(&self) -> &Message {
         &self.ready
     }
 
-    pub(crate) fn encode(&self, request: &Embed, start: &Start) -> Result<Vectors, Failure> {
+    pub fn encode(&self, request: &Embed, start: &Start) -> Result<Vectors, Failure> {
         let role = match request.kind {
             Kind::Document => Role::Document,
             Kind::Query => Role::Query,

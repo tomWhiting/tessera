@@ -16,7 +16,7 @@ fn failed(output: &mut impl Write, failure: Failure, limit: NonZeroU32) -> io::R
     Ok(false)
 }
 
-pub(crate) fn run(
+pub fn run(
     input: &mut impl Read,
     output: &mut impl Write,
     resources: &haem_worker::setup::Resources,
