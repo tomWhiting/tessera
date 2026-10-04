@@ -81,6 +81,7 @@ fn cut_probe_reader_accepts_full_count_above_the_measured_window() {
     let mut profile = spec.profile("smoke").unwrap().clone();
     profile.kind = ProfileKind::LongContext;
     profile.capability.max_sequence_tokens = 2_048;
+    profile.resource_policy.max_sequence_tokens = 2_048;
     assert!(super::validate_probe(&repository(), &profile, &probe).is_ok());
     assert_eq!(serde_json::to_value(probe).unwrap()["cut_at_tokens"], 2_048);
 }
@@ -96,6 +97,27 @@ fn cut_probe_reader_refuses_zero_equal_and_larger_used_counts_by_name() {
         let error = super::validate_probe(&repository(), spec.profile("smoke").unwrap(), &probe)
             .unwrap_err();
         assert!(error.to_string().contains("invalid_cut_at_tokens"));
+    }
+}
+
+#[test]
+fn cut_probe_reader_refuses_a_different_profile_cut_with_both_numbers() {
+    let spec = dense_spec(ReferencePointer {
+        path: "unused".into(),
+        sha256: "a".repeat(64),
+    });
+    let mut profile = spec.profile("smoke").unwrap().clone();
+    profile.kind = ProfileKind::LongContext;
+    profile.capability.max_sequence_tokens = 2_048;
+    profile.resource_policy.max_sequence_tokens = 2_048;
+    for used in [2_000, 2_049] {
+        let probe: ReferenceProbe = serde_json::from_value(cut_probe_value(used)).unwrap();
+        let error = super::validate_probe(&repository(), &profile, &probe)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("cut_at_tokens_profile_mismatch"), "{error}");
+        assert!(error.contains(&format!("cut_at_tokens={used}")), "{error}");
+        assert!(error.contains("max_sequence_tokens=2048"), "{error}");
     }
 }
 
