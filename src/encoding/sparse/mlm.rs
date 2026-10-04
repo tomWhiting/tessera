@@ -2,6 +2,9 @@ use anyhow::{Context, Result};
 use candle_core::{Module, Tensor};
 use candle_nn::{layer_norm, linear, LayerNorm, Linear, VarBuilder};
 
+#[cfg(test)]
+mod tests;
+
 /// MLM (Masked Language Modeling) head for SPLADE.
 ///
 /// Projects BERT hidden states to vocabulary logits via:
