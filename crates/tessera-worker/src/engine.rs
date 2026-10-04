@@ -85,7 +85,7 @@ impl Engine {
         };
         let ready = Ready {
             protocol: haem_frames::embedding::PROTOCOL,
-            worker: concat!(env!("CARGO_PKG_NAME"), " ", env!("CARGO_PKG_VERSION")).to_string(),
+            worker: env!("TESSERA_WORKER_BUILD").to_string(),
             core_limit: resources.core_limit,
             descriptors_closed: resources.descriptors_closed,
             environment: resources.environment,
