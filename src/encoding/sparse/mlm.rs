@@ -69,7 +69,7 @@ impl MlmHead {
             .transform_dense
             .forward(hidden_states)
             .context("MLM transform dense forward")?;
-        let activated = transformed.gelu().context("MLM GELU activation")?;
+        let activated = transformed.gelu_erf().context("MLM GELU activation")?;
 
         // Layer norm
         let normalized = self
