@@ -9,7 +9,9 @@ pub mod registry;
 pub(crate) mod weights;
 
 pub use config::ModelConfig;
+#[cfg(feature = "fetch")]
 pub use loader::{download_config, download_model_file, download_tokenizer};
+pub use loader::{InstalledModel, InstalledModelError};
 pub use registry::{
     get_model, models_by_type, runnable_models, ModelInfo, ModelType, SupportTier, MODEL_REGISTRY,
 };

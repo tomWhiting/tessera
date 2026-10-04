@@ -48,6 +48,30 @@ cargo run --locked --offline --release -p tessera-xtask \
   --model bge-base-en-v1.5 --device cpu --profile smoke --repeat 2
 ```
 
+Make an installed dense model folder from the already verified certification
+cache. The destination must be absent or empty, and its parent must exist.
+This command copies each specified artifact, verifies the copied bytes, writes
+a schema-1 manifest, and prints the manifest's SHA-256. It performs no fetch:
+
+```bash
+cargo run --locked --offline -p tessera-xtask --features certification -- \
+  cert install --model bge-base-en-v1.5 --dir /tmp/tessera-bge-base
+```
+
+Run the installed folder without using a Hugging Face cache. The parent removes
+`HF_HOME` and `TESSERA_OFFLINE` from the child's environment. The dense loader
+validates the manifest and every listed artifact, and certification separately
+checks the specification's size and hash for each artifact before inference.
+Successful evidence includes `installed_manifest_sha256` from that embedder;
+older records without this optional member remain readable. Other model
+representations refuse `--model-dir`:
+
+```bash
+cargo run --locked --offline -p tessera-xtask --features certification -- \
+  cert run --model bge-base-en-v1.5 --model-dir /tmp/tessera-bge-base \
+  --device cpu --profile smoke --repeat 2
+```
+
 Run every specification serially with the same one-model-per-process boundary:
 
 ```bash

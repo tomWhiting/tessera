@@ -20,6 +20,23 @@ impl CandleDenseEncoder {
         dtype: ModelDType,
         resource_policy: ResourcePolicy,
     ) -> Result<Self> {
+        Self::new_with_dtype_and_resource_policy_from_dir(
+            model_config,
+            device,
+            dtype,
+            resource_policy,
+            None,
+        )
+        .map(|(encoder, _)| encoder)
+    }
+
+    pub(crate) fn new_with_dtype_and_resource_policy_from_dir(
+        model_config: ModelConfig,
+        device: Device,
+        dtype: ModelDType,
+        resource_policy: ResourcePolicy,
+        model_dir: Option<&std::path::Path>,
+    ) -> Result<(Self, Option<String>)> {
         let model_name = &model_config.model_name;
 
         let (model_info, residency) = preflight_and_reserve_registered_model_with_dtype(
@@ -46,16 +63,23 @@ impl CandleDenseEncoder {
             crate::models::registry::PoolingStrategy::LastToken => PoolingStrategy::LastToken,
         };
 
-        let files = ModelFileResolver::new(model_info)?;
+        let files = match model_dir {
+            Some(directory) => ModelFileResolver::installed(model_info, directory)?,
+            None => ModelFileResolver::new(model_info)?,
+        };
+        let installed_manifest_sha256 = files.installed_manifest_sha256().map(str::to_owned);
 
         // Load tokenizer
-        let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
+        let mut tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
             .with_context(|| format!("Loading tokenizer for {model_name}"))?;
+        tokenizer
+            .prepare_cut()
+            .context("Preparing dense cut tokenizer")?;
 
         // Load config to detect model type
         let config_path = files
             .get(model_info.config_file)
-            .with_context(|| format!("Downloading config for {model_name}"))?;
+            .with_context(|| format!("Resolving config for {model_name}"))?;
 
         let config_str =
             std::fs::read_to_string(&config_path).context("Reading model config file")?;
@@ -83,7 +107,7 @@ impl CandleDenseEncoder {
         // Try to load safetensors first, fall back to pytorch_model.bin
         let weights_path = files
             .weights()
-            .with_context(|| format!("Downloading model weights for {model_name}"))?;
+            .with_context(|| format!("Resolving model weights for {model_name}"))?;
 
         // Refine JinaBERT detection: check if it's the code variant
         if model_type == "jinabert" {
@@ -130,19 +154,22 @@ impl CandleDenseEncoder {
         let normalize = model_config.normalize_embeddings;
         let supports_padded_batch = Self::model_supports_padded_batch(&model_type);
 
-        Ok(Self {
-            model,
-            tokenizer,
-            device,
-            config: model_config,
-            pooling_strategy,
-            normalize,
-            supports_padded_batch,
-            dtype,
-            resource_policy,
-            transformer_profile: profile,
-            _residency: residency,
-        })
+        Ok((
+            Self {
+                model,
+                tokenizer,
+                device,
+                config: model_config,
+                pooling_strategy,
+                normalize,
+                supports_padded_batch,
+                dtype,
+                resource_policy,
+                transformer_profile: profile,
+                _residency: residency,
+            },
+            installed_manifest_sha256,
+        ))
     }
 
     pub(super) fn model_supports_padded_batch(model_type: &str) -> bool {

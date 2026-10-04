@@ -1,5 +1,6 @@
 use tokenizers::models::wordlevel::WordLevel;
 use tokenizers::pre_tokenizers::whitespace::Whitespace;
+use tokenizers::processors::template::TemplateProcessing;
 
 use super::{HfTokenizer, Tokenizer};
 use crate::runtime::{ContextWindowConfig, ResourcePolicy};
@@ -24,9 +25,133 @@ fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
 
     Tokenizer {
         inner,
+        truncating: None,
         resource_policy,
         pad_token_id: Some(1),
     }
+}
+
+fn cut_tokenizer(limit: usize) -> Tokenizer {
+    cut_tokenizer_with_policy(ResourcePolicy::new(limit, 16, 2048, usize::MAX))
+}
+
+pub fn cut_tokenizer_with_policy(policy: ResourcePolicy) -> Tokenizer {
+    let mut tokenizer = tokenizer(policy);
+    tokenizer.inner.with_post_processor(Some(
+        TemplateProcessing::builder()
+            .try_single("[START] $A [END]")
+            .unwrap()
+            .special_tokens(vec![("[START]", 10), ("[END]", 11)])
+            .build()
+            .unwrap(),
+    ));
+    tokenizer.prepare_cut().unwrap();
+    tokenizer
+}
+
+#[test]
+fn cut_under_limit_preserves_existing_tokens_and_counts() {
+    let tokenizer = cut_tokenizer(5);
+    let input = tokenizer.encode_cut("one").unwrap();
+    assert_eq!(input.token_ids, [10, 2, 11]);
+    assert_eq!(input.token_ids, tokenizer.encode("one", true).unwrap().0);
+    assert_eq!(input.tokens_read(), 3);
+    assert_eq!(input.tokens_total, 3);
+    assert!(!input.cut);
+}
+
+#[test]
+fn cut_exact_limit_preserves_existing_tokens_and_counts() {
+    let tokenizer = cut_tokenizer(5);
+    let input = tokenizer.encode_cut("one two three").unwrap();
+    assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
+    assert_eq!(
+        input.token_ids,
+        tokenizer.encode("one two three", true).unwrap().0
+    );
+    assert_eq!(input.tokens_read(), 5);
+    assert_eq!(input.tokens_total, 5);
+    assert!(!input.cut);
+}
+
+#[test]
+fn cut_over_limit_keeps_special_tokens_and_reports_whole_count() {
+    let input = cut_tokenizer(5).encode_cut("one two three one").unwrap();
+    assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
+    assert_eq!(input.tokens_read(), 5);
+    assert_eq!(input.tokens_total, 6);
+    assert!(input.cut);
+}
+
+#[test]
+fn cut_far_over_limit_keeps_start_and_reports_whole_count() {
+    let text = vec!["one"; 50].join(" ");
+    let input = cut_tokenizer(5).encode_cut(&text).unwrap();
+    assert_eq!(input.token_ids, [10, 2, 2, 2, 11]);
+    assert_eq!(input.tokens_read(), 5);
+    assert_eq!(input.tokens_total, 52);
+    assert!(input.cut);
+}
+
+#[test]
+fn cut_configuration_requires_special_tokens_plus_content() {
+    for limit in [0, 1, 2] {
+        let tokenizer = cut_tokenizer(limit);
+        let error = tokenizer.encode_cut("one").unwrap_err();
+        let error = error
+            .downcast_ref::<super::CutConfigurationError>()
+            .unwrap();
+        assert_eq!(error.limit, limit);
+        assert_eq!(error.special_tokens, 2);
+        assert!(error.to_string().starts_with("InvalidCutConfiguration:"));
+        let error = tokenizer.encode_batch_cut(&["one", "two"]).unwrap_err();
+        assert!(error
+            .downcast_ref::<super::CutConfigurationError>()
+            .is_some());
+        assert!(tokenizer.encode_batch_cut(&[]).is_err());
+    }
+}
+
+#[test]
+fn cut_batch_preserves_order_and_accepts_long_items() {
+    let inputs = cut_tokenizer(5)
+        .encode_batch_cut(&["two", "one two three one", "three"])
+        .unwrap();
+    assert_eq!(inputs.len(), 3);
+    assert_eq!(inputs[0].token_ids, [10, 3, 11]);
+    assert_eq!(inputs[1].token_ids, [10, 2, 3, 4, 11]);
+    assert_eq!(inputs[1].tokens_total, 6);
+    assert!(inputs[1].cut);
+    assert_eq!(inputs[2].token_ids, [10, 4, 11]);
+}
+
+#[test]
+fn cut_methods_still_refuse_the_byte_limit() {
+    let mut tokenizer = cut_tokenizer(5);
+    tokenizer.resource_policy = tokenizer
+        .resource_policy
+        .with_max_input_bytes_per_sequence(3);
+    for error in [
+        tokenizer.encode_cut("three").unwrap_err(),
+        tokenizer.encode_batch_cut(&["one", "three"]).unwrap_err(),
+    ] {
+        assert_eq!(
+            error.to_string(),
+            "Input byte count 5 exceeds resource policy limit 3"
+        );
+    }
+}
+
+#[test]
+fn cut_uses_the_tokenizer_prepared_once_before_calls() {
+    let tokenizer = cut_tokenizer(5);
+    let prepared = std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap());
+    tokenizer.encode_cut("one two three one").unwrap();
+    tokenizer.encode_cut("three two one three").unwrap();
+    assert_eq!(
+        prepared,
+        std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap())
+    );
 }
 
 #[test]

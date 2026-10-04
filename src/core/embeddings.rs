@@ -300,6 +300,130 @@ impl DenseEmbedding {
     }
 }
 
+/// A dense vector and the token counts for its bounded input, without source text.
+#[derive(Debug, Clone)]
+pub struct CutDenseEmbedding {
+    embedding: Array1<f32>,
+    tokens_read: usize,
+    tokens_total: usize,
+    cut: bool,
+}
+
+/// A field that cannot be embedded without changing its input contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmbeddingRefusal {
+    /// The text has no non-whitespace character.
+    Empty,
+    /// The text exceeds the per-sequence UTF-8 byte limit.
+    TooLarge {
+        /// Measured UTF-8 bytes.
+        input_bytes: usize,
+        /// Maximum permitted UTF-8 bytes.
+        limit: usize,
+    },
+}
+
+impl EmbeddingRefusal {
+    pub(crate) fn for_text(text: &str, limit: usize) -> Option<Self> {
+        if text.chars().all(char::is_whitespace) {
+            Some(Self::Empty)
+        } else if text.len() > limit {
+            Some(Self::TooLarge {
+                input_bytes: text.len(),
+                limit,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Returns the stable code for this refusal.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Empty => "embed_input_empty",
+            Self::TooLarge { .. } => "embed_input_too_large",
+        }
+    }
+}
+
+/// One input's vector and counts, or its named refusal.
+#[derive(Debug, Clone)]
+pub enum CutEmbeddingOutcome {
+    /// The input was embedded, possibly after cutting content from its end.
+    Embedded(CutDenseEmbedding),
+    /// The input was refused before tokenization or inference.
+    Refused(EmbeddingRefusal),
+}
+
+impl CutDenseEmbedding {
+    pub(crate) fn new(
+        embedding: Array1<f32>,
+        tokens_read: usize,
+        tokens_total: usize,
+        cut: bool,
+    ) -> Result<Self> {
+        anyhow::ensure!(
+            !embedding.is_empty(),
+            "Dense embedding dimension must be greater than zero"
+        );
+        anyhow::ensure!(
+            embedding.iter().all(|value| value.is_finite()),
+            "Dense embedding contains NaN or Inf values"
+        );
+        anyhow::ensure!(
+            tokens_read <= tokens_total,
+            "Embedded token count exceeds whole-text token count"
+        );
+        anyhow::ensure!(
+            cut == (tokens_read < tokens_total),
+            "Cut flag disagrees with token counts"
+        );
+        Ok(Self {
+            embedding,
+            tokens_read,
+            tokens_total,
+            cut,
+        })
+    }
+
+    /// Returns the vector dimension.
+    #[must_use]
+    pub fn dim(&self) -> usize {
+        self.embedding.len()
+    }
+
+    /// Borrows the vector values.
+    #[must_use]
+    pub const fn values(&self) -> &Array1<f32> {
+        &self.embedding
+    }
+
+    /// Consumes the result and returns its vector.
+    #[must_use]
+    pub fn into_values(self) -> Array1<f32> {
+        self.embedding
+    }
+
+    /// Returns the number of tokens embedded, including special tokens.
+    #[must_use]
+    pub const fn tokens_read(&self) -> usize {
+        self.tokens_read
+    }
+
+    /// Returns the whole-text token count, including special tokens.
+    #[must_use]
+    pub const fn tokens_total(&self) -> usize {
+        self.tokens_total
+    }
+
+    /// Reports whether content was removed from the end.
+    #[must_use]
+    pub const fn cut(&self) -> bool {
+        self.cut
+    }
+}
+
 /// Single-vector encoder producing pooled embeddings (BERT-style).
 ///
 /// Each input is encoded to a single vector via a pooling strategy

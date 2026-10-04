@@ -8,20 +8,45 @@
 //! models without a complete, audited artifact path remain catalog-only.
 
 use anyhow::{Context, Result};
-use tokenizers::Tokenizer as HfTokenizer;
+use tokenizers::{PostProcessor, Tokenizer as HfTokenizer, TruncationParams};
 
 use crate::models::loader::ModelFileResolver;
 use crate::runtime::{plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow};
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 type TokenizedInput = (Vec<u32>, Vec<u32>);
 type UnpaddedBatch = (Vec<TokenizedInput>, usize);
 
+/// A sequence limit that cannot hold the required framing and any content.
+#[derive(Debug, thiserror::Error)]
+#[error("InvalidCutConfiguration: sequence limit {limit} must exceed special-token count {special_tokens}")]
+pub struct CutConfigurationError {
+    /// Configured maximum sequence length.
+    pub limit: usize,
+    /// Special tokens added to a single sequence.
+    pub special_tokens: usize,
+}
+
+#[derive(Debug)]
+pub(crate) struct CutTokenizedInput {
+    pub(crate) token_ids: Vec<u32>,
+    pub(crate) attention_mask: Vec<u32>,
+    pub(crate) tokens_total: usize,
+    pub(crate) cut: bool,
+}
+
+impl CutTokenizedInput {
+    pub(crate) fn tokens_read(&self) -> usize {
+        self.token_ids.len()
+    }
+}
+
 /// Wrapper around `HuggingFace` tokenizer for BERT models.
 pub struct Tokenizer {
     inner: HfTokenizer,
+    truncating: Option<HfTokenizer>,
     resource_policy: ResourcePolicy,
     pad_token_id: Option<u32>,
 }
@@ -74,6 +99,7 @@ impl Tokenizer {
 
         Ok(Self {
             inner,
+            truncating: None,
             resource_policy,
             pad_token_id,
         })
@@ -101,6 +127,89 @@ impl Tokenizer {
             .map_err(anyhow::Error::new)?;
 
         Ok((token_ids, attention_mask))
+    }
+
+    pub(crate) fn validate_cut_configuration(&self) -> Result<()> {
+        let special_tokens = self.cut_special_tokens();
+        let limit = self.resource_policy.max_sequence_tokens();
+        if limit <= special_tokens {
+            return Err(CutConfigurationError {
+                limit,
+                special_tokens,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    pub(crate) fn prepare_cut(&mut self) -> Result<()> {
+        if self.resource_policy.max_sequence_tokens() <= self.cut_special_tokens() {
+            // Cut calls report invalid limits; ordinary encoding retains its behavior.
+            return Ok(());
+        }
+        let mut truncating = self.inner.clone();
+        truncating
+            .with_truncation(Some(TruncationParams {
+                max_length: self.resource_policy.max_sequence_tokens(),
+                ..TruncationParams::default()
+            }))
+            .map_err(|error| anyhow::anyhow!("Failed to configure cut tokenization: {error}"))?;
+        self.truncating = Some(truncating);
+        Ok(())
+    }
+
+    fn cut_special_tokens(&self) -> usize {
+        self.inner
+            .get_post_processor()
+            .map_or(0, |processor| processor.added_tokens(false))
+    }
+
+    pub(crate) fn encode_cut(&self, text: &str) -> Result<CutTokenizedInput> {
+        self.validate_cut_configuration()?;
+        self.resource_policy.validate_input_bytes(text.len())?;
+        let mut encoding = self
+            .inner
+            .encode(text, true)
+            .map_err(|error| anyhow::anyhow!("Failed to encode text: {error}"))?;
+        let tokens_total = encoding.len();
+        let limit = self.resource_policy.max_sequence_tokens();
+        let cut = tokens_total > limit;
+        if cut {
+            drop(encoding);
+            encoding = self
+                .truncating
+                .as_ref()
+                .context("Cut tokenizer was not prepared during model loading")?
+                .encode(text, true)
+                .map_err(|error| anyhow::anyhow!("Failed to encode cut text: {error}"))?;
+        }
+        self.resource_policy.validate_sequence(encoding.len())?;
+        self.resource_policy.validate_batch(1, encoding.len())?;
+        Ok(CutTokenizedInput {
+            token_ids: encoding.get_ids().to_vec(),
+            attention_mask: encoding.get_attention_mask().to_vec(),
+            tokens_total,
+            cut,
+        })
+    }
+
+    pub(crate) fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutTokenizedInput>> {
+        self.validate_cut_configuration()?;
+        self.resource_policy.validate_batch(texts.len(), 0)?;
+        for text in texts {
+            self.resource_policy.validate_input_bytes(text.len())?;
+        }
+        let inputs = texts
+            .iter()
+            .map(|text| self.encode_cut(text))
+            .collect::<Result<Vec<_>>>()?;
+        let max_len = inputs
+            .iter()
+            .map(CutTokenizedInput::tokens_read)
+            .max()
+            .unwrap_or(0);
+        self.resource_policy.validate_batch(texts.len(), max_len)?;
+        Ok(inputs)
     }
 
     fn encode_unchecked(
