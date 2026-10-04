@@ -52,7 +52,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 1700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "nomic-embed-v1.5/smoke.json",
+        "sha256": "efbe88e51e05ec65413813b5bca84fdda09cdadbaa84b4fb68193b65fe148f4d"
+      }
     },
     "paragraph": {
       "kind": "smoke",
@@ -82,7 +85,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 1700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "nomic-embed-v1.5/paragraph.json",
+        "sha256": "6d686eb2250403ae6284b79ab89a23a969f2c7639aec71aa87aeecfc9c13e543"
+      }
     },
     "non-ascii": {
       "kind": "smoke",
@@ -112,7 +118,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 1700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "nomic-embed-v1.5/non-ascii.json",
+        "sha256": "b64c07ce58e5d344d86015c5fa2244f8eaebc57ae985137ea62a408f3012f5d1"
+      }
     },
     "whitespace": {
       "kind": "smoke",
@@ -142,7 +151,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 1700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "nomic-embed-v1.5/whitespace.json",
+        "sha256": "8811fba0242d88f6ed7b2e2c4fd510a35aec6b0a9f9cdf05e1650b2247bc4038"
+      }
     },
     "long-context-2k": {
       "kind": "long_context",
@@ -172,7 +184,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 2400000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "nomic-embed-v1.5/long-context-2k.json",
+        "sha256": "5cc763f6d0dbfc8a8ce44108e4a9a77ffbe93dac8dee8313b5a9c3fb3da269bd"
+      }
     }
   },
   "smoke": {

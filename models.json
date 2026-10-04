@@ -1313,7 +1313,7 @@
           "release_date": "2023",
           "support": {
             "tier": "experimental",
-            "note": "BERT dense path with an XLM-R tokenizer exists; certification against a checked reference is pending."
+            "note": "CPU f32: two official matches/profile; smoke 10, paragraph 102, multilingual 34, whitespace 10 tokens; profile limit 128, configured context 512."
           },
           "architecture": {
             "type": "bert",
@@ -1569,7 +1569,7 @@
           "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Pinned registry and certification inputs only; model loading and numerical parity remain unmeasured."
+            "note": "CPU f32: two official matches/profile; smoke 7, paragraph 100, non-ascii 34, whitespace 7 tokens; profile limit 128, configured context 512."
           },
           "architecture": {
             "type": "xlm-roberta",
