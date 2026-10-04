@@ -127,7 +127,7 @@ fn execute(
                 .ok_or("installed dense embedder did not retain its manifest digest")?
                 .to_string();
             let (observation, observed_reference) =
-                dense_smoke(spec, &embedder, official_reference, true)?;
+                dense_smoke(spec, &embedder, official_reference, true, batch_plan)?;
             (verified, observation, observed_reference, Some(digest))
         } else {
             let verified = artifacts::verify_cached(repository, &loaded)?;
@@ -140,6 +140,7 @@ fn execute(
                     &dense_embedder(spec, policy, None, batch_plan.batch_size)?,
                     official_reference,
                     false,
+                    batch_plan,
                 )?,
                 Representation::MultiVector => {
                     multi_vector_smoke(spec, policy, official_reference)?
@@ -232,13 +233,18 @@ fn dense_smoke(
     embedder: &TesseraDense,
     official_reference: Option<&LoadedReference>,
     installed: bool,
+    batch_plan: DenseBatchPlan,
 ) -> CertResult<(SmokeObservation, Option<ReferenceOutput>)> {
     let fixture = &spec.smoke.fixture;
     let query = embedder.encode(&fixture.query)?;
     let repeated = embedder.encode(&fixture.query)?;
     let positive = embedder.encode(&fixture.positive)?;
     let negative = embedder.encode(&fixture.negative)?;
-    let batch = embedder.encode_batch(&[&fixture.query, &fixture.positive])?;
+    let batch = if batch_plan.batch_size >= 2 {
+        Some(embedder.encode_batch(&[&fixture.query, &fixture.positive])?)
+    } else {
+        None
+    };
     let vectors = [
         query
             .values()
@@ -268,10 +274,12 @@ fn dense_smoke(
         .iter()
         .flat_map(|vector| vector.iter())
         .all(|value| value.is_finite());
-    let batch_shapes = batch
-        .iter()
-        .map(|value| vec![value.dim()])
-        .collect::<Vec<_>>();
+    let batch_shapes = batch.as_ref().map_or_else(Vec::new, |values| {
+        values
+            .iter()
+            .map(|value| vec![value.dim()])
+            .collect::<Vec<_>>()
+    });
     let mut checks = base_checks(
         spec,
         query.dim(),
@@ -279,28 +287,30 @@ fn dense_smoke(
         repeat_similarity,
         relevant_score - unrelated_score,
     );
-    checks.push(check(
-        "batch-shape",
-        batch_shapes == vec![vec![spec.smoke.expected_dimension]; 2],
-        format!("observed {batch_shapes:?}"),
-    ));
-    let [batch_query_embedding, batch_positive_embedding] = batch.as_slice() else {
-        return Err(format!("dense batch returned {} outputs; expected 2", batch.len()).into());
-    };
-    let batch_query = batch_query_embedding
-        .values()
-        .as_slice()
-        .ok_or("batch query output is not contiguous")?;
-    let batch_positive = batch_positive_embedding
-        .values()
-        .as_slice()
-        .ok_or("batch positive output is not contiguous")?;
-    let batch_parity = cosine(vectors[0], batch_query).min(cosine(vectors[2], batch_positive));
-    checks.push(check(
-        "batch-sequential-parity",
-        batch_parity >= spec.smoke.repeat_similarity_minimum,
-        format!("minimum cosine {batch_parity}"),
-    ));
+    if let Some(batch) = &batch {
+        checks.push(check(
+            "batch-shape",
+            batch_shapes == vec![vec![spec.smoke.expected_dimension]; 2],
+            format!("observed {batch_shapes:?}"),
+        ));
+        let [batch_query_embedding, batch_positive_embedding] = batch.as_slice() else {
+            return Err(format!("dense batch returned {} outputs; expected 2", batch.len()).into());
+        };
+        let batch_query = batch_query_embedding
+            .values()
+            .as_slice()
+            .ok_or("batch query output is not contiguous")?;
+        let batch_positive = batch_positive_embedding
+            .values()
+            .as_slice()
+            .ok_or("batch positive output is not contiguous")?;
+        let batch_parity = cosine(vectors[0], batch_query).min(cosine(vectors[2], batch_positive));
+        checks.push(check(
+            "batch-sequential-parity",
+            batch_parity >= spec.smoke.repeat_similarity_minimum,
+            format!("minimum cosine {batch_parity}"),
+        ));
+    }
     if spec.smoke.normalized {
         checks.push(check(
             "l2-normalized",

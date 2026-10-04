@@ -27,9 +27,9 @@ pub(super) struct DenseBatchPlan {
 }
 
 impl DenseBatchPlan {
-    pub(super) const fn for_limits(limits: &ResourceLimits) -> Self {
+    pub(super) fn for_limits(limits: &ResourceLimits) -> Self {
         Self {
-            batch_size: 2,
+            batch_size: limits.max_batch_items.min(limits.max_job_items).min(2),
             max_batch_items: limits.max_batch_items,
             max_job_items: limits.max_job_items,
         }
