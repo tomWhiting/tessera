@@ -8,6 +8,30 @@ use crate::certification::spec::{
 
 use super::{eligible_current_cohort, evidence_matches, EvidenceSummary, PeakRssSummary};
 
+#[test]
+fn readiness_ignores_a_measurement_record() {
+    let repository = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap();
+    let loaded = spec::load_model(repository, "bge-base-en-v1.5").unwrap();
+    let root = std::env::temp_dir().join(format!(
+        "tessera-measure-readiness-{}-{}",
+        std::process::id(),
+        crate::certification::evidence::now_unix_ms().unwrap()
+    ));
+    let directory = root
+        .join(".tessera/cert-evidence")
+        .join(&loaded.spec.model.id);
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(
+        directory.join("1.measure"),
+        b"{\"kind\":\"dense_measurement\"}",
+    )
+    .unwrap();
+    assert!(super::load_evidence(&root, &loaded).unwrap().is_empty());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn evidence(commit: &str) -> EvidenceSummary {
     EvidenceSummary {
         schema_version: 1,

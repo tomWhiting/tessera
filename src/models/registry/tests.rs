@@ -502,7 +502,7 @@ fn every_dense_entry_has_its_cards_prompts_and_distance() {
 #[test]
 fn distance_words_are_the_registry_vocabulary() {
     assert_eq!(
-        [Distance::Cosine, Distance::Cosine, Distance::Euclidean].map(Distance::as_str),
+        [Distance::Cosine, Distance::Dot, Distance::Euclidean].map(Distance::as_str),
         ["cosine", "dot", "euclidean"]
     );
 }

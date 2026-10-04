@@ -8,7 +8,7 @@ use tessera::{
 };
 
 use super::artifacts;
-use super::evidence::{ChildOutcome, SmokeObservation};
+use super::evidence::{ChildOutcome, DenseBatchPlan, SmokeObservation};
 use super::reference::{
     self, ComparisonStatus, LoadedReference, ReferenceComparison, ReferenceOutput, ReferenceProbe,
 };
@@ -115,30 +115,34 @@ fn execute(
         );
     }
     let policy = resource_policy(profile);
+    let batch_plan = DenseBatchPlan::for_limits(&profile.resource_policy);
     let loaded = super::spec::load_model(repository, &spec.model.id)?;
     let (verified, observation, observed_reference, installed_manifest_sha256) =
         if let Some(directory) = model_dir {
             super::install::require_dense(spec.model.representation)?;
-            let embedder = dense_embedder(spec, policy, Some(directory))?;
+            let embedder = dense_embedder(spec, policy, Some(directory), batch_plan.batch_size)?;
             let verified = artifacts::verify_directory(directory, &loaded)?;
             let digest = embedder
                 .installed_manifest_sha256()
                 .ok_or("installed dense embedder did not retain its manifest digest")?
                 .to_string();
             let (observation, observed_reference) =
-                dense_smoke(spec, &embedder, official_reference, true)?;
+                dense_smoke(spec, &embedder, official_reference, true, batch_plan)?;
             (verified, observation, observed_reference, Some(digest))
         } else {
             let verified = artifacts::verify_cached(repository, &loaded)?;
             if let Some(reference) = official_reference {
-                verify_probe_tokens(spec, policy, reference)?;
+                if reference.document.probe.cut_at_tokens().is_none() {
+                    verify_probe_tokens(spec, policy, reference)?;
+                }
             }
             let (observation, observed_reference) = match spec.model.representation {
                 Representation::Dense => dense_smoke(
                     spec,
-                    &dense_embedder(spec, policy, None)?,
+                    &dense_embedder(spec, policy, None, batch_plan.batch_size)?,
                     official_reference,
                     false,
+                    batch_plan,
                 )?,
                 Representation::MultiVector => {
                     multi_vector_smoke(spec, policy, official_reference)?
@@ -172,7 +176,9 @@ fn verify_probe_tokens(
 ) -> CertResult<()> {
     let tokenizer = Tokenizer::from_pretrained_with_policy(&spec.model.repository, policy)?;
     let (text, expected_tokens) = match &reference.document.probe {
-        ReferenceProbe::Text { text, token_count } => (text, *token_count),
+        ReferenceProbe::Text {
+            text, token_count, ..
+        } => (text, *token_count),
         ReferenceProbe::Image {
             query,
             query_token_count,
@@ -193,7 +199,7 @@ fn validate_probe_token_count(expected_tokens: usize, observed_tokens: usize) ->
     Ok(())
 }
 
-fn resource_policy(profile: &ProfileSpec) -> ResourcePolicy {
+pub(super) fn resource_policy(profile: &ProfileSpec) -> ResourcePolicy {
     let limits = &profile.resource_policy;
     ResourcePolicy::new(
         limits.max_sequence_tokens,
@@ -213,11 +219,12 @@ fn dense_embedder(
     spec: &CertificationSpec,
     policy: ResourcePolicy,
     model_dir: Option<&Path>,
+    batch_size: usize,
 ) -> CertResult<TesseraDense> {
     let mut builder = TesseraDense::builder()
         .model(&spec.model.id)
         .device(Device::Cpu)
-        .batch_size(2)
+        .batch_size(batch_size)
         .resource_policy(policy);
     if let Some(directory) = model_dir {
         builder = builder.model_dir(directory);
@@ -230,13 +237,18 @@ fn dense_smoke(
     embedder: &TesseraDense,
     official_reference: Option<&LoadedReference>,
     installed: bool,
+    batch_plan: DenseBatchPlan,
 ) -> CertResult<(SmokeObservation, Option<ReferenceOutput>)> {
     let fixture = &spec.smoke.fixture;
     let query = embedder.encode(&fixture.query)?;
     let repeated = embedder.encode(&fixture.query)?;
     let positive = embedder.encode(&fixture.positive)?;
     let negative = embedder.encode(&fixture.negative)?;
-    let batch = embedder.encode_batch(&[&fixture.query, &fixture.positive])?;
+    let batch = if batch_plan.batch_size >= 2 {
+        Some(embedder.encode_batch(&[&fixture.query, &fixture.positive])?)
+    } else {
+        None
+    };
     let vectors = [
         query
             .values()
@@ -266,10 +278,12 @@ fn dense_smoke(
         .iter()
         .flat_map(|vector| vector.iter())
         .all(|value| value.is_finite());
-    let batch_shapes = batch
-        .iter()
-        .map(|value| vec![value.dim()])
-        .collect::<Vec<_>>();
+    let batch_shapes = batch.as_ref().map_or_else(Vec::new, |values| {
+        values
+            .iter()
+            .map(|value| vec![value.dim()])
+            .collect::<Vec<_>>()
+    });
     let mut checks = base_checks(
         spec,
         query.dim(),
@@ -277,28 +291,30 @@ fn dense_smoke(
         repeat_similarity,
         relevant_score - unrelated_score,
     );
-    checks.push(check(
-        "batch-shape",
-        batch_shapes == vec![vec![spec.smoke.expected_dimension]; 2],
-        format!("observed {batch_shapes:?}"),
-    ));
-    let [batch_query_embedding, batch_positive_embedding] = batch.as_slice() else {
-        return Err(format!("dense batch returned {} outputs; expected 2", batch.len()).into());
-    };
-    let batch_query = batch_query_embedding
-        .values()
-        .as_slice()
-        .ok_or("batch query output is not contiguous")?;
-    let batch_positive = batch_positive_embedding
-        .values()
-        .as_slice()
-        .ok_or("batch positive output is not contiguous")?;
-    let batch_parity = cosine(vectors[0], batch_query).min(cosine(vectors[2], batch_positive));
-    checks.push(check(
-        "batch-sequential-parity",
-        batch_parity >= spec.smoke.repeat_similarity_minimum,
-        format!("minimum cosine {batch_parity}"),
-    ));
+    if let Some(batch) = &batch {
+        checks.push(check(
+            "batch-shape",
+            batch_shapes == vec![vec![spec.smoke.expected_dimension]; 2],
+            format!("observed {batch_shapes:?}"),
+        ));
+        let [batch_query_embedding, batch_positive_embedding] = batch.as_slice() else {
+            return Err(format!("dense batch returned {} outputs; expected 2", batch.len()).into());
+        };
+        let batch_query = batch_query_embedding
+            .values()
+            .as_slice()
+            .ok_or("batch query output is not contiguous")?;
+        let batch_positive = batch_positive_embedding
+            .values()
+            .as_slice()
+            .ok_or("batch positive output is not contiguous")?;
+        let batch_parity = cosine(vectors[0], batch_query).min(cosine(vectors[2], batch_positive));
+        checks.push(check(
+            "batch-sequential-parity",
+            batch_parity >= spec.smoke.repeat_similarity_minimum,
+            format!("minimum cosine {batch_parity}"),
+        ));
+    }
     if spec.smoke.normalized {
         checks.push(check(
             "l2-normalized",

@@ -4,6 +4,9 @@ use candle_nn::{VarBuilder, VarMap};
 
 use super::{BertVariant, CandleDenseEncoder, ModelTypeDetector};
 
+#[path = "tests_modern_weights.rs"]
+mod modern_weights;
+
 const NOMIC_CONFIG: &str = r#"
 {
   "architectures": ["NomicBertModel"],

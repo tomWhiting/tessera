@@ -1,0 +1,146 @@
+{
+  "schema_version": 2,
+  "model_id": "bge-base-en-v1.5",
+  "repository": "BAAI/bge-base-en-v1.5",
+  "revision": "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a",
+  "spec_sha256": "67e415c48b0841dfa87040ad1eae9cf336e0698ecc667675883cf4df58fada8f",
+  "profile": "smoke",
+  "device": "cpu",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "query",
+    "max_sequence_tokens": 128,
+    "context_window_tokens": 512
+  },
+  "repetition": 1,
+  "status": "passed",
+  "error": null,
+  "source_commit": "fe5b58b6bbf97790d3d53839526fdfc360559711",
+  "source_dirty": false,
+  "host_os": "macos",
+  "host_arch": "aarch64",
+  "process_id": 16540,
+  "started_unix_ms": 1791093213133,
+  "completed_unix_ms": 1791093217480,
+  "duration_ms": 4347,
+  "resource_policy": {
+    "max_sequence_tokens": 128,
+    "max_batch_items": 2,
+    "max_batch_tokens": 256,
+    "max_model_bytes": 600000000,
+    "max_input_bytes_per_sequence": 65536,
+    "max_attention_cells": 32768,
+    "max_job_items": 2,
+    "max_job_input_bytes": 131072,
+    "max_output_bytes": 16777216,
+    "max_activation_bytes": 1000000000
+  },
+  "process_limits": {
+    "cpu_threads": 2,
+    "timeout_seconds": 600,
+    "max_artifact_bytes": 500000000,
+    "min_free_disk_bytes": 1500000000,
+    "max_peak_rss_bytes": 2200000000
+  },
+  "peak_rss": {
+    "enforced": true,
+    "bytes": 474644480,
+    "limit_bytes": 2200000000,
+    "method": "sampled-process-rss-watchdog",
+    "sample_interval_ms": 50
+  },
+  "verified_artifacts": [
+    {
+      "path": "config.json",
+      "size_bytes": 777,
+      "sha256": "bc00af31a4a31b74040d73370aa83b62da34c90b75eb77bfa7db039d90abd591"
+    },
+    {
+      "path": "tokenizer.json",
+      "size_bytes": 711396,
+      "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66"
+    },
+    {
+      "path": "model.safetensors",
+      "size_bytes": 437955512,
+      "sha256": "c7c1988aae201f80cf91a5dbbd5866409503b89dcaba877ca6dba7dd0a5167d7"
+    }
+  ],
+  "observation": {
+    "representation": "dense",
+    "primary_shape": [
+      768
+    ],
+    "batch_shapes": [
+      [
+        768
+      ],
+      [
+        768
+      ]
+    ],
+    "finite": true,
+    "norm_min": 0.99999964,
+    "norm_max": 1.0000002,
+    "non_zero": null,
+    "repeat_similarity": 1.0,
+    "relevant_score": 0.7956412,
+    "unrelated_score": 0.26049212,
+    "score_margin": 0.5351491,
+    "checks": [
+      {
+        "name": "dimension",
+        "passed": true,
+        "detail": "observed 768"
+      },
+      {
+        "name": "finite",
+        "passed": true,
+        "detail": "finite=true"
+      },
+      {
+        "name": "repeat-similarity",
+        "passed": true,
+        "detail": "observed 1"
+      },
+      {
+        "name": "retrieval-margin",
+        "passed": true,
+        "detail": "observed 0.5351491"
+      },
+      {
+        "name": "batch-shape",
+        "passed": true,
+        "detail": "observed [[768], [768]]"
+      },
+      {
+        "name": "batch-sequential-parity",
+        "passed": true,
+        "detail": "minimum cosine 1"
+      },
+      {
+        "name": "l2-normalized",
+        "passed": true,
+        "detail": "norm range (0.99999964, 1.0000002)"
+      }
+    ]
+  },
+  "reference_comparison": {
+    "status": "passed",
+    "reference_path": "bge-base-en-v1.5/smoke.json",
+    "reference_sha256": "b0e43b70f0548c20e5e2ac96f89d7ccff5be03fcf37eee927155b2d94f549f9c",
+    "expected_output_sha256": "6a1214d7edf1f0b85d3d857131cccd96ba7f2e67ad05fcfd7cbf4c01e6d136d3",
+    "observed_output_sha256": "0e050915eb9a198e855f1983fbc7d655710fae419cfe33e1038d871e8efac0be",
+    "probe_tokens": 7,
+    "observed_shape": [
+      768
+    ],
+    "compared_values": 768,
+    "max_absolute_error": 2.0116568e-7,
+    "max_relative_error": 0.00017555429,
+    "minimum_cosine": 0.99999994,
+    "detail": "representation-match=true, shape-match=true, sparse-indices-match=true, numeric-pass=true, cosine-pass=true"
+  },
+  "installed_manifest_sha256": "d6b9a93b0df339f865e295111ac573fd15280a52ba376d094e6e02dd83fa3741"
+}
