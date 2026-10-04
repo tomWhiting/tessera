@@ -1,12 +1,95 @@
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 from pathlib import Path
+import json
+import tempfile
 import unittest
 
 import make_retrieval_reference as reference
 
 
 class RetrievalReferenceTests(unittest.TestCase):
+    def test_v2_recipes_use_their_spec_identity_and_dimension(self):
+        for name in ["splade-pp-en-v2", "colbert-v2"]:
+            with self.subTest(model=name), tempfile.TemporaryDirectory() as folder:
+                path = Path(__file__).resolve().parents[1] / "specs" / f"{name}.json"
+                spec = json.loads(path.read_text())
+                capability = spec["profiles"]["smoke"]["capability"]
+                snapshot = Path(folder)
+                (snapshot / "config.json").write_text('{"model_type": "bert"}')
+                tokenizer = Mock()
+                tokenizer.encode.return_value = [1, 2, 3]
+                transformers = MagicMock()
+                transformers.__version__ = "pinned"
+                transformers.AutoTokenizer.from_pretrained.return_value = tokenizer
+                transformers.AutoModelForMaskedLM.from_pretrained.return_value = (
+                    Mock(), {}
+                )
+                torch = MagicMock()
+                torch.__version__ = "pinned"
+                session, query, document, operations = (Mock() for _ in range(4))
+                output = {"representation": spec["model"]["representation"]}
+                with (
+                    patch.dict("sys.modules", {"torch": torch, "transformers": transformers}),
+                    patch.object(reference, "sparse_output", return_value=output) as sparse,
+                    patch.object(reference, "load_colbert", return_value=(session, query, document, operations, {"attend_to_mask_tokens": {"value": False, "source": "metadata"}})) as load,
+                    patch.object(reference, "colbert_output", return_value=output) as matrix,
+                    patch.object(reference, "colbert_source_version", return_value="pinned"),
+                ):
+                    result = reference.make_reference(
+                        spec, capability,
+                        {"absolute": 0.001, "relative": 0.01, "minimum_cosine": 0.999},
+                        "smoke", reference.PROBES["smoke"], snapshot,
+                    )
+                self.assertEqual(result["model_id"], name)
+                self.assertEqual(result["revision"], spec["model"]["revision"])
+                self.assertEqual(result["expected"], output)
+                if name == "colbert-v2":
+                    load.assert_called_once_with(snapshot, 128, 128, torch)
+                    self.assertEqual(matrix.call_args.args[-1], 128)
+                    self.assertIn('"attend_to_mask_tokens": {"source": "metadata", "value": false}', result["provenance"]["producer"])
+                    sparse.assert_not_called()
+                else:
+                    sparse.assert_called_once()
+                    load.assert_not_called()
+                    matrix.assert_not_called()
+
+    def test_colbert_projection_can_have_128_columns(self):
+        dtype = object()
+        matrix = SimpleNamespace(dtype=dtype, ndim=2, tolist=lambda: [[1.0] * 128])
+        operations = SimpleNamespace(query=Mock(return_value=[matrix]))
+        result = reference.colbert_output(
+            object(), (object(), object()), "late_interaction_query", operations,
+            SimpleNamespace(float32=dtype), 128,
+        )
+        self.assertEqual(result["columns"], 128)
+        self.assertEqual(result["values"], [1.0] * 128)
+
+    def test_colbert_marker_defaults_are_verified_and_recorded(self):
+        defaults = SimpleNamespace(query_token_id="[unused0]", doc_token_id="[unused1]")
+        tokenizer = Mock()
+        vocabulary = {"[unused0]": 1, "[unused1]": 2}
+        tokenizer.get_vocab.return_value = vocabulary
+        tokenizer.convert_tokens_to_ids.side_effect = vocabulary.get
+        tokenizer.unk_token_id = 100
+        artifact = {"dim": 128, "query_maxlen": 32, "mask_punctuation": True, "attend_to_mask_tokens": False}
+        for explicit in [False, True]:
+            with self.subTest(explicit=explicit):
+                selected = dict(artifact)
+                if explicit:
+                    selected.update(query_token_id="[unused0]", doc_token_id="[unused1]")
+                settings, recorded = reference.colbert_settings(selected, 128, defaults, tokenizer)
+                self.assertEqual(settings["dim"], 128)
+                for name, token in [("query_token_id", "[unused0]"), ("doc_token_id", "[unused1]")]:
+                    self.assertEqual(recorded[name], {"value": token, "source": "metadata" if explicit else "upstream_default", "token_id": vocabulary[token]})
+        for name in ["query_token_id", "doc_token_id"]:
+            with self.subTest(conflict=name), self.assertRaisesRegex(ValueError, "settings"):
+                reference.colbert_settings({**artifact, name: "[unused2]"}, 128, defaults, tokenizer)
+        tokenizer.get_vocab.return_value = {"[unused1]": 2}
+        with self.assertRaisesRegex(ValueError, "marker"):
+            reference.colbert_settings(artifact, 128, defaults, tokenizer)
+
+
     def test_all_short_profiles_are_ready_for_reference_generation(self):
         for name in ["splade-pp-en-v1", "colbert-small"]:
             path = Path(__file__).resolve().parents[1] / "specs" / f"{name}.json"
