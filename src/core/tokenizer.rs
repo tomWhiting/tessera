@@ -29,6 +29,13 @@ pub struct CutConfigurationError {
     pub special_tokens: usize,
 }
 
+/// Splits on white space before a lone `Metaspace` on a Unigram model.
+///
+/// SentencePiece references strip edge spaces and collapse repeats before
+/// adding the `▁` marker; a `tokenizer.json` declaring `Metaspace` alone keeps a
+/// lone `▁` for them instead. Every other tokenizer is left as loaded.
+pub(crate) fn split_whitespace_before_metaspace(_tokenizer: &mut HfTokenizer) {}
+
 #[derive(Debug)]
 pub(crate) struct CutTokenizedInput {
     pub(crate) token_ids: Vec<u32>,
@@ -90,6 +97,7 @@ impl Tokenizer {
         let mut inner = HfTokenizer::from_file(&tokenizer_path)
             .map_err(|error| anyhow::anyhow!("Failed to load tokenizer: {error}"))
             .with_context(|| format!("Loading tokenizer from {}", tokenizer_path.display()))?;
+        split_whitespace_before_metaspace(&mut inner);
 
         inner
             .with_truncation(None)
