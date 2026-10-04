@@ -106,7 +106,7 @@ fn compare_values(
 }
 
 fn output_minimum_cosine(expected: &ReferenceOutput, observed: &ReferenceOutput) -> Option<f32> {
-    let columns = expected.row_width()?;
+    let columns = expected.row_width();
     expected
         .values()
         .chunks_exact(columns)
