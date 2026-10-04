@@ -1,3 +1,5 @@
+//! Checks how library errors map to the worker's failure codes.
+
 use std::path::Path;
 
 use haem_frames::embedding::FailedCode;

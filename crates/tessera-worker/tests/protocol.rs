@@ -1,3 +1,5 @@
+//! Runs the built worker as a child process and checks its frames.
+
 use std::io::{Cursor, Write};
 use std::num::NonZeroU32;
 use std::process::{Command, Output, Stdio};
