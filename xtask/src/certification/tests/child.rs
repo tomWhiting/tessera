@@ -4,7 +4,8 @@ use super::{cosine, min_max, sparse_cosine, sparse_dot, validate_probe_token_cou
 fn compact_similarity_helpers_are_stable() {
     assert!((cosine(&[1.0, 0.0], &[1.0, 0.0]) - 1.0).abs() < f32::EPSILON);
     assert!((cosine(&[1.0, 0.0], &[0.0, 1.0])).abs() < f32::EPSILON);
-    assert_eq!(cosine(&[1.0], &[1.0, 0.0]), f32::NEG_INFINITY);
+    let mismatched = cosine(&[1.0], &[1.0, 0.0]);
+    assert!(mismatched.is_infinite() && mismatched.is_sign_negative());
 
     let left = [(1, 2.0), (4, 3.0)];
     let right = [(0, 8.0), (4, 5.0)];

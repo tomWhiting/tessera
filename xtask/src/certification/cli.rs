@@ -198,11 +198,36 @@ fn purge(repository: &Path, model_id: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn display_bytes(bytes: u64) -> String {
-    const MEBIBYTE: u64 = 1024 * 1024;
-    if bytes < MEBIBYTE {
+    const MEBIBYTE: u32 = 1024 * 1024;
+    if bytes < u64::from(MEBIBYTE) {
         format!("{bytes} B")
     } else {
-        format!("{:.1} MiB", bytes as f64 / MEBIBYTE as f64)
+        format!(
+            "{:.1} MiB",
+            byte_count_as_float(bytes) / f64::from(MEBIBYTE)
+        )
+    }
+}
+
+fn byte_count_as_float(bytes: u64) -> f64 {
+    let octets = bytes.to_le_bytes();
+    let lower = u32::from_le_bytes([octets[0], octets[1], octets[2], octets[3]]);
+    let upper = u32::from_le_bytes([octets[4], octets[5], octets[6], octets[7]]);
+    // Exact components allow one rounding operation for the complete integer.
+    f64::from(upper).mul_add(4_294_967_296.0, f64::from(lower))
+}
+
+#[cfg(test)]
+#[test]
+fn display_bytes_preserves_large_integer_rounding() {
+    for (bytes, expected) in [
+        (0, "0 B"),
+        (1_048_575, "1048575 B"),
+        (1_048_576, "1.0 MiB"),
+        (9_223_372_036_854_828_236, "8796093022208.1 MiB"),
+        (u64::MAX, "17592186044416.0 MiB"),
+    ] {
+        assert_eq!(display_bytes(bytes), expected);
     }
 }
 

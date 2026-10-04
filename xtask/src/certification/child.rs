@@ -18,6 +18,9 @@ use super::spec::{
     CertResult, CertificationSpec, ProfileKind, ProfileSpec, Representation, SemanticMode,
 };
 
+#[path = "child_reference.rs"]
+mod child_reference;
+
 pub(crate) fn run(
     repository: &Path,
     model_id: &str,
@@ -247,18 +250,7 @@ fn dense_smoke(
             format!("norm range {:?}", min_max(&norms)),
         ));
     }
-    let observed_reference = official_reference
-        .map(|reference| {
-            let text = reference_text(reference)?;
-            let output = embedder.encode(text)?;
-            let values = output
-                .values()
-                .as_slice()
-                .ok_or("official-reference dense output is not contiguous")?
-                .to_vec();
-            Ok::<_, Box<dyn std::error::Error>>(ReferenceOutput::Dense { values })
-        })
-        .transpose()?;
+    let observed_reference = child_reference::dense(&embedder, official_reference)?;
     Ok((
         observation(
             "dense",
@@ -353,21 +345,7 @@ fn multi_vector_smoke(
             format!("norm range {:?}", min_max(&norms)),
         ));
     }
-    let observed_reference = official_reference
-        .map(|reference| {
-            let text = reference_text(reference)?;
-            let output = match reference.document.capability.semantic_mode {
-                SemanticMode::LateInteractionQuery => embedder.encode_query(text)?,
-                SemanticMode::LateInteractionDocument => embedder.encode_document(text)?,
-                _ => return Err("multi-vector reference has an incompatible semantic mode".into()),
-            };
-            Ok::<_, Box<dyn std::error::Error>>(ReferenceOutput::MultiVector {
-                rows: output.num_tokens(),
-                columns: output.embedding_dim(),
-                values: output.matrix().iter().copied().collect(),
-            })
-        })
-        .transpose()?;
+    let observed_reference = child_reference::multi_vector(&embedder, official_reference)?;
     Ok((
         observation(
             "multi_vector",
