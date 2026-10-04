@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+from contextlib import nullcontext
+from types import SimpleNamespace
 
 import make_reference
 from make_reference import publish, read_inputs
@@ -15,6 +17,96 @@ class ReferenceTests(unittest.TestCase):
             Path(__file__).resolve().parents[1] / "specs" / "bge-base-en-v1.5.json"
         )
         self.probe = "What is machine learning?"
+
+    def test_cut_reference_records_whole_count_and_uses_limit(self):
+        model = Mock()
+        model.tokenizer.encode.return_value = list(range(3000))
+        dtype = object()
+        model.encode.return_value = SimpleNamespace(
+            dtype=dtype, ndim=1, tolist=lambda: [0.5, -0.5]
+        )
+        torch = SimpleNamespace(
+            float32=dtype,
+            __version__="test",
+            set_num_threads=Mock(),
+            set_num_interop_threads=Mock(),
+            manual_seed=Mock(),
+            use_deterministic_algorithms=Mock(),
+            inference_mode=nullcontext,
+        )
+        framework = SimpleNamespace(
+            __version__="test", SentenceTransformer=Mock(return_value=model)
+        )
+        modules = {
+            "torch": torch,
+            "sentence_transformers": framework,
+            "transformers": SimpleNamespace(__version__="test"),
+        }
+        spec = {
+            "model": {
+                "id": "model",
+                "repository": "owner/model",
+                "revision": "a" * 40,
+                "representation": "dense",
+            }
+        }
+        capability = {"max_sequence_tokens": 2048, "semantic_mode": "document"}
+        with patch.dict("sys.modules", modules):
+            result = make_reference.make_reference(
+                spec,
+                capability,
+                {},
+                "long-context-2k",
+                "source",
+                Path("snapshot"),
+                Path("cache"),
+                cut_at_tokens=2048,
+            )
+        self.assertEqual(model.max_seq_length, 2048)
+        model.tokenizer.encode.assert_called_once_with("source", truncation=False)
+        model.encode.assert_called_once()
+        self.assertEqual(result["probe"]["token_count"], 3000)
+        self.assertEqual(result["probe"]["cut_at_tokens"], 2048)
+
+    def test_cut_refuses_text_that_fits_before_embedding(self):
+        for tokens in [2047, 2048]:
+            model = Mock()
+            model.tokenizer.encode.return_value = list(range(tokens))
+            with self.assertRaisesRegex(ValueError, "must exceed.*2048"):
+                make_reference.prepare_probe(
+                    model, {"max_sequence_tokens": 2048}, "source", 2048
+                )
+            model.encode.assert_not_called()
+
+    def test_cut_limit_is_positive_integer_within_profile(self):
+        for limit in [0, -1, True, 1.5, 2049]:
+            with self.assertRaisesRegex(ValueError, "cut_at_tokens"):
+                make_reference.validate_cut({"max_sequence_tokens": 2048}, limit)
+
+    def test_uncut_probe_keeps_old_limit_and_refuses_overflow(self):
+        model = Mock()
+        model.tokenizer.encode.return_value = list(range(3))
+        self.assertEqual(
+            make_reference.prepare_probe(model, {"max_sequence_tokens": 3}, "source"), 3
+        )
+        self.assertEqual(model.max_seq_length, 3)
+        model.tokenizer.encode.return_value = list(range(4))
+        with self.assertRaisesRegex(ValueError, "above the profile limit"):
+            make_reference.prepare_probe(model, {"max_sequence_tokens": 3}, "source")
+
+    def test_null_reference_uses_explicit_tolerances(self):
+        expected = {"absolute": 0.001, "relative": 0.01, "minimum_cosine": 0.999}
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.spec_without_reference(directory)
+            source = json.loads(path.read_text())
+            source["profiles"]["smoke"]["official_reference"] = None
+            path.write_text(json.dumps(source))
+            self.assertEqual(
+                read_inputs(path, "smoke", self.probe, tolerance_arguments=expected)[2],
+                expected,
+            )
+            with self.assertRaisesRegex(ValueError, "requires.*tolerance"):
+                read_inputs(path, "smoke", self.probe)
 
     def test_profile_values_come_from_spec(self):
         source = json.loads(self.spec_path.read_text())

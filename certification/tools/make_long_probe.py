@@ -21,6 +21,8 @@ SOURCE_FILES = (
 
 
 def cut_probe(text, count_tokens, minimum=6000, maximum=8000):
+    if minimum <= 0 or maximum < minimum:
+        raise ValueError("token range must be positive and ordered")
     boundaries = [match.end() for match in re.finditer(r"\S+", text)]
     low, high = 0, len(boundaries)
     while low < high:
@@ -44,6 +46,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("spec", type=Path)
     parser.add_argument("output", type=Path)
+    parser.add_argument("--minimum-tokens", type=int, default=6000)
+    parser.add_argument("--maximum-tokens", type=int, default=8000)
     arguments = parser.parse_args()
     try:
         from tokenizers import Tokenizer
@@ -86,7 +90,10 @@ def main():
             for file in SOURCE_FILES
         ]
         probe, count = cut_probe(
-            "\n".join(sections), lambda text: len(tokenizer.encode(text).ids)
+            "\n".join(sections),
+            lambda text: len(tokenizer.encode(text).ids),
+            arguments.minimum_tokens,
+            arguments.maximum_tokens,
         )
         with arguments.output.open("x", encoding="utf-8", newline="") as stream:
             stream.write(probe)

@@ -150,19 +150,24 @@ def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
         raise ValueError("max_sequence_tokens must be a positive integer")
     if not isinstance(probe, str) or not probe.strip():
         raise ValueError("probe text must not be empty")
-    relative = PurePosixPath(profile["official_reference"]["path"])
-    if relative.is_absolute() or ".." in relative.parts:
-        raise ValueError("reference path must stay within the references directory")
-    reference_path = spec_path.parent.parent / "references" / relative
-    try:
-        reference_text = reference_path.read_text(encoding="utf-8")
-    except FileNotFoundError:
+    reference_text = None
+    reference = profile.get("official_reference")
+    if reference is not None:
+        relative = PurePosixPath(reference["path"])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("reference path must stay within the references directory")
+        reference_path = spec_path.parent.parent / "references" / relative
+        try:
+            reference_text = reference_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            pass
+    if reference_text is None:
         required = {"absolute", "relative", "minimum_cosine"}
         if tolerance_arguments is None or not required.issubset(tolerance_arguments):
             raise ValueError(
                 "missing reference requires explicit tolerance arguments: "
                 "--absolute-tolerance, --relative-tolerance, --minimum-cosine"
-            ) from None
+            )
         tolerance = {name: tolerance_arguments[name] for name in sorted(required)}
     else:
         tolerance = json.loads(reference_text)["tolerance"]
@@ -211,8 +216,44 @@ def fetch_model(model, artifacts, cache):
     return snapshot
 
 
+def validate_cut(capability, cut_at_tokens):
+    if cut_at_tokens is not None and (
+        type(cut_at_tokens) is not int
+        or not 0 < cut_at_tokens <= capability["max_sequence_tokens"]
+    ):
+        raise ValueError(
+            "cut_at_tokens must be a positive integer within the profile limit"
+        )
+
+
+def prepare_probe(model, capability, probe, cut_at_tokens=None):
+    validate_cut(capability, cut_at_tokens)
+    model.max_seq_length = (
+        capability["max_sequence_tokens"] if cut_at_tokens is None else cut_at_tokens
+    )
+    token_count = len(model.tokenizer.encode(probe, truncation=False))
+    if cut_at_tokens is not None:
+        if token_count <= cut_at_tokens:
+            raise ValueError(
+                f"probe has {token_count} tokens; cut probe must exceed {cut_at_tokens}"
+            )
+    elif token_count > model.max_seq_length:
+        raise ValueError(
+            f"probe has {token_count} tokens, above the profile limit {model.max_seq_length}"
+        )
+    return token_count
+
+
 def make_reference(
-    spec, capability, tolerance, profile, probe, snapshot, cache, code=None
+    spec,
+    capability,
+    tolerance,
+    profile,
+    probe,
+    snapshot,
+    cache,
+    code=None,
+    cut_at_tokens=None,
 ):
     import sentence_transformers
     import torch
@@ -239,12 +280,7 @@ def make_reference(
         )
     model.float()
     model.eval()
-    model.max_seq_length = capability["max_sequence_tokens"]
-    token_count = len(model.tokenizer.encode(probe, truncation=False))
-    if token_count > model.max_seq_length:
-        raise ValueError(
-            f"probe has {token_count} tokens, above the profile limit {model.max_seq_length}"
-        )
+    token_count = prepare_probe(model, capability, probe, cut_at_tokens)
     with torch.inference_mode():
         vector = model.encode(
             probe,
@@ -265,6 +301,9 @@ def make_reference(
     producer = "sentence-transformers reference run on CPU, float32, L2-normalised"
     if code is not None:
         producer += f"; repository code {code[0]}@{code[1]}"
+    probe_record = {"kind": "text", "text": probe, "token_count": token_count}
+    if cut_at_tokens is not None:
+        probe_record["cut_at_tokens"] = cut_at_tokens
     return {
         "schema_version": 1,
         "model_id": identity["id"],
@@ -283,7 +322,7 @@ def make_reference(
             "source_revision": identity["revision"],
             "probe_prefix": None,
         },
-        "probe": {"kind": "text", "text": probe, "token_count": token_count},
+        "probe": probe_record,
         "tolerance": tolerance,
         "expected": {"representation": identity["representation"], "values": values},
     }
@@ -310,6 +349,7 @@ def main():
     parser.add_argument("probe", nargs="?")
     parser.add_argument("output", type=Path)
     parser.add_argument("--probe-file", type=Path)
+    parser.add_argument("--cut-at-tokens", type=int)
     parser.add_argument("--code-repository")
     parser.add_argument("--code-revision")
     parser.add_argument("--absolute-tolerance", type=float, default=argparse.SUPPRESS)
@@ -335,6 +375,7 @@ def main():
         spec, capability, tolerance = read_inputs(
             arguments.spec, arguments.profile, probe, tolerance_arguments
         )
+        validate_cut(capability, arguments.cut_at_tokens)
         cache = Path(__file__).resolve().parents[2] / ".tessera" / "reference-cache"
         cache.mkdir(parents=True, exist_ok=True)
         os.environ["HF_HOME"] = str(cache)
@@ -364,9 +405,12 @@ def main():
             snapshot,
             cache,
             code,
+            cut_at_tokens=arguments.cut_at_tokens,
         )
         publish(arguments.output, reference)
         print(f"token_count: {reference['probe']['token_count']}")
+        if "cut_at_tokens" in reference["probe"]:
+            print(f"cut_at_tokens: {reference['probe']['cut_at_tokens']}")
         print(f"uv_environment: {sys.prefix}")
         print(f"wrote: {arguments.output}")
     except Exception as error:
