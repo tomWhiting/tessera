@@ -9,9 +9,21 @@ use thiserror::Error;
 
 use crate::models::registry::{self, ModelInfo};
 
+const MAX_MANIFEST_BYTES: u64 = 1_048_576;
+
 /// A failure to validate an installed model, without exposing artifact contents.
 #[derive(Debug, Error)]
 pub enum InstalledModelError {
+    /// The manifest exceeds the reader's allocation ceiling.
+    #[error("installed_manifest_too_large: {filename:?}: measured {measured} bytes exceeds limit {limit}")]
+    ManifestTooLarge {
+        /// Rejected manifest filename.
+        filename: String,
+        /// Observed bytes, or the bounded prefix proving excess.
+        measured: u64,
+        /// Maximum accepted bytes.
+        limit: u64,
+    },
     /// The requested model is absent from the registry.
     #[error("installed_model_not_registered: manifest.json: unknown model {model_id:?}")]
     ModelNotRegistered {
@@ -259,10 +271,19 @@ impl InstalledModel {
 
 fn read_manifest(directory: &Path) -> Result<(Manifest, Vec<u8>), InstalledModelError> {
     let filename = "manifest.json";
-    let mut file = regular_file(directory, filename)?;
+    let file = regular_file(directory, filename)?;
+    let measured = file
+        .metadata()
+        .map_err(|source| io_error(filename, source))?
+        .len();
+    check_manifest_size(filename, measured)?;
     let mut bytes = Vec::new();
-    file.read_to_end(&mut bytes)
+    file.take(MAX_MANIFEST_BYTES + 1)
+        .read_to_end(&mut bytes)
         .map_err(|source| io_error(filename, source))?;
+    let measured = u64::try_from(bytes.len())
+        .map_err(|source| io_error(filename, std::io::Error::other(source)))?;
+    check_manifest_size(filename, measured)?;
     let manifest =
         serde_json::from_slice(&bytes).map_err(|error| InstalledModelError::InvalidManifest {
             filename: filename.to_string(),
@@ -270,6 +291,17 @@ fn read_manifest(directory: &Path) -> Result<(Manifest, Vec<u8>), InstalledModel
             column: error.column(),
         })?;
     Ok((manifest, bytes))
+}
+
+fn check_manifest_size(filename: &str, measured: u64) -> Result<(), InstalledModelError> {
+    if measured > MAX_MANIFEST_BYTES {
+        return Err(InstalledModelError::ManifestTooLarge {
+            filename: filename.to_string(),
+            measured,
+            limit: MAX_MANIFEST_BYTES,
+        });
+    }
+    Ok(())
 }
 
 fn validate_model(manifest: &Manifest, model: &ModelInfo) -> Result<(), InstalledModelError> {
