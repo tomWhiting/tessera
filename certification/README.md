@@ -181,3 +181,53 @@ count and the 2,048-token cut. Two isolated full-window runs remain owed for
 the upstream 8,192-token window; the current scratch estimator requires
 13,186,891,776 activation bytes there (one item, f32). The 8k profile must
 be added together with a registry window increase after measurement.
+
+## Jina v2 window qualification
+
+Both Jina v2 entries currently admit 2,048 tokens. Their required long profile
+is `long-context-2k`, with a 3,000-token source cut at 2,048 including special
+tokens. Neither 2k reference nor run is recorded yet. The four short references
+still describe the previous 8,192 registry window; their files remain intact,
+but are not bound to the new specifications until their capability metadata
+is reconciled. The vectors and texts have not been changed.
+
+The two checked probe files were built with each specification's
+SHA-256-verified tokenizer. Rebuild them with the following commands. The helper reads the same two repository
+files at its fixed source commit, preserving source bytes and word boundaries:
+
+```bash
+uv run --offline certification/tools/make_long_probe.py \
+  certification/specs/jina-embeddings-v2-small-en.json \
+  certification/probes/jina-embeddings-v2-small-en-3k.txt \
+  --minimum-tokens 3000 --maximum-tokens 3000
+uv run --offline certification/tools/make_long_probe.py \
+  certification/specs/jina-embeddings-v2-base-en.json \
+  certification/probes/jina-embeddings-v2-base-en-3k.txt \
+  --minimum-tokens 3000 --maximum-tokens 3000
+```
+
+After the checked tokenizer files are present, both reference entry points
+accept `--cut-at-tokens 2048`. Use the legacy entry for these Jina checkpoints,
+together with the existing pinned code repository/revision and explicit
+0.001 absolute, 0.01 relative and 0.999 cosine tolerances. `token_count` records
+the whole source before truncation; `cut_at_tokens` records the inference cut.
+Inputs at or below that cut are refused. Python reference RSS must remain
+below 4,000,000,000 bytes; generation and certification await the compile turn.
+
+The 2k profiles use activation ceilings rounded upward by 100 MB from the
+current f32 scratch estimator: small 500,000,000 bytes (estimate
+440,401,920), base 700,000,000 bytes (estimate 660,602,880). Model ceilings remain 200,000,000 and
+700,000,000 bytes; artifact ceilings 100,000,000 and 350,000,000 bytes. RSS
+ceilings are 1,500,000,000 and 2,200,000,000 bytes respectively. One item,
+2,048 batch tokens and 4,194,304 attention cells are admitted. These ceilings
+are limits, not measurements. The hashed pinned configs give hidden/intermediate
+sizes 512/2048 with 8 heads for small, and 768/3072 with 12 heads for base.
+
+Two isolated 8,000-token runs remain owed for each model before the upstream
+8,192-token window can be offered. The current f32 activation estimator gives
+6,593,445,888 bytes for small and 9,890,168,832 bytes for base at an
+8,192-token limit, one item. No 8k profile is defined while the registry admits
+2,048. The small model's old 8,000-token reference is retained unbound at
+`references/jina-embeddings-v2-small-en/long-context-8k.json`, originally
+committed in `b0320d59df676df122ebb54c9ca38010e56d8c1a`; it is not evidence
+for the new cut profile. The base model has no 8k reference.

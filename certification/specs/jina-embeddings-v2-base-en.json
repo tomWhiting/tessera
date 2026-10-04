@@ -31,7 +31,7 @@
         "dtype": "f32",
         "semantic_mode": "query",
         "max_sequence_tokens": 128,
-        "context_window_tokens": 8192
+        "context_window_tokens": 2048
       },
       "resource_policy": {
         "max_sequence_tokens": 128,
@@ -51,39 +51,6 @@
         "max_artifact_bytes": 350000000,
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
-      },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/smoke.json",
-        "sha256": "77da782fcd51a56baf7360a9b9561df95087c02599d4232d1b7c178326403e66"
-      }
-    },
-    "long-context-8k": {
-      "kind": "long_context",
-      "capability": {
-        "device": "cpu",
-        "dtype": "f32",
-        "semantic_mode": "document",
-        "max_sequence_tokens": 8192,
-        "context_window_tokens": 8192
-      },
-      "resource_policy": {
-        "max_sequence_tokens": 8192,
-        "max_batch_items": 1,
-        "max_batch_tokens": 8192,
-        "max_model_bytes": 700000000,
-        "max_input_bytes_per_sequence": 1048576,
-        "max_attention_cells": 67108864,
-        "max_job_items": 1,
-        "max_job_input_bytes": 1048576,
-        "max_output_bytes": 16777216,
-        "max_activation_bytes": 7000000000
-      },
-      "process": {
-        "cpu_threads": 2,
-        "timeout_seconds": 7200,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 8000000000
       },
       "official_reference": null
     },
@@ -94,7 +61,7 @@
         "dtype": "f32",
         "semantic_mode": "query",
         "max_sequence_tokens": 128,
-        "context_window_tokens": 8192
+        "context_window_tokens": 2048
       },
       "resource_policy": {
         "max_sequence_tokens": 128,
@@ -115,10 +82,7 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/paragraph.json",
-        "sha256": "dd1ee493cad6998710126737e4954c58d3ebe31c544bea3371e9b8c157923d43"
-      }
+      "official_reference": null
     },
     "non-ascii": {
       "kind": "smoke",
@@ -127,7 +91,7 @@
         "dtype": "f32",
         "semantic_mode": "query",
         "max_sequence_tokens": 128,
-        "context_window_tokens": 8192
+        "context_window_tokens": 2048
       },
       "resource_policy": {
         "max_sequence_tokens": 128,
@@ -148,10 +112,7 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/non-ascii.json",
-        "sha256": "789c8e13629a60a84e480a28cafb49286ebee2169dcbd77cc9dade49c5ad31e7"
-      }
+      "official_reference": null
     },
     "whitespace": {
       "kind": "smoke",
@@ -160,7 +121,7 @@
         "dtype": "f32",
         "semantic_mode": "query",
         "max_sequence_tokens": 128,
-        "context_window_tokens": 8192
+        "context_window_tokens": 2048
       },
       "resource_policy": {
         "max_sequence_tokens": 128,
@@ -181,10 +142,37 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/whitespace.json",
-        "sha256": "d7e2992de532bab6cb545630f6e2123cf6462220ba2bc5181ca6171fa7c505e6"
-      }
+      "official_reference": null
+    },
+    "long-context-2k": {
+      "kind": "long_context",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "document",
+        "max_sequence_tokens": 2048,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 2048,
+        "max_batch_items": 1,
+        "max_batch_tokens": 2048,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 1048576,
+        "max_attention_cells": 4194304,
+        "max_job_items": 1,
+        "max_job_input_bytes": 1048576,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 700000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 7200,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": null
     }
   },
   "smoke": {
@@ -206,7 +194,7 @@
       "paragraph",
       "non-ascii",
       "whitespace",
-      "long-context-8k"
+      "long-context-2k"
     ],
     "require_clean_source": true,
     "require_enforced_rss": true
