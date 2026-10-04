@@ -17,13 +17,13 @@ pub(super) fn dense(
                 let CutEmbeddingOutcome::Embedded(output) = embedder.encode_cut(text)? else {
                     return Err("installed reference probe was refused before inference".into());
                 };
-                validate_probe_token_count(
+                validate_dense_probe_counts(
                     reference.document.probe.token_count(),
+                    None,
                     output.tokens_total(),
+                    output.tokens_read(),
+                    output.cut(),
                 )?;
-                if output.cut() {
-                    return Err("installed reference probe exceeds the admitted token limit".into());
-                }
                 output
                     .values()
                     .as_slice()
@@ -41,6 +41,29 @@ pub(super) fn dense(
         })
         .transpose()
 }
+
+pub(super) fn validate_dense_probe_counts(
+    expected_total: usize,
+    expected_used: Option<usize>,
+    observed_total: usize,
+    observed_used: usize,
+    cut: bool,
+) -> CertResult<()> {
+    if let Some(expected_used) = expected_used {
+        return Err(format!(
+            "cut_reference_unsupported: expected total={expected_total}, used={expected_used}; observed total={observed_total}, used={observed_used}, cut={cut}"
+        ).into());
+    }
+    validate_probe_token_count(expected_total, observed_total)?;
+    if cut {
+        return Err("installed reference probe exceeds the admitted token limit".into());
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "tests/cut_reference.rs"]
+mod tests;
 
 pub(super) fn multi_vector(
     embedder: &TesseraMultiVector,
