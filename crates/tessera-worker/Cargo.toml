@@ -7,6 +7,9 @@ license = "Apache-2.0"
 publish = false
 description = "Installed dense embedding worker with bounded Rust heap and shared framing"
 
+[features]
+accelerate = ["tessera-embeddings/accelerate"]
+
 [dependencies]
 tessera-embeddings = { path = "../..", default-features = false }
 haem-frames = { git = "https://github.com/ablative-io/haematite", branch = "main" }

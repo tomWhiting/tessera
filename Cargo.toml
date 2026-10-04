@@ -55,6 +55,7 @@ metal = [
     "dep:candle-metal-kernels",
 ]
 cuda = ["candle-core/cuda", "candle-nn/cuda", "candle-transformers/cuda"]
+accelerate = ["candle-core/accelerate", "candle-nn/accelerate", "candle-transformers/accelerate"]
 pdf = ["dep:pdf2image"]  # Opt-in PDF rendering; requires a system Poppler installation
 python = ["dep:pyo3", "dep:numpy"]  # PyO3 bindings over experimental embedding adapters
 timeseries = []  # Generic time-series types only; the legacy Chronos runtime is quarantined
