@@ -52,6 +52,8 @@ pub(crate) enum ReferenceProbe {
     Text {
         text: String,
         token_count: usize,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        cut_at_tokens: Option<usize>,
     },
     Image {
         path: String,
@@ -116,6 +118,8 @@ pub(crate) struct ReferenceComparison {
     pub(crate) expected_output_sha256: Option<String>,
     pub(crate) observed_output_sha256: Option<String>,
     pub(crate) probe_tokens: Option<usize>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) probe_tokens_used: Option<usize>,
     pub(crate) observed_shape: Vec<usize>,
     pub(crate) compared_values: usize,
     pub(crate) max_absolute_error: Option<f32>,
@@ -133,6 +137,7 @@ impl ReferenceComparison {
             expected_output_sha256: None,
             observed_output_sha256: None,
             probe_tokens: None,
+            probe_tokens_used: None,
             observed_shape: Vec::new(),
             compared_values: 0,
             max_absolute_error: None,
@@ -150,6 +155,7 @@ impl ReferenceComparison {
             expected_output_sha256: None,
             observed_output_sha256: None,
             probe_tokens: Some(reference.document.probe.token_count()),
+            probe_tokens_used: None,
             observed_shape: Vec::new(),
             compared_values: 0,
             max_absolute_error: None,
@@ -260,6 +266,7 @@ pub(crate) fn comparison_is_complete(
             .as_deref()
             .is_some_and(|value| validate_hex(value).is_ok())
         && comparison.probe_tokens == Some(reference.document.probe.token_count())
+        && comparison.probe_tokens_used == reference.document.probe.cut_at_tokens()
         && comparison.observed_shape == expected_shape
         && comparison.compared_values == expected.values().len()
         && comparison
@@ -299,6 +306,13 @@ fn validate_document(
         return Err("official reference provenance is incomplete or unpinned".into());
     }
     validate_tolerance(document.tolerance)?;
+    if document.probe.cut_at_tokens().is_some()
+        && spec.model.representation != Representation::Dense
+    {
+        return Err(
+            "cut_reference_representation_unsupported: cut probes require a dense model".into(),
+        );
+    }
     validate_probe(repository, profile, &document.probe)?;
     super::reference_compare::validate_output(&document.expected)?;
     if document.expected.representation() != spec.model.representation {
@@ -312,7 +326,18 @@ fn validate_probe(
     profile: &ProfileSpec,
     probe: &ReferenceProbe,
 ) -> CertResult<()> {
-    let tokens = probe.token_count();
+    let total = probe.token_count();
+    let tokens = if let Some(used) = probe.cut_at_tokens() {
+        if used == 0 || used >= total {
+            return Err(format!(
+                "invalid_cut_at_tokens: used={used} must be positive and below token_count={total}"
+            )
+            .into());
+        }
+        used
+    } else {
+        total
+    };
     if tokens == 0 || tokens > profile.capability.max_sequence_tokens {
         return Err("reference probe token count is outside the capability scope".into());
     }
@@ -356,6 +381,13 @@ fn validate_tolerance(tolerance: NumericTolerance) -> CertResult<()> {
 }
 
 impl ReferenceProbe {
+    pub(crate) const fn cut_at_tokens(&self) -> Option<usize> {
+        match self {
+            Self::Text { cut_at_tokens, .. } => *cut_at_tokens,
+            Self::Image { .. } => None,
+        }
+    }
+
     pub(crate) const fn token_count(&self) -> usize {
         match self {
             Self::Text { token_count, .. } => *token_count,

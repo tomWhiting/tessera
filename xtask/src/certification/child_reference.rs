@@ -13,13 +13,19 @@ pub(super) fn dense(
     official_reference
         .map(|reference| {
             let text = reference_text(reference)?;
-            let values = if installed {
+            let expected_used = reference.document.probe.cut_at_tokens();
+            let values = if installed || expected_used.is_some() {
                 let CutEmbeddingOutcome::Embedded(output) = embedder.encode_cut(text)? else {
-                    return Err("installed reference probe was refused before inference".into());
+                    return Err(if expected_used.is_some() {
+                        "cut_reference_refused: reference probe was refused before inference"
+                    } else {
+                        "installed reference probe was refused before inference"
+                    }
+                    .into());
                 };
                 validate_dense_probe_counts(
                     reference.document.probe.token_count(),
-                    None,
+                    expected_used,
                     output.tokens_total(),
                     output.tokens_read(),
                     output.cut(),
@@ -50,9 +56,12 @@ pub(super) fn validate_dense_probe_counts(
     cut: bool,
 ) -> CertResult<()> {
     if let Some(expected_used) = expected_used {
-        return Err(format!(
-            "cut_reference_unsupported: expected total={expected_total}, used={expected_used}; observed total={observed_total}, used={observed_used}, cut={cut}"
-        ).into());
+        if !cut || observed_total != expected_total || observed_used != expected_used {
+            return Err(format!(
+                "cut_reference_token_mismatch: expected total={expected_total}, used={expected_used}; observed total={observed_total}, used={observed_used}, cut={cut}"
+            ).into());
+        }
+        return Ok(());
     }
     validate_probe_token_count(expected_total, observed_total)?;
     if cut {

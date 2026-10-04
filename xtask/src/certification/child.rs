@@ -132,7 +132,9 @@ fn execute(
         } else {
             let verified = artifacts::verify_cached(repository, &loaded)?;
             if let Some(reference) = official_reference {
-                verify_probe_tokens(spec, policy, reference)?;
+                if reference.document.probe.cut_at_tokens().is_none() {
+                    verify_probe_tokens(spec, policy, reference)?;
+                }
             }
             let (observation, observed_reference) = match spec.model.representation {
                 Representation::Dense => dense_smoke(
@@ -174,7 +176,9 @@ fn verify_probe_tokens(
 ) -> CertResult<()> {
     let tokenizer = Tokenizer::from_pretrained_with_policy(&spec.model.repository, policy)?;
     let (text, expected_tokens) = match &reference.document.probe {
-        ReferenceProbe::Text { text, token_count } => (text, *token_count),
+        ReferenceProbe::Text {
+            text, token_count, ..
+        } => (text, *token_count),
         ReferenceProbe::Image {
             query,
             query_token_count,
