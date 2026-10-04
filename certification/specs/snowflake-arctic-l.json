@@ -52,7 +52,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6800000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "snowflake-arctic-l/smoke.json",
+        "sha256": "c995db5fbc5ebf911742d69b6c6f90d5317b34fc44e6e8cb8f4c450a24bf09d4"
+      }
     },
     "paragraph": {
       "kind": "smoke",
@@ -82,7 +85,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6800000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "snowflake-arctic-l/paragraph.json",
+        "sha256": "e48154ba23092a79351235190b637035a5afa5d49b04517d1759e30c38b070d8"
+      }
     },
     "non-ascii": {
       "kind": "smoke",
@@ -112,7 +118,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6800000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "snowflake-arctic-l/non-ascii.json",
+        "sha256": "b16b5cf0c2c93edc8f6aa9f11fc3de042bba41708df5d7aac183de997b18e05f"
+      }
     },
     "whitespace": {
       "kind": "smoke",
@@ -142,7 +151,10 @@
         "min_free_disk_bytes": 1500000000,
         "max_peak_rss_bytes": 6800000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "snowflake-arctic-l/whitespace.json",
+        "sha256": "fcd63d6340c0cd6687cc979d38a5b5f7ed10089895fc6a5da2cd499222a71e70"
+      }
     },
     "long-context-2k": {
       "kind": "long_context",
@@ -172,7 +184,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 7700000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "snowflake-arctic-l/long-context-2k.json",
+        "sha256": "98a29e371df84983399f8ffaed687040a252dec404cdcc2fb21c4aa6f20c4cf6"
+      }
     }
   },
   "smoke": {

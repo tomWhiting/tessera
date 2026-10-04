@@ -1240,7 +1240,7 @@
           "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Pinned registry and certification inputs only; native and truncated vectors remain unmeasured."
+            "note": "CPU f32: 1024 dimensions, 2048-token window, five profiles twice; truncated dimensions and upstream 8192-token window unqualified."
           },
           "architecture": {
             "type": "xlm-roberta",
