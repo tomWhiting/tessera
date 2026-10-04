@@ -1178,7 +1178,7 @@
           "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Native 768-dimensional path is unmeasured; lower upstream dimensions require pooled layer norm absent from Tessera."
+            "note": "CPU f32: 768 dimensions, 2048-token window, five profiles twice; lower Matryoshka dimensions and upstream 8000-token window unqualified."
           },
           "architecture": {
             "type": "nomic-bert",
@@ -1693,7 +1693,7 @@
           "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Bare and prefixed weight namespaces have a native adapter; certification against checked references is pending."
+            "note": "CPU f32: 768 dimensions, 2048-token window, five profiles twice; upstream 8192-token window unqualified."
           },
           "architecture": {
             "type": "modernbert",
