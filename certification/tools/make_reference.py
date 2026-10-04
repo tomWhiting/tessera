@@ -237,6 +237,13 @@ def prepare_probe(model, capability, probe, cut_at_tokens=None):
             raise ValueError(
                 f"probe has {token_count} tokens; cut probe must exceed {cut_at_tokens}"
             )
+        used = len(
+            model.tokenizer.encode(probe, truncation=True, max_length=cut_at_tokens)
+        )
+        if used != cut_at_tokens:
+            raise ValueError(
+                f"cut tokenizer used {used} tokens; expected {cut_at_tokens}"
+            )
     elif token_count > model.max_seq_length:
         raise ValueError(
             f"probe has {token_count} tokens, above the profile limit {model.max_seq_length}"

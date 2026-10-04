@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, call
 from contextlib import nullcontext
 from types import SimpleNamespace
 
@@ -20,7 +20,7 @@ class ReferenceTests(unittest.TestCase):
 
     def test_cut_reference_records_whole_count_and_uses_limit(self):
         model = Mock()
-        model.tokenizer.encode.return_value = list(range(3000))
+        model.tokenizer.encode.side_effect = [list(range(3000)), list(range(2048))]
         dtype = object()
         model.encode.return_value = SimpleNamespace(
             dtype=dtype, ndim=1, tolist=lambda: [0.5, -0.5]
@@ -63,10 +63,23 @@ class ReferenceTests(unittest.TestCase):
                 cut_at_tokens=2048,
             )
         self.assertEqual(model.max_seq_length, 2048)
-        model.tokenizer.encode.assert_called_once_with("source", truncation=False)
+        model.tokenizer.encode.assert_has_calls(
+            [
+                call("source", truncation=False),
+                call("source", truncation=True, max_length=2048),
+            ]
+        )
         model.encode.assert_called_once()
         self.assertEqual(result["probe"]["token_count"], 3000)
         self.assertEqual(result["probe"]["cut_at_tokens"], 2048)
+
+    def test_cut_refuses_tokenizer_used_count_mismatch(self):
+        model = Mock()
+        model.tokenizer.encode.side_effect = [list(range(3000)), list(range(2047))]
+        with self.assertRaisesRegex(ValueError, "used 2047.*expected 2048"):
+            make_reference.prepare_probe(
+                model, {"max_sequence_tokens": 2048}, "source", 2048
+            )
 
     def test_cut_refuses_text_that_fits_before_embedding(self):
         for tokens in [2047, 2048]:
