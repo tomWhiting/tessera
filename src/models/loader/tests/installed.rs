@@ -3,7 +3,7 @@ use std::fs;
 use serde_json::{json, Value};
 use tempfile::TempDir;
 
-use crate::models::loader::InstalledModel;
+use crate::models::loader::{InstalledModel, ModelFileResolver};
 
 fn fixture() -> (TempDir, Value) {
     let dir = tempfile::tempdir().unwrap();
@@ -61,6 +61,36 @@ fn installed_manifest_digest_known() {
         .manifest_sha256()
         .bytes()
         .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)));
+}
+
+#[test]
+fn installed_resolver_keeps_digest_from_artifact_open() {
+    let (dir, manifest) = fixture();
+    write_manifest(&dir, &manifest);
+    let model = crate::models::registry::get_model("bge-base-en-v1.5").unwrap();
+    let files = ModelFileResolver::installed(model, dir.path()).unwrap();
+    fs::remove_file(dir.path().join("manifest.json")).unwrap();
+    assert_eq!(
+        files.installed_manifest_sha256(),
+        Some("27045b6bfabdfa66541a7e24f5a0fd4774f4ea055b91fe17a8b7c35e05eda6df")
+    );
+    assert_eq!(
+        files.get("config.json").unwrap(),
+        dir.path().join("config.json")
+    );
+}
+
+#[cfg(feature = "fetch")]
+#[test]
+fn ordinary_resolver_has_no_installed_manifest_digest() {
+    let dir = tempfile::tempdir().unwrap();
+    let model = crate::models::registry::get_model("bge-base-en-v1.5").unwrap();
+    let source = super::super::ArtifactSource::Offline(
+        hf_hub::Cache::new(dir.path().to_path_buf())
+            .repo(super::super::validated_repo(model).unwrap()),
+    );
+    let files = ModelFileResolver { model, source };
+    assert_eq!(files.installed_manifest_sha256(), None);
 }
 
 #[test]

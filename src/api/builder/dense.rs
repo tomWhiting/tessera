@@ -329,7 +329,7 @@ impl TesseraDenseBuilder {
         };
 
         // Create dense encoder
-        let encoder = match self.model_dir.as_deref() {
+        let (encoder, installed_manifest_sha256) = match self.model_dir.as_deref() {
             Some(directory) => CandleDenseEncoder::new_with_dtype_and_resource_policy_from_dir(
                 config,
                 device,
@@ -342,7 +342,8 @@ impl TesseraDenseBuilder {
                 device,
                 self.dtype,
                 resource_policy,
-            ),
+            )
+            .map(|encoder| (encoder, None)),
         }
         .map_err(|e| TesseraError::ModelLoadError {
             model_id: model_id.clone(),
@@ -356,6 +357,7 @@ impl TesseraDenseBuilder {
             batch_size,
             self.yield_ms,
             resource_policy,
+            installed_manifest_sha256,
         ))
     }
 }

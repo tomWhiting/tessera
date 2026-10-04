@@ -25,6 +25,7 @@ pub struct TesseraDense {
     yield_ms: Option<u64>,
     /// Whole-job and collected-output limits.
     resource_policy: ResourcePolicy,
+    installed_manifest_sha256: Option<String>,
 }
 
 impl TesseraDense {
@@ -97,6 +98,7 @@ impl TesseraDense {
             batch_size: None,
             yield_ms: None,
             resource_policy: ResourcePolicy::default(),
+            installed_manifest_sha256: None,
         }
     }
 
@@ -107,6 +109,7 @@ impl TesseraDense {
         batch_size: Option<NonZeroUsize>,
         yield_ms: Option<u64>,
         resource_policy: ResourcePolicy,
+        installed_manifest_sha256: Option<String>,
     ) -> Self {
         Self {
             encoder,
@@ -114,7 +117,16 @@ impl TesseraDense {
             batch_size,
             yield_ms,
             resource_policy,
+            installed_manifest_sha256,
         }
+    }
+
+    /// Returns the digest of the installed manifest used to load this embedder.
+    ///
+    /// Returns `None` when built without an installed model directory.
+    #[must_use]
+    pub fn installed_manifest_sha256(&self) -> Option<&str> {
+        self.installed_manifest_sha256.as_deref()
     }
 
     /// Encode a single text into a dense embedding.

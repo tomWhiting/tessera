@@ -27,6 +27,7 @@ impl CandleDenseEncoder {
             resource_policy,
             None,
         )
+        .map(|(encoder, _)| encoder)
     }
 
     pub(crate) fn new_with_dtype_and_resource_policy_from_dir(
@@ -35,7 +36,7 @@ impl CandleDenseEncoder {
         dtype: ModelDType,
         resource_policy: ResourcePolicy,
         model_dir: Option<&std::path::Path>,
-    ) -> Result<Self> {
+    ) -> Result<(Self, Option<String>)> {
         let model_name = &model_config.model_name;
 
         let (model_info, residency) = preflight_and_reserve_registered_model_with_dtype(
@@ -66,6 +67,7 @@ impl CandleDenseEncoder {
             Some(directory) => ModelFileResolver::installed(model_info, directory)?,
             None => ModelFileResolver::new(model_info)?,
         };
+        let installed_manifest_sha256 = files.installed_manifest_sha256().map(str::to_owned);
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
@@ -149,19 +151,22 @@ impl CandleDenseEncoder {
         let normalize = model_config.normalize_embeddings;
         let supports_padded_batch = Self::model_supports_padded_batch(&model_type);
 
-        Ok(Self {
-            model,
-            tokenizer,
-            device,
-            config: model_config,
-            pooling_strategy,
-            normalize,
-            supports_padded_batch,
-            dtype,
-            resource_policy,
-            transformer_profile: profile,
-            _residency: residency,
-        })
+        Ok((
+            Self {
+                model,
+                tokenizer,
+                device,
+                config: model_config,
+                pooling_strategy,
+                normalize,
+                supports_padded_batch,
+                dtype,
+                resource_policy,
+                transformer_profile: profile,
+                _residency: residency,
+            },
+            installed_manifest_sha256,
+        ))
     }
 
     pub(super) fn model_supports_padded_batch(model_type: &str) -> bool {

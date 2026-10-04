@@ -75,6 +75,14 @@ impl ModelFileResolver {
         })
     }
 
+    pub(crate) fn installed_manifest_sha256(&self) -> Option<&str> {
+        match &self.source {
+            ArtifactSource::Installed(installed) => Some(installed.manifest_sha256()),
+            #[cfg(feature = "fetch")]
+            ArtifactSource::Online(_) | ArtifactSource::Offline(_) => None,
+        }
+    }
+
     /// Creates a resolver using the registry pin itself.
     #[cfg(feature = "fetch")]
     fn from_registry(model_name: &str) -> Result<Self> {
