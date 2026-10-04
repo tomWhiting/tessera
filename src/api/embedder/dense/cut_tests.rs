@@ -28,6 +28,7 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
         &texts,
         tokenizer.validate_cut_configuration(),
         policy,
+        1,
         NonZeroUsize::new(2).unwrap(),
         None,
         |accepted| {
@@ -87,6 +88,7 @@ fn assert_whole_call_errors(policy: ResourcePolicy) {
             &["one", "two"],
             Ok(()),
             policy,
+            1,
             NonZeroUsize::MIN,
             None,
             |_| panic!("job limits must be checked before embedding"),
@@ -99,7 +101,7 @@ fn assert_whole_call_errors(policy: ResourcePolicy) {
             .downcast_ref::<crate::runtime::ResourcePolicyError>()
             .is_some());
     }
-    let error = encode_cut_batch_with(&["one"], Ok(()), policy, NonZeroUsize::MIN, None, |_| {
+    let error = encode_cut_batch_with(&["one"], Ok(()), policy, 1, NonZeroUsize::MIN, None, |_| {
         Err(anyhow::anyhow!("made-up forward failed"))
     })
     .unwrap_err();
@@ -107,7 +109,7 @@ fn assert_whole_call_errors(policy: ResourcePolicy) {
         panic!("inference failures must fail the whole call");
     };
     assert_eq!(source.to_string(), "made-up forward failed");
-    let error = encode_cut_batch_with(&["one"], Ok(()), policy, NonZeroUsize::MIN, None, |_| {
+    let error = encode_cut_batch_with(&["one"], Ok(()), policy, 1, NonZeroUsize::MIN, None, |_| {
         Ok(Vec::new())
     })
     .unwrap_err();
@@ -126,6 +128,7 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
         &["", " \n\t ", "\u{2003}", "too"],
         tokenizer.validate_cut_configuration(),
         policy,
+        1,
         NonZeroUsize::MIN,
         None,
         |_| panic!("refused texts must not be tokenized or embedded"),
@@ -140,11 +143,97 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
         &[""],
         invalid.validate_cut_configuration(),
         policy,
+        1,
         NonZeroUsize::MIN,
         None,
         |_| panic!("invalid configuration must precede embedding"),
     )
     .unwrap_err();
-    assert!(matches!(error, crate::TesseraError::ConfigError(_)));
+    assert!(matches!(error, crate::TesseraError::Other(_)));
     assert!(error.to_string().contains("InvalidCutConfiguration"));
+    let failure = error.embed_failure().unwrap();
+    assert_eq!(failure.code(), "embed_limits");
+    assert!(matches!(
+        failure,
+        crate::EmbedFailure::Limits {
+            limit: "max_sequence_tokens",
+            ..
+        }
+    ));
+}
+
+fn embedding(values: ndarray::Array1<f32>) -> anyhow::Result<CutDenseEmbedding> {
+    CutDenseEmbedding::new(values, 1, 1, false)
+}
+
+#[test]
+fn wrong_length_vector_fails_the_call_naming_its_input_position() {
+    let policy = ResourcePolicy::new(5, 2, 10, usize::MAX).with_max_input_bytes_per_sequence(20);
+    let error = encode_cut_batch_with(
+        &["one", "", "two", "three"],
+        Ok(()),
+        policy,
+        2,
+        NonZeroUsize::new(2).unwrap(),
+        None,
+        |accepted| {
+            accepted
+                .iter()
+                .map(|text| {
+                    if *text == "three" {
+                        embedding(array![1.0, 0.0, 0.0])
+                    } else {
+                        embedding(array![1.0, 0.0])
+                    }
+                })
+                .collect()
+        },
+    )
+    .unwrap_err();
+    let failure = error.embed_failure().unwrap();
+    assert_eq!(failure.code(), "embed_output_invalid");
+    assert_eq!(
+        failure,
+        crate::EmbedFailure::OutputInvalid {
+            index: 3,
+            reason: "vector has 3 values, expected 2".to_string(),
+        }
+    );
+    assert!(failure
+        .to_string()
+        .starts_with("embed_output_invalid: item 3: "));
+}
+
+#[test]
+fn non_finite_vector_in_a_chunk_is_named_by_its_input_position() {
+    let policy = ResourcePolicy::new(5, 2, 10, usize::MAX).with_max_input_bytes_per_sequence(20);
+    let mut chunks = 0;
+    let error = encode_cut_batch_with(
+        &["", "one", "two", " ", "three"],
+        Ok(()),
+        policy,
+        1,
+        NonZeroUsize::new(2).unwrap(),
+        None,
+        |accepted| {
+            chunks += 1;
+            if accepted.contains(&"three") {
+                return Err(anyhow::Error::new(crate::EmbedFailure::OutputInvalid {
+                    index: 0,
+                    reason: "vector contains NaN or Inf values".to_string(),
+                }));
+            }
+            accepted.iter().map(|_| embedding(array![1.0])).collect()
+        },
+    )
+    .unwrap_err();
+    assert_eq!(chunks, 2);
+    assert!(matches!(error, crate::TesseraError::EncodingError { .. }));
+    assert_eq!(
+        error.embed_failure(),
+        Some(crate::EmbedFailure::OutputInvalid {
+            index: 4,
+            reason: "vector contains NaN or Inf values".to_string(),
+        })
+    );
 }

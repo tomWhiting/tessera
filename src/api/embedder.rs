@@ -16,6 +16,7 @@
 
 mod dense;
 mod factory;
+mod identity;
 mod multi_vector;
 mod quantized;
 mod sparse;
@@ -23,6 +24,8 @@ mod vision;
 
 pub use dense::TesseraDense;
 pub use factory::Tessera;
+pub(crate) use identity::LoadedFacts;
+pub use identity::{EmbedFailure, ModelIdentity, EMBED_FAILURE_MAX_CHARS};
 pub use multi_vector::TesseraMultiVector;
 pub use quantized::QuantizedEmbeddings;
 pub use sparse::TesseraSparse;

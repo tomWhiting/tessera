@@ -51,5 +51,6 @@ pub use builder::{
     TesseraVisionBuilder,
 };
 pub use embedder::{
-    QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector, TesseraSparse, TesseraVision,
+    EmbedFailure, ModelIdentity, QuantizedEmbeddings, Tessera, TesseraDense, TesseraMultiVector,
+    TesseraSparse, TesseraVision, EMBED_FAILURE_MAX_CHARS,
 };

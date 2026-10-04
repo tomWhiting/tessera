@@ -158,7 +158,7 @@ impl Tokenizer {
         Ok(())
     }
 
-    fn cut_special_tokens(&self) -> usize {
+    pub(crate) fn cut_special_tokens(&self) -> usize {
         self.inner
             .get_post_processor()
             .map_or(0, |processor| processor.added_tokens(false))

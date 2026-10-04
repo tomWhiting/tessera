@@ -166,6 +166,7 @@ impl CandleDenseEncoder {
                 dtype,
                 resource_policy,
                 transformer_profile: profile,
+                position_table: detector.max_position_embeddings.or(detector.n_positions),
                 _residency: residency,
             },
             installed_manifest_sha256,

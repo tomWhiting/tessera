@@ -126,19 +126,33 @@ impl CandleDenseEncoder {
     }
 
     pub(crate) fn encode_cut(&self, text: &str) -> Result<CutDenseEmbedding> {
-        self.encode_cut_input(self.tokenizer.encode_cut(text)?)
+        self.encode_cut_input(0, self.tokenizer.encode_cut(text)?)
     }
 
     pub(crate) fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutDenseEmbedding>> {
         self.tokenizer
             .encode_batch_cut(texts)?
             .into_iter()
-            .map(|input| self.encode_cut_input(input))
+            .enumerate()
+            .map(|(index, input)| self.encode_cut_input(index, input))
             .collect()
     }
 
-    fn encode_cut_input(&self, input: CutTokenizedInput) -> Result<CutDenseEmbedding> {
+    /// Embeds one cut input; `index` is its position in the encoded slice.
+    fn encode_cut_input(
+        &self,
+        index: usize,
+        input: CutTokenizedInput,
+    ) -> Result<CutDenseEmbedding> {
         let embedding = self.encode_tokenized(&input.token_ids, &input.attention_mask)?;
+        if !embedding.iter().all(|value| value.is_finite()) {
+            return Err(anyhow::Error::new(
+                crate::api::embedder::EmbedFailure::OutputInvalid {
+                    index,
+                    reason: "vector contains NaN or Inf values".to_string(),
+                },
+            ));
+        }
         CutDenseEmbedding::new(
             embedding,
             input.tokens_read(),

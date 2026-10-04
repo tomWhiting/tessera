@@ -5,7 +5,7 @@ use tokenizers::processors::template::TemplateProcessing;
 use super::{HfTokenizer, Tokenizer};
 use crate::runtime::{ContextWindowConfig, ResourcePolicy};
 
-fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
+pub fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
     let vocabulary = [
         ("[UNK]".to_string(), 0),
         ("[PAD]".to_string(), 1),

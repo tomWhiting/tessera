@@ -267,9 +267,9 @@ mod vision;
 
 // Re-export commonly used types
 pub use api::{
-    QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
-    TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
-    TesseraVision, TesseraVisionBuilder,
+    EmbedFailure, ModelIdentity, QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense,
+    TesseraDenseBuilder, TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse,
+    TesseraSparseBuilder, TesseraVision, TesseraVisionBuilder, EMBED_FAILURE_MAX_CHARS,
 };
 #[cfg(feature = "cuda")]
 pub use backends::candle::device::cuda_device;
