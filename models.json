@@ -203,7 +203,7 @@
           "release_date": "2022",
           "support": {
             "tier": "experimental",
-            "note": "BERT ColBERT path exists; remote checkpoint execution remains experimental."
+            "note": "Pinned CPU f32 smoke reference is bound for a 32-row query probe. Query attention differs from the pinned recipe; the 512-token window is not qualified. Remote checkpoint execution remains experimental."
           },
           "architecture": {
             "type": "bert",
