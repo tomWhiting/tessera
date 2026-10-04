@@ -38,3 +38,4 @@ build/
 
 # Marimo
 __marimo__/
+/.tessera/reference-cache/
