@@ -15,6 +15,7 @@ const RSS_SAMPLE_INTERVAL_MS: u64 = 50;
 pub(crate) struct RunOptions {
     pub(crate) profile: String,
     pub(crate) repeat: usize,
+    pub(crate) model_dir: Option<PathBuf>,
 }
 
 pub(crate) fn run_model(repository: &Path, model_id: &str, options: &RunOptions) -> CertResult<()> {
@@ -23,9 +24,20 @@ pub(crate) fn run_model(repository: &Path, model_id: &str, options: &RunOptions)
     }
     let loaded = spec::load_model(repository, model_id)?;
     loaded.spec.profile(&options.profile)?;
+    if options.model_dir.is_some() {
+        super::install::require_dense(loaded.spec.model.representation)?;
+    }
+    let options = RunOptions {
+        model_dir: options
+            .model_dir
+            .as_deref()
+            .map(fs::canonicalize)
+            .transpose()?,
+        ..options.clone()
+    };
     let mut failures = Vec::new();
     for repetition in 1..=options.repeat {
-        if let Err(error) = launch_one(repository, &loaded, options, repetition) {
+        if let Err(error) = launch_one(repository, &loaded, &options, repetition) {
             failures.push(format!("run {repetition}: {error}"));
         }
     }
@@ -80,7 +92,8 @@ fn launch_one(
         fs::create_dir_all(parent)?;
     }
     let executable = std::env::current_exe()?;
-    let mut child = Command::new(executable)
+    let mut command = Command::new(executable);
+    command
         .args([
             "cert",
             "__one",
@@ -92,14 +105,13 @@ fn launch_one(
         ])
         .arg(&outcome_path)
         .current_dir(repository)
-        .env("HF_HOME", artifacts::cache_root(repository))
-        .env("TESSERA_OFFLINE", "1")
         .env("RAYON_NUM_THREADS", profile.process.cpu_threads.to_string())
         .env(
             "CANDLE_NUM_THREADS",
             profile.process.cpu_threads.to_string(),
-        )
-        .spawn()?;
+        );
+    configure_source(&mut command, repository, options.model_dir.as_deref());
+    let mut child = command.spawn()?;
     let child_pid = child.id();
     let monitor = monitor_child(
         &mut child,
@@ -265,12 +277,27 @@ fn apply_launcher_result(
     }
 }
 
+fn configure_source(command: &mut Command, repository: &Path, model_dir: Option<&Path>) {
+    if let Some(directory) = model_dir {
+        command
+            .arg("--model-dir")
+            .arg(directory)
+            .env_remove("HF_HOME")
+            .env_remove("TESSERA_OFFLINE");
+    } else {
+        command
+            .env("HF_HOME", artifacts::cache_root(repository))
+            .env("TESSERA_OFFLINE", "1");
+    }
+}
+
 fn failed_outcome(error: String, official_reference: Option<&LoadedReference>) -> ChildOutcome {
     ChildOutcome {
         status: "failed".to_string(),
         error: Some(error),
         verified_artifacts: Vec::new(),
         observation: None,
+        installed_manifest_sha256: None,
         reference_comparison: official_reference
             .map_or_else(ReferenceComparison::not_configured, |reference| {
                 ReferenceComparison::not_run(reference, "child produced no comparison")

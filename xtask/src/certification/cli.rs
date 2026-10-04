@@ -30,6 +30,13 @@ enum CertCommand {
         #[arg(long)]
         model: String,
     },
+    /// Copy one verified dense model from the certification cache into an installed folder.
+    Install {
+        #[arg(long)]
+        model: String,
+        #[arg(long)]
+        dir: PathBuf,
+    },
     /// Run one model in a fresh, monitored, offline CPU child process.
     Run {
         /// Registry model ID.
@@ -44,6 +51,9 @@ enum CertCommand {
         /// Number of fresh child processes to run serially.
         #[arg(long, default_value_t = 1)]
         repeat: usize,
+        /// Installed dense model folder; bypasses the Hugging Face cache.
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
     },
     /// Run every checked specification serially, one child process at a time.
     RunAll {
@@ -81,6 +91,8 @@ enum CertCommand {
         profile: String,
         #[arg(long)]
         outcome: PathBuf,
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
     },
 }
 
@@ -98,24 +110,42 @@ pub(crate) fn run(
     match cli.command {
         CertCommand::List => list(repository),
         CertCommand::Fetch { model } => fetch(repository, &model),
+        CertCommand::Install { model, dir } => super::install::run(repository, &model, &dir),
         CertCommand::Run {
             model,
             device: _,
             profile,
             repeat,
-        } => process::run_model(repository, &model, &RunOptions { profile, repeat }),
+            model_dir,
+        } => process::run_model(
+            repository,
+            &model,
+            &RunOptions {
+                profile,
+                repeat,
+                model_dir,
+            },
+        ),
         CertCommand::RunAll {
             device: _,
             profile,
             repeat,
-        } => process::run_all(repository, &RunOptions { profile, repeat }),
+        } => process::run_all(
+            repository,
+            &RunOptions {
+                profile,
+                repeat,
+                model_dir: None,
+            },
+        ),
         CertCommand::Readiness { model, json } => readiness(repository, &model, json),
         CertCommand::Purge { model } => purge(repository, &model),
         CertCommand::One {
             model,
             profile,
             outcome,
-        } => super::child::run(repository, &model, &profile, &outcome),
+            model_dir,
+        } => super::child::run(repository, &model, &profile, &outcome, model_dir.as_deref()),
     }
 }
 
@@ -198,11 +228,36 @@ fn purge(repository: &Path, model_id: &str) -> Result<(), Box<dyn Error>> {
 }
 
 fn display_bytes(bytes: u64) -> String {
-    const MEBIBYTE: u64 = 1024 * 1024;
-    if bytes < MEBIBYTE {
+    const MEBIBYTE: u32 = 1024 * 1024;
+    if bytes < u64::from(MEBIBYTE) {
         format!("{bytes} B")
     } else {
-        format!("{:.1} MiB", bytes as f64 / MEBIBYTE as f64)
+        format!(
+            "{:.1} MiB",
+            byte_count_as_float(bytes) / f64::from(MEBIBYTE)
+        )
+    }
+}
+
+fn byte_count_as_float(bytes: u64) -> f64 {
+    let octets = bytes.to_le_bytes();
+    let lower = u32::from_le_bytes([octets[0], octets[1], octets[2], octets[3]]);
+    let upper = u32::from_le_bytes([octets[4], octets[5], octets[6], octets[7]]);
+    // Exact components allow one rounding operation for the complete integer.
+    f64::from(upper).mul_add(4_294_967_296.0, f64::from(lower))
+}
+
+#[cfg(test)]
+#[test]
+fn display_bytes_preserves_large_integer_rounding() {
+    for (bytes, expected) in [
+        (0, "0 B"),
+        (1_048_575, "1048575 B"),
+        (1_048_576, "1.0 MiB"),
+        (9_223_372_036_854_828_236, "8796093022208.1 MiB"),
+        (u64::MAX, "17592186044416.0 MiB"),
+    ] {
+        assert_eq!(display_bytes(bytes), expected);
     }
 }
 

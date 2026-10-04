@@ -279,9 +279,12 @@ pub use backends::candle::device::metal_device;
 pub use backends::candle::device::metal_device_at;
 pub use backends::candle::get_device;
 pub use candle_core::Device;
+pub use core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
+pub use core::tokenizer::CutConfigurationError;
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;
+pub use models::{InstalledModel, InstalledModelError};
 pub use quantization::{multi_vector_distance, quantize_multi, BinaryQuantization, Quantization};
 pub use runtime::{
     configure_cpu_threads, configure_inference_gate, try_acquire_inference, ContextWindowConfig,

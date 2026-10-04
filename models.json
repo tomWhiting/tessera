@@ -792,6 +792,194 @@
           },
           "license": "Apache-2.0",
           "description": "Dense XLM-RoBERTa text embedding model with CLS pooling, Matryoshka dimensions from 256 to 1024, and an 8192-token context."
+        },
+        {
+          "id": "multilingual-e5-small",
+          "type": "dense",
+          "name": "Multilingual-E5-Small",
+          "huggingface_id": "intfloat/multilingual-e5-small",
+          "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+          "organization": "intfloat",
+          "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT dense path with an XLM-R tokenizer exists; certification against a checked reference is pending."
+          },
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-small",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "118M",
+            "embedding_dim": 384,
+            "hidden_dim": 384,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 250037
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["multilingual"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "license": "MIT",
+          "description": "Dense multilingual BERT text embedding model with mean pooling, 384-dimensional outputs, and a 512-token context; inputs carry a 'query: ' or 'passage: ' prefix written by the caller."
+        },
+        {
+          "id": "bge-small-en-v1.5",
+          "type": "dense",
+          "name": "BGE-Small-EN-v1.5",
+          "huggingface_id": "BAAI/bge-small-en-v1.5",
+          "revision": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a",
+          "organization": "BAAI",
+          "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT dense path exists; certification against a checked reference is pending."
+          },
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-small",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "cls",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "33M",
+            "embedding_dim": 384,
+            "hidden_dim": 384,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "license": "MIT",
+          "description": "Dense BERT-small text embedding model with CLS pooling, 384-dimensional outputs, and a 512-token context."
+        },
+        {
+          "id": "bge-large-en-v1.5",
+          "type": "dense",
+          "name": "BGE-Large-EN-v1.5",
+          "huggingface_id": "BAAI/bge-large-en-v1.5",
+          "revision": "d4aa6901d3a41ba39fb536a557fa166f842b0e09",
+          "organization": "BAAI",
+          "release_date": "2023",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT dense path exists; certification against a checked reference is pending."
+          },
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "cls",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "335M",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "license": "MIT",
+          "description": "Dense BERT-large text embedding model with CLS pooling, 1024-dimensional outputs, and a 512-token context."
+        },
+        {
+          "id": "mxbai-embed-large-v1",
+          "type": "dense",
+          "name": "mxbai-embed-large-v1",
+          "huggingface_id": "mixedbread-ai/mxbai-embed-large-v1",
+          "revision": "b33106f585b9ce46904ad7443a3b52b7a63e231c",
+          "organization": "Mixedbread",
+          "release_date": "2024",
+          "support": {
+            "tier": "experimental",
+            "note": "BERT dense path exists; certification against a checked reference is pending."
+          },
+          "architecture": {
+            "type": "bert",
+            "variant": "bert-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "cls",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "335M",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 512,
+            "max_position_embeddings": 512,
+            "vocab_size": 30522
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "pytorch_model.bin"
+            }
+          },
+          "capabilities": {
+            "languages": ["en"],
+            "modalities": ["text"],
+            "multi_vector": false,
+            "quantization": ["fp32", "fp16", "int8"]
+          },
+          "license": "Apache-2.0",
+          "description": "Dense BERT-large text embedding model with CLS pooling, 1024-dimensional outputs, and a 512-token context; upstream stores float16 weights."
         }
       ]
     },

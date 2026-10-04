@@ -43,7 +43,8 @@ name = "tessera"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["fetch"]
+fetch = ["dep:hf-hub"]
 metal = [
     "candle-core/metal",
     "candle-nn/metal",
@@ -62,10 +63,11 @@ candle-metal-kernels = { version = "0.11.0", optional = true }
 candle-nn = "0.11.0"
 candle-transformers = "0.11.0"
 clap = { version = "4.5.49", features = ["derive"] }
-hf-hub = { version = "0.4.3", default-features = false, features = ["ureq"] }
+hf-hub = { version = "0.4.3", default-features = false, features = ["ureq"], optional = true }
 ndarray = "0.16.1"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
+sha2 = "0.10.9"
 thiserror = "2.0.17"
 tokenizers = "0.22.1"  # Artifacts are fetched by the pinned ModelFileResolver
 rust-stemmers = "1.2.0"  # Snowball English stemmer for miniCOIL word resolution
@@ -75,6 +77,9 @@ image = "0.25"              # Image loading, format conversion, and resizing for
 pdf2image = { version = "0.1.2", optional = true }  # PDF to image rendering (uses Poppler)
 pyo3 = { version = "0.22", features = ["extension-module"], optional = true }
 numpy = { version = "0.22", optional = true }
+
+[dev-dependencies]
+tempfile = "3.27.0"
 
 [build-dependencies]
 serde = { version = "1.0.228", features = ["derive"] }

@@ -23,6 +23,7 @@ fn launcher_failure_overrides_a_child_written_pass() {
         error: None,
         verified_artifacts: Vec::new(),
         observation: None,
+        installed_manifest_sha256: None,
         reference_comparison: ReferenceComparison::not_configured(),
     };
 
@@ -44,6 +45,7 @@ fn launcher_failure_preserves_both_monitor_and_child_errors() {
         error: Some("smoke contract failed".to_string()),
         verified_artifacts: Vec::new(),
         observation: None,
+        installed_manifest_sha256: None,
         reference_comparison: ReferenceComparison::not_configured(),
     };
 
@@ -58,5 +60,39 @@ fn launcher_failure_preserves_both_monitor_and_child_errors() {
     assert_eq!(
         outcome.error.as_deref(),
         Some("child exceeded timeout; child reported: smoke contract failed")
+    );
+}
+
+#[test]
+fn installed_children_remove_cache_environment_and_receive_directory() {
+    let mut command = std::process::Command::new("runner");
+    super::configure_source(
+        &mut command,
+        Path::new("/repo"),
+        Some(Path::new("/installed")),
+    );
+    let arguments: Vec<_> = command.get_args().collect();
+    assert_eq!(arguments, ["--model-dir", "/installed"]);
+    let environment: Vec<_> = command.get_envs().collect();
+    for name in ["HF_HOME", "TESSERA_OFFLINE"] {
+        assert!(environment
+            .iter()
+            .any(|(key, value)| *key == name && value.is_none()));
+    }
+}
+
+#[test]
+fn cache_children_keep_offline_cache_environment() {
+    let mut command = std::process::Command::new("runner");
+    super::configure_source(&mut command, Path::new("/repo"), None);
+    assert_eq!(command.get_args().count(), 0);
+    let environment: Vec<_> = command.get_envs().collect();
+    assert!(environment.iter().any(|(key, value)| *key == "HF_HOME"
+        && *value == Some(std::ffi::OsStr::new("/repo/.tessera/cert-cache"))));
+    assert!(
+        environment
+            .iter()
+            .any(|(key, value)| *key == "TESSERA_OFFLINE"
+                && *value == Some(std::ffi::OsStr::new("1")))
     );
 }

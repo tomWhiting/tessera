@@ -43,7 +43,19 @@ fn legacy_presence_only_reference_hash_is_rejected() {
 fn checked_specs_have_scoped_smoke_and_distinct_long_context_profiles() {
     let repository = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap();
     let specs = load_all(repository).unwrap();
-    assert_eq!(specs.len(), 10);
+    let spec_files = std::fs::read_dir(repository.join("certification/specs"))
+        .unwrap()
+        .filter(|entry| {
+            entry
+                .as_ref()
+                .unwrap()
+                .path()
+                .extension()
+                .and_then(|value| value.to_str())
+                == Some("json")
+        })
+        .count();
+    assert_eq!(specs.len(), spec_files);
     for loaded in specs {
         let smoke = loaded.spec.profile("smoke").unwrap();
         assert_eq!(smoke.kind, ProfileKind::Smoke);

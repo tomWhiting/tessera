@@ -42,6 +42,8 @@ pub(crate) struct ReferenceProvenance {
     pub(crate) framework_version: String,
     pub(crate) source_repository: String,
     pub(crate) source_revision: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) probe_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -414,11 +416,10 @@ impl ReferenceOutput {
         }
     }
 
-    pub(super) fn row_width(&self) -> Option<usize> {
+    pub(super) fn row_width(&self) -> usize {
         match self {
-            Self::Dense { values } => Some(values.len()),
-            Self::Sparse { values, .. } => Some(values.len()),
-            Self::MultiVector { columns, .. } | Self::Vision { columns, .. } => Some(*columns),
+            Self::Dense { values } | Self::Sparse { values, .. } => values.len(),
+            Self::MultiVector { columns, .. } | Self::Vision { columns, .. } => *columns,
         }
     }
 }

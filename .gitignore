@@ -18,6 +18,7 @@ Thumbs.db
 .claude/settings.local.json
 /.tessera/cert-cache/
 /.tessera/cert-evidence/
+/.tessera/reference-cache/
 
 # The model registry is generated into Cargo's OUT_DIR by build.rs.
 # No generated Rust source belongs in the working tree.

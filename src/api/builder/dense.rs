@@ -6,6 +6,7 @@ use crate::models::{registry, ModelConfig};
 use crate::runtime::{resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy};
 use candle_core::Device;
 use std::num::NonZeroUsize;
+use std::path::PathBuf;
 
 #[cfg(test)]
 mod tests;
@@ -30,6 +31,8 @@ pub struct TesseraDenseBuilder {
     resource_policy: Option<ResourcePolicy>,
     /// Explicit parameter dtype; F32 by default.
     dtype: ModelDType,
+    /// Installed source selected instead of a fetch or cache source.
+    model_dir: Option<PathBuf>,
 }
 
 impl TesseraDenseBuilder {
@@ -46,6 +49,7 @@ impl TesseraDenseBuilder {
             yield_ms: None,
             resource_policy: None,
             dtype: ModelDType::F32,
+            model_dir: None,
         }
     }
 
@@ -67,6 +71,13 @@ impl TesseraDenseBuilder {
     #[must_use]
     pub fn model(mut self, model_id: &str) -> Self {
         self.model_id = Some(model_id.to_string());
+        self
+    }
+
+    /// Selects an installed folder that must pass manifest integrity checks.
+    #[must_use]
+    pub fn model_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.model_dir = Some(path.into());
         self
     }
 
@@ -287,6 +298,11 @@ impl TesseraDenseBuilder {
         }
         let batch_size = batch_size.or_else(|| resource_policy.conservative_batch_size());
 
+        #[cfg(not(feature = "fetch"))]
+        if self.model_dir.is_none() {
+            return Err(TesseraError::FetchingNotBuiltIn { model_id });
+        }
+
         // Get or auto-select device
         let device = if let Some(dev) = self.device {
             dev
@@ -313,12 +329,22 @@ impl TesseraDenseBuilder {
         };
 
         // Create dense encoder
-        let encoder = CandleDenseEncoder::new_with_dtype_and_resource_policy(
-            config,
-            device,
-            self.dtype,
-            resource_policy,
-        )
+        let (encoder, installed_manifest_sha256) = match self.model_dir.as_deref() {
+            Some(directory) => CandleDenseEncoder::new_with_dtype_and_resource_policy_from_dir(
+                config,
+                device,
+                self.dtype,
+                resource_policy,
+                Some(directory),
+            ),
+            None => CandleDenseEncoder::new_with_dtype_and_resource_policy(
+                config,
+                device,
+                self.dtype,
+                resource_policy,
+            )
+            .map(|encoder| (encoder, None)),
+        }
         .map_err(|e| TesseraError::ModelLoadError {
             model_id: model_id.clone(),
             source: e,
@@ -331,6 +357,7 @@ impl TesseraDenseBuilder {
             batch_size,
             self.yield_ms,
             resource_policy,
+            installed_manifest_sha256,
         ))
     }
 }

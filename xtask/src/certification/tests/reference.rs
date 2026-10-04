@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use super::{
     compare, comparison_is_complete, load_checked, resolve_image, validate_tolerance,
     ComparisonStatus, LoadedReference, NumericTolerance, ReferenceDocument, ReferenceOutput,
-    ReferencePointer, ReferenceProbe,
+    ReferencePointer, ReferenceProbe, ReferenceProvenance,
 };
 use crate::certification::spec::{
     ArtifactSpec, CapabilityScope, CertificationDevice, CertificationDtype, CertificationSpec,
@@ -30,6 +30,41 @@ fn load_fixture(name: &str) -> LoadedReference {
         sha256: "fixture".to_string(),
         document,
     }
+}
+
+fn provenance_value() -> serde_json::Value {
+    serde_json::json!({
+        "producer": "reference producer",
+        "framework": "reference framework",
+        "framework_version": "1.0.0",
+        "source_repository": "example/model",
+        "source_revision": "a".repeat(40),
+    })
+}
+
+#[test]
+fn provenance_accepts_probe_prefix() {
+    for prefix in [serde_json::json!("query: "), serde_json::Value::Null] {
+        let mut value = provenance_value();
+        value["probe_prefix"] = prefix;
+        assert!(serde_json::from_value::<ReferenceProvenance>(value).is_ok());
+    }
+    let mut value = provenance_value();
+    value["probe_prefix"] = serde_json::json!(1);
+    assert!(serde_json::from_value::<ReferenceProvenance>(value).is_err());
+}
+
+#[test]
+fn provenance_accepts_absent_probe_prefix() {
+    assert!(serde_json::from_value::<ReferenceProvenance>(provenance_value()).is_ok());
+}
+
+#[test]
+fn provenance_refuses_another_unknown_member() {
+    let mut value = provenance_value();
+    value["unexpected"] = serde_json::json!("extra");
+    let error = serde_json::from_value::<ReferenceProvenance>(value).unwrap_err();
+    assert!(error.to_string().contains("unknown field `unexpected`"));
 }
 
 fn dense_spec(pointer: ReferencePointer) -> CertificationSpec {

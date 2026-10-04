@@ -12,6 +12,12 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 #[non_exhaustive]
 pub enum TesseraError {
+    /// A remote or cache source was requested from a build without fetching.
+    #[error("FetchingNotBuiltIn: model '{model_id}': fetching is not built in; set model_dir")]
+    FetchingNotBuiltIn {
+        /// Requested registry identifier.
+        model_id: String,
+    },
     /// Model with the specified ID was not found in the registry.
     #[error("Model '{model_id}' not found in registry")]
     ModelNotFound {

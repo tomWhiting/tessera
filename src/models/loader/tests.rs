@@ -1,15 +1,24 @@
+#[cfg(feature = "fetch")]
 use std::ffi::OsStr;
 
+mod installed;
+
+#[cfg(feature = "fetch")]
 use hf_hub::Cache;
 
+#[cfg(feature = "fetch")]
 use super::{
     download_model_file, parse_offline_flag, validated_repo, ArtifactSource, ModelFileResolver,
 };
+#[cfg(feature = "fetch")]
 use crate::models::registry::get_model_by_hf_id;
 
+#[cfg(feature = "fetch")]
 const BGE_ID: &str = "BAAI/bge-base-en-v1.5";
+#[cfg(feature = "fetch")]
 const BGE_REVISION: &str = "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a";
 
+#[cfg(feature = "fetch")]
 #[test]
 fn repository_descriptor_uses_the_exact_registry_pin() {
     let model = get_model_by_hf_id(BGE_ID).unwrap();
@@ -20,6 +29,7 @@ fn repository_descriptor_uses_the_exact_registry_pin() {
     assert_eq!(repo.revision(), BGE_REVISION);
 }
 
+#[cfg(feature = "fetch")]
 #[test]
 fn unavailable_catalog_revision_fails_before_io() {
     let error = download_model_file("jinaai/jina-colbert-v2-96", "config.json").unwrap_err();
@@ -29,6 +39,7 @@ fn unavailable_catalog_revision_fails_before_io() {
         .contains("has no pinned HuggingFace revision"));
 }
 
+#[cfg(feature = "fetch")]
 #[test]
 fn offline_cache_miss_is_explicit_and_network_free() {
     let model = get_model_by_hf_id(BGE_ID).unwrap();
@@ -45,6 +56,7 @@ fn offline_cache_miss_is_explicit_and_network_free() {
     assert!(error.to_string().contains(BGE_REVISION));
 }
 
+#[cfg(feature = "fetch")]
 #[test]
 fn offline_flag_accepts_only_the_documented_value() {
     assert!(!parse_offline_flag(None).unwrap());
