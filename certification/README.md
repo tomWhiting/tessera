@@ -186,10 +186,12 @@ be added together with a registry window increase after measurement.
 
 Both Jina v2 entries currently admit 2,048 tokens. Their required long profile
 is `long-context-2k`, with a 3,000-token source cut at 2,048 including special
-tokens. Neither 2k reference nor run is recorded yet. The four short references
-still describe the previous 8,192 registry window; their files remain intact,
-but are not bound to the new specifications until their capability metadata
-is reconciled. The vectors and texts have not been changed.
+tokens. Neither 2k reference nor run is recorded yet. The eight short references were produced before the registry window was
+lowered. Only their declared `capability.context_window_tokens` changed from
+8,192 to 2,048; texts, vectors, tolerances, provenance and the 128-token limits
+remain byte for byte. Their specifications bind the new file hashes. All
+profiles must be rerun at the new clean head to check that the vectors still
+hold; both Jina models remain uncertified at that head until those runs pass.
 
 The two checked probe files were built with each specification's
 SHA-256-verified tokenizer. Rebuild them with the following commands. The helper reads the same two repository

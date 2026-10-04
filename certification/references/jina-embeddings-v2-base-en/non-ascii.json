@@ -9,7 +9,7 @@
     "dtype": "f32",
     "semantic_mode": "query",
     "max_sequence_tokens": 128,
-    "context_window_tokens": 8192
+    "context_window_tokens": 2048
   },
   "provenance": {
     "producer": "sentence-transformers reference run on CPU, float32, L2-normalised; repository code jinaai/jina-bert-implementation@f3ec4cf7de7e561007f27c9efc7148b0bd713f81",

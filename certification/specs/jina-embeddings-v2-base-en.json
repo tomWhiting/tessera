@@ -52,7 +52,10 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/smoke.json",
+        "sha256": "75b2b8068f4c002d300e9eb812e32d426e31e1769619b17629dee1f66ae971dc"
+      }
     },
     "paragraph": {
       "kind": "smoke",
@@ -82,7 +85,10 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/paragraph.json",
+        "sha256": "4d989a4508672a2a7ce00c7f6ced75a026ac1d9bd16a675d330984773248ea19"
+      }
     },
     "non-ascii": {
       "kind": "smoke",
@@ -112,7 +118,10 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/non-ascii.json",
+        "sha256": "505163c227697753ce3b26ba4ece7c969c8abbecc5d5dc5da9ee6ae21a630719"
+      }
     },
     "whitespace": {
       "kind": "smoke",
@@ -142,7 +151,10 @@
         "min_free_disk_bytes": 1200000000,
         "max_peak_rss_bytes": 2200000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/whitespace.json",
+        "sha256": "414ffffc0154e2c4eea73daaaf4dc7abd4157b0b03ff8c79cc2d8462f4ab0da8"
+      }
     },
     "long-context-2k": {
       "kind": "long_context",
