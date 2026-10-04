@@ -898,6 +898,59 @@
           },
           "license": "MIT",
           "description": "Multilingual XLM-RoBERTa embedding model with mean pooling, normalized 1024-dimensional outputs, and a 512-token context. Query and document inputs require their respective query: and passage: prefixes."
+        },
+        {
+          "id": "gte-modernbert-base",
+          "type": "dense",
+          "name": "GTE ModernBERT Base",
+          "huggingface_id": "Alibaba-NLP/gte-modernbert-base",
+          "revision": "e7f32e3c00f91d699e8c43b53106206bcc72bb22",
+          "organization": "Alibaba-NLP",
+          "release_date": "not stated",
+          "support": {
+            "tier": "catalog_only",
+            "note": "Pinned bare tensor names do not match the current Candle model namespace; adapter and certification are owed."
+          },
+          "architecture": {
+            "type": "modernbert",
+            "variant": "modernbert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "cls",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "149014272",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 2048,
+            "max_position_embeddings": 8192,
+            "vocab_size": 50368
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "model.safetensors"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
+            "multi_vector": false,
+            "quantization": [
+              "fp16"
+            ]
+          },
+          "license": "Apache-2.0",
+          "description": "ModernBERT model with CLS pooling and optional L2 normalization selected for cosine comparison. The certification window is 2048 tokens; the upstream 8192-token window is not yet measured."
         }
       ]
     },

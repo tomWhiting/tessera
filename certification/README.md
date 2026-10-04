@@ -164,3 +164,13 @@ upstream model's documented inference implementation, reviewed, placed under
 `certification/references/`, hashed, and connected to exactly one capability
 profile. Fetching Tessera's pinned weights remains a separate explicit command,
 and certification children remain offline.
+
+## Full-window measurements owed
+
+`gte-modernbert-base` has an unmeasured 2,048-token certification window. Its
+required long profile will use a 3,000-token source cut to 2,048 tokens, recording
+both counts through `cut_at_tokens`. No reference or run is recorded yet. The
+upstream 8,192-token window still needs two isolated full-window runs; the
+current scratch estimator requires 9,890,168,832 activation bytes at 8,192
+tokens (one item, f32). An 8k profile must be added when the registry window is
+raised; it cannot coexist with the current 2,048-token admission limit.
