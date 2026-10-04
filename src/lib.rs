@@ -267,9 +267,9 @@ mod vision;
 
 // Re-export commonly used types
 pub use api::{
-    QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense, TesseraDenseBuilder,
-    TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse, TesseraSparseBuilder,
-    TesseraVision, TesseraVisionBuilder,
+    EmbedFailure, ModelIdentity, QuantizationConfig, QuantizedEmbeddings, Tessera, TesseraDense,
+    TesseraDenseBuilder, TesseraMultiVector, TesseraMultiVectorBuilder, TesseraSparse,
+    TesseraSparseBuilder, TesseraVision, TesseraVisionBuilder, EMBED_FAILURE_MAX_CHARS,
 };
 #[cfg(feature = "cuda")]
 pub use backends::candle::device::cuda_device;
@@ -279,8 +279,8 @@ pub use backends::candle::device::metal_device;
 pub use backends::candle::device::metal_device_at;
 pub use backends::candle::get_device;
 pub use candle_core::Device;
-pub use core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
-pub use core::tokenizer::CutConfigurationError;
+pub use core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal, Role};
+pub use core::tokenizer::{CutConfigurationError, PromptConfigurationError};
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use error::{Result, TesseraError};
 pub use models::ModelConfig;

@@ -1,9 +1,12 @@
 use super::ensure_runnable_model;
+use crate::api::embedder::{EmbedFailure, ModelIdentity};
 use crate::api::TesseraDense;
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
 use crate::models::{registry, ModelConfig};
-use crate::runtime::{resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy};
+use crate::runtime::{
+    resolve_registry_policy_with_dtype, ModelDType, ResourcePolicy, ResourcePolicyError,
+};
 use candle_core::Device;
 use std::num::NonZeroUsize;
 use std::path::PathBuf;
@@ -241,7 +244,8 @@ impl TesseraDenseBuilder {
             .batch_size
             .map(|size| {
                 NonZeroUsize::new(size).ok_or_else(|| {
-                    TesseraError::ConfigError(
+                    EmbedFailure::limits(
+                        "batch_items",
                         "Batch size must be greater than zero. Use .batch_size(1) or larger"
                             .to_string(),
                     )
@@ -282,18 +286,22 @@ impl TesseraDenseBuilder {
             self.dtype,
         )
         .map_err(|error| {
-            TesseraError::ConfigError(format!(
-                "Invalid resource policy for model '{model_id}': {error}"
-            ))
+            let message = format!("Invalid resource policy for model '{model_id}': {error}");
+            if matches!(error, ResourcePolicyError::ModelContext { .. }) {
+                EmbedFailure::limits("max_sequence_tokens", message)
+            } else {
+                TesseraError::ConfigError(message)
+            }
         })?;
 
         if let Some(batch_size) = batch_size {
             resource_policy
                 .validate_batch(batch_size.get(), 0)
                 .map_err(|error| {
-                    TesseraError::ConfigError(format!(
-                        "Invalid dense batch size for model '{model_id}': {error}"
-                    ))
+                    EmbedFailure::limits(
+                        "batch_items",
+                        format!("Invalid dense batch size for model '{model_id}': {error}"),
+                    )
                 })?;
         }
         let batch_size = batch_size.or_else(|| resource_policy.conservative_batch_size());
@@ -349,6 +357,15 @@ impl TesseraDenseBuilder {
             model_id: model_id.clone(),
             source: e,
         })?;
+        let identity = ModelIdentity::new(
+            model_info,
+            encoder.loaded_facts(),
+            installed_manifest_sha256,
+        )
+        .map_err(|e| TesseraError::ModelLoadError {
+            model_id: model_id.clone(),
+            source: e,
+        })?;
 
         // Create TesseraDense instance with batch options
         Ok(TesseraDense::from_encoder_with_options(
@@ -357,7 +374,7 @@ impl TesseraDenseBuilder {
             batch_size,
             self.yield_ms,
             resource_policy,
-            installed_manifest_sha256,
+            identity,
         ))
     }
 }

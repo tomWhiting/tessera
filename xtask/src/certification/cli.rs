@@ -37,6 +37,30 @@ enum CertCommand {
         #[arg(long)]
         dir: PathBuf,
     },
+    /// Measure dense vector changes across batch positions and CPU thread counts.
+    Measure {
+        #[arg(long)]
+        model: String,
+        #[arg(long)]
+        profile: String,
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
+    },
+    #[command(name = "__measure-one", hide = true)]
+    MeasureOne {
+        #[arg(long)]
+        model: String,
+        #[arg(long)]
+        profile: String,
+        #[arg(long)]
+        threads: usize,
+        #[arg(long)]
+        batch: bool,
+        #[arg(long)]
+        outcome: PathBuf,
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
+    },
     /// Run one model in a fresh, monitored, offline CPU child process.
     Run {
         /// Registry model ID.
@@ -111,6 +135,27 @@ pub(crate) fn run(
         CertCommand::List => list(repository),
         CertCommand::Fetch { model } => fetch(repository, &model),
         CertCommand::Install { model, dir } => super::install::run(repository, &model, &dir),
+        CertCommand::Measure {
+            model,
+            profile,
+            model_dir,
+        } => super::measure::run(repository, &model, &profile, model_dir.as_deref()),
+        CertCommand::MeasureOne {
+            model,
+            profile,
+            threads,
+            batch,
+            outcome,
+            model_dir,
+        } => super::measure::run_child(
+            repository,
+            &model,
+            &profile,
+            threads,
+            batch,
+            &outcome,
+            model_dir.as_deref(),
+        ),
         CertCommand::Run {
             model,
             device: _,

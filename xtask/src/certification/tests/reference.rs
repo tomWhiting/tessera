@@ -67,6 +67,88 @@ fn provenance_refuses_another_unknown_member() {
     assert!(error.to_string().contains("unknown field `unexpected`"));
 }
 
+fn cut_probe_value(used: usize) -> serde_json::Value {
+    serde_json::json!({"kind":"text", "text":"long reference", "token_count":3_000, "cut_at_tokens":used})
+}
+
+#[test]
+fn cut_probe_reader_accepts_full_count_above_the_measured_window() {
+    let probe: ReferenceProbe = serde_json::from_value(cut_probe_value(2_048)).unwrap();
+    let spec = dense_spec(ReferencePointer {
+        path: "unused".into(),
+        sha256: "a".repeat(64),
+    });
+    let mut profile = spec.profile("smoke").unwrap().clone();
+    profile.kind = ProfileKind::LongContext;
+    profile.capability.max_sequence_tokens = 2_048;
+    profile.resource_policy.max_sequence_tokens = 2_048;
+    assert!(super::validate_probe(&repository(), &profile, &probe).is_ok());
+    assert_eq!(serde_json::to_value(probe).unwrap()["cut_at_tokens"], 2_048);
+}
+
+#[test]
+fn cut_probe_reader_refuses_zero_equal_and_larger_used_counts_by_name() {
+    let spec = dense_spec(ReferencePointer {
+        path: "unused".into(),
+        sha256: "a".repeat(64),
+    });
+    for used in [0, 3_000, 3_001] {
+        let probe: ReferenceProbe = serde_json::from_value(cut_probe_value(used)).unwrap();
+        let error = super::validate_probe(&repository(), spec.profile("smoke").unwrap(), &probe)
+            .unwrap_err();
+        assert!(error.to_string().contains("invalid_cut_at_tokens"));
+    }
+}
+
+#[test]
+fn cut_probe_reader_refuses_a_different_profile_cut_with_both_numbers() {
+    let spec = dense_spec(ReferencePointer {
+        path: "unused".into(),
+        sha256: "a".repeat(64),
+    });
+    let mut profile = spec.profile("smoke").unwrap().clone();
+    profile.kind = ProfileKind::LongContext;
+    profile.capability.max_sequence_tokens = 2_048;
+    profile.resource_policy.max_sequence_tokens = 2_048;
+    for used in [2_000, 2_049] {
+        let probe: ReferenceProbe = serde_json::from_value(cut_probe_value(used)).unwrap();
+        let error = super::validate_probe(&repository(), &profile, &probe)
+            .unwrap_err()
+            .to_string();
+        assert!(error.contains("cut_at_tokens_profile_mismatch"), "{error}");
+        assert!(error.contains(&format!("cut_at_tokens={used}")), "{error}");
+        assert!(error.contains("max_sequence_tokens=2048"), "{error}");
+    }
+}
+
+#[test]
+fn cut_comparison_evidence_loads_both_counts_and_requires_the_used_count() {
+    let mut reference = load_fixture("dense");
+    let mut probe = serde_json::to_value(&reference.document.probe).unwrap();
+    probe["token_count"] = serde_json::json!(3_000);
+    probe["cut_at_tokens"] = serde_json::json!(2_048);
+    reference.document.probe = serde_json::from_value(probe).unwrap();
+    let comparison = compare(&reference, &reference.document.expected).unwrap();
+    let mut value = serde_json::to_value(comparison).unwrap();
+    assert_eq!(value["probe_tokens"], 3_000);
+    assert_eq!(value["probe_tokens_used"], 2_048);
+    let round_trip: super::ReferenceComparison = serde_json::from_value(value.clone()).unwrap();
+    assert!(comparison_is_complete(&round_trip, &reference));
+    value["probe_tokens_used"] = serde_json::json!(2_047);
+    let altered: super::ReferenceComparison = serde_json::from_value(value).unwrap();
+    assert!(!comparison_is_complete(&altered, &reference));
+}
+
+#[test]
+fn uncut_comparison_keeps_its_stored_shape() {
+    let reference = load_fixture("dense");
+    let comparison = compare(&reference, &reference.document.expected).unwrap();
+    let value = serde_json::to_value(comparison).unwrap();
+    assert!(value.get("probe_tokens_used").is_none());
+    let old: super::ReferenceComparison = serde_json::from_value(value).unwrap();
+    assert!(comparison_is_complete(&old, &reference));
+}
+
 fn dense_spec(pointer: ReferencePointer) -> CertificationSpec {
     let capability = CapabilityScope {
         device: CertificationDevice::Cpu,

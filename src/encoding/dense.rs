@@ -101,6 +101,10 @@ struct ModelTypeDetector {
     hidden_size: Option<usize>,
     #[serde(default)]
     dim: Option<usize>,
+    #[serde(default)]
+    max_position_embeddings: Option<usize>,
+    #[serde(default)]
+    n_positions: Option<usize>,
 }
 
 /// Dense encoder using the Candle backend.
@@ -119,6 +123,8 @@ pub struct CandleDenseEncoder {
     dtype: ModelDType,
     resource_policy: ResourcePolicy,
     transformer_profile: TransformerProfile,
+    position_table: Option<usize>,
+    prompts: crate::models::registry::Prompts,
     _residency: ModelResidencyPermit<'static>,
 }
 
@@ -152,6 +158,16 @@ impl CandleDenseEncoder {
     #[must_use]
     pub const fn model_dtype(&self) -> ModelDType {
         self.dtype
+    }
+
+    /// Facts the model identity needs that the registry entry does not hold.
+    pub(crate) fn loaded_facts(&self) -> crate::api::embedder::LoadedFacts {
+        crate::api::embedder::LoadedFacts {
+            dimensions: self.embedding_dim(),
+            special_tokens: self.tokenizer.cut_special_tokens(),
+            normalised: self.normalize,
+            position_table: self.position_table,
+        }
     }
 }
 

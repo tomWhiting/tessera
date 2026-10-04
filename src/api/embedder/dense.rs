@@ -1,5 +1,6 @@
+use crate::api::embedder::{EmbedFailure, ModelIdentity};
 use crate::api::TesseraDenseBuilder;
-use crate::core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
+use crate::core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal, Role};
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
@@ -29,7 +30,7 @@ pub struct TesseraDense {
     yield_ms: Option<u64>,
     /// Whole-job and collected-output limits.
     resource_policy: ResourcePolicy,
-    installed_manifest_sha256: Option<String>,
+    identity: ModelIdentity,
 }
 
 impl TesseraDense {
@@ -93,19 +94,6 @@ impl TesseraDense {
         TesseraDenseBuilder::new()
     }
 
-    /// Internal constructor used by builder (legacy, no batch options).
-    #[allow(dead_code)]
-    pub(crate) fn from_encoder(encoder: CandleDenseEncoder, model_id: String) -> Self {
-        Self {
-            encoder,
-            model_id,
-            batch_size: None,
-            yield_ms: None,
-            resource_policy: ResourcePolicy::default(),
-            installed_manifest_sha256: None,
-        }
-    }
-
     /// Internal constructor with batch options.
     pub(crate) const fn from_encoder_with_options(
         encoder: CandleDenseEncoder,
@@ -113,7 +101,7 @@ impl TesseraDense {
         batch_size: Option<NonZeroUsize>,
         yield_ms: Option<u64>,
         resource_policy: ResourcePolicy,
-        installed_manifest_sha256: Option<String>,
+        identity: ModelIdentity,
     ) -> Self {
         Self {
             encoder,
@@ -121,8 +109,14 @@ impl TesseraDense {
             batch_size,
             yield_ms,
             resource_policy,
-            installed_manifest_sha256,
+            identity,
         }
+    }
+
+    /// Returns the exact model this embedder loaded, as captured when it was built.
+    #[must_use]
+    pub const fn identity(&self) -> &ModelIdentity {
+        &self.identity
     }
 
     /// Returns the digest of the installed manifest used to load this embedder.
@@ -130,7 +124,7 @@ impl TesseraDense {
     /// Returns `None` when built without an installed model directory.
     #[must_use]
     pub fn installed_manifest_sha256(&self) -> Option<&str> {
-        self.installed_manifest_sha256.as_deref()
+        self.identity.manifest_sha256.as_deref()
     }
 
     /// Encode a single text into a dense embedding.
@@ -177,20 +171,25 @@ impl TesseraDense {
 
     /// Returns the text's vector and token counts, or a named input refusal.
     ///
-    /// Special tokens count toward the resource policy's sequence limit.
+    /// With a role, the model's text for it is joined directly before `text` and
+    /// is never cut. It and the special tokens count toward the sequence limit and
+    /// both token counts; refusals and the byte limit look at `text` alone.
+    /// Without a role, `text` is embedded as it stands.
     ///
     /// # Errors
-    /// Returns a configuration error if the limit cannot hold special tokens plus
-    /// one content token, or an error for job limits or inference. Empty or
-    /// whitespace-only input is refused; oversized nonempty input is refused.
-    pub fn encode_cut(&self, text: &str) -> Result<CutEmbeddingOutcome> {
+    /// Returns a configuration error if the limit cannot hold special tokens,
+    /// the longer of the model's two texts (with a role) and one content token, or an error
+    /// for job limits or inference. Empty or whitespace-only input is refused;
+    /// oversized nonempty input is refused.
+    pub fn encode_cut(&self, text: &str, role: Option<Role>) -> Result<CutEmbeddingOutcome> {
         encode_cut_batch_with(
             &[text],
-            self.encoder.validate_cut_configuration(),
+            self.encoder.validate_cut_configuration(role),
             self.resource_policy,
+            self.identity.dimensions,
             NonZeroUsize::MIN,
             None,
-            |_| self.encoder.encode_cut(text).map(|value| vec![value]),
+            |_| self.encoder.encode_cut(text, role).map(|value| vec![value]),
         )?
         .into_iter()
         .next()
@@ -202,24 +201,30 @@ impl TesseraDense {
 
     /// Returns one vector or named input refusal per text, in input order.
     ///
-    /// Each chunk uses sequential model forwards on unpadded, cut inputs.
+    /// Each chunk uses sequential model forwards on unpadded, cut inputs. One
+    /// role applies to every text, joined as in [`Self::encode_cut`].
     ///
     /// # Errors
     /// Returns a configuration error before any item is embedded if the sequence
-    /// limit cannot hold special tokens plus content. Job, batch, output and
+    /// limit cannot hold special tokens, the longer model text and content. Job, batch, output and
     /// inference limits apply to accepted items; refused items use none of them.
-    pub fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutEmbeddingOutcome>> {
+    pub fn encode_batch_cut(
+        &self,
+        texts: &[&str],
+        role: Option<Role>,
+    ) -> Result<Vec<CutEmbeddingOutcome>> {
         let batch_size = self
             .batch_size
             .or_else(|| NonZeroUsize::new(self.resource_policy.max_batch_items()))
             .unwrap_or(NonZeroUsize::MIN);
         encode_cut_batch_with(
             texts,
-            self.encoder.validate_cut_configuration(),
+            self.encoder.validate_cut_configuration(role),
             self.resource_policy,
+            self.identity.dimensions,
             batch_size,
             self.yield_ms.map(std::time::Duration::from_millis),
-            |accepted| self.encoder.encode_batch_cut(accepted),
+            |accepted| self.encoder.encode_batch_cut(accepted, role),
         )
     }
 
@@ -477,6 +482,7 @@ fn encode_cut_batch_with<F>(
     texts: &[&str],
     configuration: anyhow::Result<()>,
     policy: ResourcePolicy,
+    dimensions: usize,
     batch_size: NonZeroUsize,
     yield_duration: Option<std::time::Duration>,
     mut encode: F,
@@ -484,22 +490,28 @@ fn encode_cut_batch_with<F>(
 where
     F: FnMut(&[&str]) -> anyhow::Result<Vec<CutDenseEmbedding>>,
 {
-    configuration.map_err(|error| TesseraError::ConfigError(error.to_string()))?;
+    configuration.map_err(EmbedFailure::from_cut_configuration)?;
     let mut tracker = JobTracker::new(policy);
     let mut refusals = Vec::with_capacity(texts.len());
     let mut accepted = Vec::new();
-    for &text in texts {
+    let mut positions = Vec::new();
+    for (position, &text) in texts.iter().enumerate() {
         let refusal = EmbeddingRefusal::for_text(text, policy.max_input_bytes_per_sequence());
         if refusal.is_none() {
             tracker.admit_input(text.len()).map_err(|error| {
                 resource_error("Dense cut batch input exceeds job limits", error)
             })?;
             accepted.push(text);
+            positions.push(position);
         }
         refusals.push(refusal);
     }
     let mut embeddings = Vec::with_capacity(accepted.len());
-    for (index, chunk) in accepted.chunks(batch_size.get()).enumerate() {
+    for (index, (chunk, chunk_positions)) in accepted
+        .chunks(batch_size.get())
+        .zip(positions.chunks(batch_size.get()))
+        .enumerate()
+    {
         if index > 0 {
             if let Some(duration) = yield_duration {
                 std::thread::sleep(duration);
@@ -510,7 +522,7 @@ where
                 "Failed to encode cut batch chunk {index} ({} texts)",
                 chunk.len()
             ),
-            source,
+            source: input_positions(source, chunk_positions),
         })?;
         if results.len() != chunk.len() {
             return Err(TesseraError::EncodingError {
@@ -522,7 +534,19 @@ where
                 ),
             });
         }
-        for embedding in &results {
+        for (embedding, &position) in results.iter().zip(chunk_positions) {
+            if embedding.dim() != dimensions {
+                return Err(TesseraError::EncodingError {
+                    context: "Dense cut output is invalid".to_string(),
+                    source: anyhow::Error::new(EmbedFailure::OutputInvalid {
+                        index: position,
+                        reason: format!(
+                            "vector has {} values, expected {dimensions}",
+                            embedding.dim()
+                        ),
+                    }),
+                });
+            }
             tracker
                 .retain_output(f32_output_bytes(embedding.dim()))
                 .map_err(|error| {
@@ -549,6 +573,20 @@ where
             )
         })
         .collect()
+}
+
+/// Renumbers an output failure from its position in a chunk to the caller's input.
+fn input_positions(source: anyhow::Error, positions: &[usize]) -> anyhow::Error {
+    match source.downcast_ref::<EmbedFailure>() {
+        Some(EmbedFailure::OutputInvalid { index, reason }) => match positions.get(*index) {
+            Some(&position) => anyhow::Error::new(EmbedFailure::OutputInvalid {
+                index: position,
+                reason: reason.clone(),
+            }),
+            None => source,
+        },
+        _ => source,
+    }
 }
 
 fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> TesseraError {

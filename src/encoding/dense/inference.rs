@@ -3,9 +3,10 @@ use candle_core::{DType, Device, Tensor};
 use ndarray::Array1;
 
 use super::{BertVariant, CandleDenseEncoder};
-use crate::core::embeddings::CutDenseEmbedding;
+use crate::core::embeddings::{CutDenseEmbedding, Role};
 use crate::core::tokenizer::CutTokenizedInput;
 use crate::core::{DenseEmbedding, PoolingStrategy};
+use crate::models::registry::Prompts;
 use crate::runtime::ContextWindowConfig;
 
 impl CandleDenseEncoder {
@@ -121,24 +122,44 @@ impl CandleDenseEncoder {
         DenseEmbedding::new(final_embedding, text.to_string())
     }
 
-    pub(crate) fn validate_cut_configuration(&self) -> Result<()> {
-        self.tokenizer.validate_cut_configuration()
-    }
-
-    pub(crate) fn encode_cut(&self, text: &str) -> Result<CutDenseEmbedding> {
-        self.encode_cut_input(self.tokenizer.encode_cut(text)?)
-    }
-
-    pub(crate) fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutDenseEmbedding>> {
+    pub(crate) fn validate_cut_configuration(&self, role: Option<Role>) -> Result<()> {
         self.tokenizer
-            .encode_batch_cut(texts)?
+            .validate_cut_configuration_with(&prompts_to_hold(self.prompts, role))
+    }
+
+    pub(crate) fn encode_cut(&self, text: &str, role: Option<Role>) -> Result<CutDenseEmbedding> {
+        let prompt = prompt_for(self.prompts, role);
+        self.encode_cut_input(0, self.tokenizer.encode_cut(prompt, text)?)
+    }
+
+    pub(crate) fn encode_batch_cut(
+        &self,
+        texts: &[&str],
+        role: Option<Role>,
+    ) -> Result<Vec<CutDenseEmbedding>> {
+        self.tokenizer
+            .encode_batch_cut(prompt_for(self.prompts, role), texts)?
             .into_iter()
-            .map(|input| self.encode_cut_input(input))
+            .enumerate()
+            .map(|(index, input)| self.encode_cut_input(index, input))
             .collect()
     }
 
-    fn encode_cut_input(&self, input: CutTokenizedInput) -> Result<CutDenseEmbedding> {
+    /// Embeds one cut input; `index` is its position in the encoded slice.
+    fn encode_cut_input(
+        &self,
+        index: usize,
+        input: CutTokenizedInput,
+    ) -> Result<CutDenseEmbedding> {
         let embedding = self.encode_tokenized(&input.token_ids, &input.attention_mask)?;
+        if !embedding.iter().all(|value| value.is_finite()) {
+            return Err(anyhow::Error::new(
+                crate::api::embedder::EmbedFailure::OutputInvalid {
+                    index,
+                    reason: "vector contains NaN or Inf values".to_string(),
+                },
+            ));
+        }
         CutDenseEmbedding::new(
             embedding,
             input.tokens_read(),
@@ -406,5 +427,22 @@ impl CandleDenseEncoder {
         }
 
         Ok(results)
+    }
+}
+
+/// The model's text joined before a caller's text for `role`; none without a role.
+pub(super) const fn prompt_for(prompts: Prompts, role: Option<Role>) -> &'static str {
+    match role {
+        Some(Role::Query) => prompts.query,
+        Some(Role::Document) => prompts.document,
+        None => "",
+    }
+}
+
+/// The prompts a sequence limit must hold: both with a role, none without one.
+pub(super) const fn prompts_to_hold(prompts: Prompts, role: Option<Role>) -> [&'static str; 2] {
+    match role {
+        Some(_) => [prompts.query, prompts.document],
+        None => ["", ""],
     }
 }

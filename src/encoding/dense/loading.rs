@@ -166,6 +166,13 @@ impl CandleDenseEncoder {
                 dtype,
                 resource_policy,
                 transformer_profile: profile,
+                position_table: detector.max_position_embeddings.or(detector.n_positions),
+                prompts: model_info
+                    .prompts
+                    .unwrap_or(crate::models::registry::Prompts {
+                        query: "",
+                        document: "",
+                    }),
                 _residency: residency,
             },
             installed_manifest_sha256,
@@ -332,7 +339,7 @@ impl CandleDenseEncoder {
     }
 
     /// Loads the appropriate model variant
-    fn load_model(
+    pub(super) fn load_model(
         config_str: &str,
         vb: VarBuilder,
         model_type: &str,
@@ -383,6 +390,7 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::XlmRoberta(model))
             }
             "modernbert" => {
+                let vb = Self::modernbert_var_builder(vb)?;
                 let config: candle_transformers::models::modernbert::Config =
                     serde_json::from_str(config_str).context("Parsing ModernBERT config")?;
                 let model = candle_transformers::models::modernbert::ModernBert::load(vb, &config)
@@ -405,5 +413,22 @@ impl CandleDenseEncoder {
                 Ok(BertVariant::Bert(model))
             }
         }
+    }
+
+    pub(super) fn modernbert_var_builder(vb: VarBuilder<'_>) -> Result<VarBuilder<'_>> {
+        const PREFIXED: &str = "model.embeddings.tok_embeddings.weight";
+        const BARE: &str = "embeddings.tok_embeddings.weight";
+        if vb.contains_tensor(PREFIXED) {
+            return Ok(vb);
+        }
+        if vb.contains_tensor(BARE) {
+            return Ok(vb.rename_f(|name| {
+                name.strip_prefix("model.")
+                    .map_or_else(|| name.to_owned(), str::to_owned)
+            }));
+        }
+        anyhow::bail!(
+            "modernbert_weight_name_missing: looked for {PREFIXED} or {BARE} in the weights file"
+        )
     }
 }
