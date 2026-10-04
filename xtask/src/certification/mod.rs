@@ -3,6 +3,8 @@ mod child;
 mod cli;
 mod evidence;
 mod install;
+#[cfg(test)]
+mod measure;
 mod process;
 mod readiness;
 mod reference;
