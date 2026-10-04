@@ -57,7 +57,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 1500000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "colbert-small/smoke.json",
+        "sha256": "f73f27f4ca393b2caec70469c0a553403aa7a3699e5d0e72345d5d738115bec0"
+      }
     },
     "paragraph": {
       "kind": "smoke",
@@ -87,7 +90,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 1500000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "colbert-small/paragraph.json",
+        "sha256": "febcde48dd3a46b63ba5a9da100808105cc99a7bc830de318eb7fcc8925d75d6"
+      }
     },
     "non-ascii": {
       "kind": "smoke",
@@ -117,7 +123,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 1500000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "colbert-small/non-ascii.json",
+        "sha256": "7625fdfccf60ae7d5d2185b161d4ec6befce0c7a1cca1035192b66bedc4c81a5"
+      }
     },
     "whitespace": {
       "kind": "smoke",
@@ -147,7 +156,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 1500000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "colbert-small/whitespace.json",
+        "sha256": "b201d39f83c5a1b379d7011aaa47d3961bb3dfc4d59b7f45e6ff5e53fdfdc2ff"
+      }
     }
   },
   "smoke": {

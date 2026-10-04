@@ -152,7 +152,7 @@
           "release_date": "2024",
           "support": {
             "tier": "experimental",
-            "note": "BERT ColBERT path exists; remote checkpoint execution remains experimental."
+            "note": "Pinned CPU f32 references are bound for four probes; the 512-token window is not qualified. Remote checkpoint execution remains experimental."
           },
           "architecture": {
             "type": "bert",
