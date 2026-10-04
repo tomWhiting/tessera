@@ -3,7 +3,9 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import Mock
 
+import make_reference
 from make_reference import publish, read_inputs
 
 
@@ -73,6 +75,96 @@ class ReferenceTests(unittest.TestCase):
     def test_empty_probe_is_refused(self):
         with self.assertRaisesRegex(ValueError, "probe text must not be empty"):
             read_inputs(self.spec_path, "smoke", " ")
+
+    def test_probe_file_preserves_whitespace(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "probe.txt"
+            path.write_bytes("  café\tline\r\n\r\n".encode("utf-8"))
+            self.assertEqual(
+                make_reference.read_probe(None, path), "  café\tline\r\n\r\n"
+            )
+
+    def test_probe_sources_are_exclusive(self):
+        for text, file in [(None, None), ("text", Path("probe.txt"))]:
+            with self.assertRaisesRegex(ValueError, "exactly one"):
+                make_reference.read_probe(text, file)
+
+    def test_code_source_requires_both_pins(self):
+        for repository, revision in [("owner/code", None), (None, "a" * 40)]:
+            with self.assertRaisesRegex(ValueError, "both"):
+                make_reference.validate_code_source(repository, revision, {})
+
+    def test_code_source_refuses_floating_revision(self):
+        with self.assertRaisesRegex(ValueError, "immutable"):
+            make_reference.validate_code_source("owner/code", "main", {})
+
+    def test_code_source_refuses_another_repository(self):
+        config = {"auto_map": {"AutoConfig": "other/code--config.Config"}}
+        with self.assertRaisesRegex(ValueError, "repository"):
+            make_reference.validate_code_source("owner/code", "a" * 40, config)
+
+    def test_code_source_accepts_only_the_named_repository(self):
+        config = {"auto_map": {"AutoConfig": "owner/code--config.Config"}}
+        self.assertEqual(
+            make_reference.validate_code_source("owner/code", "a" * 40, config),
+            ("owner/code", "a" * 40),
+        )
+
+    def test_default_code_source_is_disabled(self):
+        self.assertIsNone(make_reference.validate_code_source(None, None, {}))
+
+    def test_direct_module_loading_preserves_both_code_pins(self):
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory)
+            (snapshot / "modules.json").write_text(
+                json.dumps(
+                    [
+                        {
+                            "idx": 0,
+                            "type": "sentence_transformers.models.Transformer",
+                            "path": "",
+                        },
+                        {
+                            "idx": 1,
+                            "type": "sentence_transformers.models.Pooling",
+                            "path": "1_Pooling",
+                        },
+                    ]
+                )
+            )
+            transformer, pooling = Mock(), Mock()
+            modules = make_reference.load_pinned_modules(
+                snapshot,
+                snapshot,
+                ("owner/code", "a" * 40),
+                classes={"Transformer": transformer, "Pooling": pooling},
+            )
+            arguments = transformer.load.call_args.kwargs
+            self.assertEqual(arguments["model_kwargs"]["code_revision"], "a" * 40)
+            self.assertEqual(arguments["config_kwargs"]["code_revision"], "a" * 40)
+            self.assertEqual(arguments["processor_kwargs"]["code_revision"], "a" * 40)
+            self.assertTrue(arguments["trust_remote_code"])
+            self.assertTrue(arguments["local_files_only"])
+            self.assertFalse(arguments["token"])
+            self.assertEqual(pooling.load.call_args.kwargs["subfolder"], "1_Pooling")
+            self.assertEqual(
+                modules, [transformer.load.return_value, pooling.load.return_value]
+            )
+
+    def test_direct_module_loading_refuses_external_modules(self):
+        with tempfile.TemporaryDirectory() as directory:
+            snapshot = Path(directory)
+            (snapshot / "modules.json").write_text(
+                json.dumps(
+                    [
+                        {"idx": 0, "type": "other.CustomModule", "path": ""},
+                    ]
+                )
+            )
+            with self.assertRaisesRegex(ValueError, "built-in"):
+                make_reference.load_pinned_modules(
+                    snapshot, snapshot, ("owner/code", "a" * 40), classes={}
+                )
 
     def test_mutable_revision_is_refused(self):
         source = json.loads(self.spec_path.read_text())

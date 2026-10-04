@@ -20,6 +20,114 @@ import sys
 import tempfile
 
 
+def read_probe(text, file):
+    if (text is None) == (file is None):
+        raise ValueError("provide exactly one probe text or --probe-file")
+    if file is None:
+        return text
+    with file.open(encoding="utf-8", newline="") as stream:
+        return stream.read()
+
+
+def validate_code_source(repository, revision, config):
+    if repository is None and revision is None:
+        return None
+    if repository is None or revision is None:
+        raise ValueError("code repository and revision must both be supplied")
+    if not re.fullmatch(r"[\w.-]+/[\w.-]+", repository):
+        raise ValueError("code repository must be an owner/name identifier")
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ValueError("code revision must be an immutable 40-digit commit")
+    for reference in config.get("auto_map", {}).values():
+        if not isinstance(reference, str) or not reference.startswith(
+            repository + "--"
+        ):
+            raise ValueError(
+                "model code reference does not name the pinned code repository"
+            )
+    return repository, revision
+
+
+def fetch_files(repository, revision, files, cache):
+    from huggingface_hub import hf_hub_download
+    from huggingface_hub.errors import LocalEntryNotFoundError
+
+    downloaded = {}
+    for name in sorted(files):
+        relative = PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"unsafe model file path: {name}")
+        arguments = {
+            "repo_id": repository,
+            "filename": name,
+            "revision": revision,
+            "cache_dir": str(cache),
+            "token": False,
+        }
+        try:
+            path = hf_hub_download(**arguments, local_files_only=True)
+            action = "cached"
+        except LocalEntryNotFoundError:
+            path = hf_hub_download(**arguments)
+            action = "fetched"
+        print(f"{action}: {name}", flush=True)
+        downloaded[name] = Path(path)
+    return downloaded
+
+
+def fetch_code(source, cache):
+    from huggingface_hub import HfApi
+
+    repository, revision = source
+    files = HfApi(token=False).list_repo_files(repository, revision=revision)
+    selected = [name for name in files if name.endswith(".py")]
+    if not selected:
+        raise ValueError("pinned code repository has no Python files")
+    return fetch_files(repository, revision, selected, cache)
+
+
+def load_pinned_modules(snapshot, cache, code, classes=None):
+    if classes is None:
+        from sentence_transformers.base.modules import Transformer
+        from sentence_transformers.sentence_transformer.modules import (
+            Normalize,
+            Pooling,
+        )
+
+        classes = {
+            "Transformer": Transformer,
+            "Pooling": Pooling,
+            "Normalize": Normalize,
+        }
+    definitions = json.loads((snapshot / "modules.json").read_text(encoding="utf-8"))
+    modules = []
+    for index, definition in enumerate(definitions):
+        kind = definition["type"].removeprefix("sentence_transformers.models.")
+        path = PurePosixPath(definition["path"])
+        if definition["idx"] != index or kind not in classes:
+            raise ValueError(
+                "repository-code references require ordered built-in modules"
+            )
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("module path must stay within the pinned snapshot")
+        arguments = {
+            "subfolder": definition["path"],
+            "cache_folder": str(cache),
+            "local_files_only": True,
+            "token": False,
+        }
+        if kind == "Transformer":
+            arguments.update(
+                trust_remote_code=True,
+                model_kwargs={"code_revision": code[1]},
+                config_kwargs={"code_revision": code[1]},
+                processor_kwargs={"code_revision": code[1]},
+            )
+        # Direct module loading keeps the code pin out of the module-class resolver.
+        modules.append(classes[kind].load(str(snapshot), **arguments))
+    return modules
+
+
 def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     if profile_name not in spec["profiles"]:
@@ -66,8 +174,7 @@ def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
 
 
 def fetch_model(model, artifacts, cache):
-    from huggingface_hub import HfApi, hf_hub_download
-    from huggingface_hub.errors import LocalEntryNotFoundError
+    from huggingface_hub import HfApi
 
     repository = model["repository"]
     revision = model["revision"]
@@ -89,26 +196,7 @@ def fetch_model(model, artifacts, cache):
     missing = required.difference(selected) | {"modules.json"}.difference(selected)
     if missing:
         raise ValueError(f"pinned model is missing required files: {sorted(missing)}")
-    downloaded = {}
-    for name in selected:
-        relative = PurePosixPath(name)
-        if relative.is_absolute() or ".." in relative.parts:
-            raise ValueError(f"unsafe model file path: {name}")
-        arguments = {
-            "repo_id": repository,
-            "filename": name,
-            "revision": revision,
-            "cache_dir": str(cache),
-            "token": False,
-        }
-        try:
-            path = hf_hub_download(**arguments, local_files_only=True)
-            action = "cached"
-        except LocalEntryNotFoundError:
-            path = hf_hub_download(**arguments)
-            action = "fetched"
-        print(f"{action}: {name}", flush=True)
-        downloaded[name] = Path(path)
+    downloaded = fetch_files(repository, revision, selected, cache)
     for artifact in artifacts:
         path = downloaded[artifact["path"]]
         if path.stat().st_size != artifact["size_bytes"]:
@@ -123,7 +211,9 @@ def fetch_model(model, artifacts, cache):
     return snapshot
 
 
-def make_reference(spec, capability, tolerance, profile, probe, snapshot, cache):
+def make_reference(
+    spec, capability, tolerance, profile, probe, snapshot, cache, code=None
+):
     import sentence_transformers
     import torch
     import transformers
@@ -132,16 +222,21 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot, cache)
     torch.set_num_interop_threads(1)
     torch.manual_seed(0)
     torch.use_deterministic_algorithms(True)
-    model = sentence_transformers.SentenceTransformer(
-        str(snapshot),
-        revision=spec["model"]["revision"],
-        device="cpu",
-        cache_folder=str(cache),
-        local_files_only=True,
-        token=False,
-        trust_remote_code=False,
-        model_kwargs={"dtype": torch.float32},
-    )
+    if code is None:
+        model = sentence_transformers.SentenceTransformer(
+            str(snapshot),
+            revision=spec["model"]["revision"],
+            device="cpu",
+            cache_folder=str(cache),
+            local_files_only=True,
+            token=False,
+            trust_remote_code=False,
+            model_kwargs={"dtype": torch.float32},
+        )
+    else:
+        model = sentence_transformers.SentenceTransformer(
+            modules=load_pinned_modules(snapshot, cache, code), device="cpu"
+        )
     model.float()
     model.eval()
     model.max_seq_length = capability["max_sequence_tokens"]
@@ -167,6 +262,9 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot, cache)
     if not values or not all(math.isfinite(value) for value in values):
         raise ValueError("reference output must contain finite values")
     identity = spec["model"]
+    producer = "sentence-transformers reference run on CPU, float32, L2-normalised"
+    if code is not None:
+        producer += f"; repository code {code[0]}@{code[1]}"
     return {
         "schema_version": 1,
         "model_id": identity["id"],
@@ -175,7 +273,7 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot, cache)
         "profile": profile,
         "capability": capability,
         "provenance": {
-            "producer": "sentence-transformers reference run on CPU, float32, L2-normalised",
+            "producer": producer,
             "framework": "sentence-transformers",
             "framework_version": (
                 f"{sentence_transformers.__version__} "
@@ -209,13 +307,18 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("spec", type=Path)
     parser.add_argument("profile")
-    parser.add_argument("probe")
+    parser.add_argument("probe", nargs="?")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--probe-file", type=Path)
+    parser.add_argument("--code-repository")
+    parser.add_argument("--code-revision")
     parser.add_argument("--absolute-tolerance", type=float, default=argparse.SUPPRESS)
     parser.add_argument("--relative-tolerance", type=float, default=argparse.SUPPRESS)
     parser.add_argument("--minimum-cosine", type=float, default=argparse.SUPPRESS)
     arguments = parser.parse_args()
     try:
+        probe = read_probe(arguments.probe, arguments.probe_file)
+        validate_code_source(arguments.code_repository, arguments.code_revision, {})
         if os.path.lexists(arguments.output):
             raise FileExistsError(f"output already exists: {arguments.output}")
         if not arguments.output.parent.is_dir():
@@ -230,26 +333,37 @@ def main():
             if argument in vars(arguments)
         }
         spec, capability, tolerance = read_inputs(
-            arguments.spec, arguments.profile, arguments.probe, tolerance_arguments
+            arguments.spec, arguments.profile, probe, tolerance_arguments
         )
         cache = Path(__file__).resolve().parents[2] / ".tessera" / "reference-cache"
         cache.mkdir(parents=True, exist_ok=True)
         os.environ["HF_HOME"] = str(cache)
         os.environ["HF_HUB_CACHE"] = str(cache)
+        os.environ["HF_MODULES_CACHE"] = str(cache / "modules")
         os.environ["XDG_CACHE_HOME"] = str(cache)
         os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
         os.environ["HF_HUB_DISABLE_IMPLICIT_TOKEN"] = "1"
         snapshot = fetch_model(spec["model"], spec["artifacts"], cache)
+        config = json.loads((snapshot / "config.json").read_text(encoding="utf-8"))
+        code = validate_code_source(
+            arguments.code_repository, arguments.code_revision, config
+        )
+        if code is not None:
+            fetch_code(code, cache)
         os.environ["HF_HUB_OFFLINE"] = "1"
         os.environ["TRANSFORMERS_OFFLINE"] = "1"
+        from huggingface_hub import constants
+
+        constants.HF_HUB_OFFLINE = True
         reference = make_reference(
             spec,
             capability,
             tolerance,
             arguments.profile,
-            arguments.probe,
+            probe,
             snapshot,
             cache,
+            code,
         )
         publish(arguments.output, reference)
         print(f"token_count: {reference['probe']['token_count']}")
