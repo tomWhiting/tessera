@@ -34,7 +34,7 @@ fn observe_threads(limit: u64) -> usize {
                 threads: limit,
                 batch_items: 1,
                 input_bytes: 512,
-                tokens: 16,
+                tokens: 32,
                 frame_bytes: 65_536,
             },
         }),
@@ -49,7 +49,7 @@ fn observe_threads(limit: u64) -> usize {
             kind: Kind::Document,
             items: vec![Input {
                 id: "document".into(),
-                text: "one two three".into(),
+                text: vec!["one"; 30].join(" "),
             }],
         }),
         frame_limit,
@@ -77,10 +77,7 @@ fn observe_threads(limit: u64) -> usize {
 #[test]
 fn one_compute_thread_from_empty_environment() {
     let observed = observe_threads(1);
-    assert!(
-        observed <= 2,
-        "limit 1 permits main plus one worker, observed {observed}"
-    );
+    assert_eq!(observed, 2, "limit 1 permits main plus one worker");
 }
 
 #[test]

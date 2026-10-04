@@ -2,6 +2,9 @@ use std::num::NonZeroUsize;
 
 use super::{cap_threads, configure_cpu_threads};
 
+#[cfg(all(target_os = "macos", feature = "accelerate"))]
+mod accelerate;
+
 #[test]
 fn environment_overrides_are_capped_but_lower_values_survive() {
     let ceiling = NonZeroUsize::new(2).unwrap();

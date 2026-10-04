@@ -63,6 +63,11 @@ pub enum CpuThreadConfigError {
 /// variable. With no override, both are set to the smaller of available
 /// parallelism and `max_threads`.
 ///
+/// On macOS with the `accelerate` feature, `VECLIB_MAXIMUM_THREADS` is always
+/// set to `1`, including when the caller supplied another value. Accelerate's
+/// internal threads would sit outside the ceiling, so parallel CPU work is
+/// controlled by the bounded Rayon pool alone.
+///
 /// To deliberately use a higher ceiling than Tessera's two-thread default,
 /// call this function before constructing any embedder. The first call wins.
 ///
@@ -103,6 +108,8 @@ fn initialize_cpu_threads(
     )?;
     std::env::set_var("RAYON_NUM_THREADS", rayon_threads.to_string());
     std::env::set_var("CANDLE_NUM_THREADS", candle_threads.to_string());
+    #[cfg(all(target_os = "macos", feature = "accelerate"))]
+    std::env::set_var("VECLIB_MAXIMUM_THREADS", "1");
 
     Ok(CpuThreadConfig {
         rayon_threads,
