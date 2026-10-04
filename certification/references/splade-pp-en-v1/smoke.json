@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "model_id": "splade-pp-en-v1",
+  "repository": "prithivida/Splade_PP_en_v1",
+  "revision": "762be6a7206e2f299182705972a65e5c46e62be2",
+  "profile": "smoke",
+  "capability": {
+    "device": "cpu",
+    "dtype": "f32",
+    "semantic_mode": "sparse_query",
+    "max_sequence_tokens": 128,
+    "context_window_tokens": 512
+  },
+  "provenance": {
+    "producer": "pinned model card recipe on CPU, float32",
+    "framework": "transformers",
+    "framework_version": "4.57.6 (torch 2.14.0)",
+    "source_repository": "prithivida/Splade_PP_en_v1",
+    "source_revision": "762be6a7206e2f299182705972a65e5c46e62be2",
+    "probe_prefix": null
+  },
+  "probe": {
+    "kind": "text",
+    "text": "What is machine learning?",
+    "token_count": 7
+  },
+  "tolerance": {
+    "absolute": 0.001,
+    "minimum_cosine": 0.999,
+    "relative": 0.01
+  },
+  "expected": {
+    "representation": "sparse",
+    "vocabulary_size": 30522,
+    "indices": [
+      2003,
+      2082,
+      2396,
+      2495,
+      2565,
+      2671,
+      2817,
+      2832,
+      2974,
+      3267,
+      3291,
+      3399,
+      3698,
+      3989,
+      4007,
+      4083,
+      4118,
+      4553,
+      6028,
+      6210,
+      6228,
+      6681,
+      6825,
+      7551,
+      9575,
+      10394
+    ],
+    "values": [
+      1.0257387161254883,
+      0.4799877107143402,
+      0.0660952776670456,
+      0.32100510597229004,
+      0.21738176047801971,
+      0.42205044627189636,
+      0.344597727060318,
+      0.35556870698928833,
+      0.09736066311597824,
+      1.0341839790344238,
+      0.03407861292362213,
+      0.5791109204292297,
+      2.930208683013916,
+      0.0430946871638298,
+      0.14481428265571594,
+      2.3439528942108154,
+      0.21815179288387299,
+      2.178621530532837,
+      0.41680383682250977,
+      0.2881771922111511,
+      0.8435490131378174,
+      2.109710216522217,
+      0.4339044690132141,
+      0.3642849624156952,
+      0.37031012773513794,
+      1.379925012588501
+    ]
+  }
+}

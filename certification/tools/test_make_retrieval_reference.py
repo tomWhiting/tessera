@@ -158,7 +158,7 @@ class RetrievalReferenceTests(unittest.TestCase):
                     {"absolute": 0.001, "relative": 0.01, "minimum_cosine": 0.999},
                     representations=("sparse", "multi_vector"),
                 )
-                self.assertIsNone(spec["profiles"][profile]["official_reference"])
+                self.assertEqual(spec["model"]["id"], name)
                 self.assertEqual(capability["max_sequence_tokens"], 128)
                 reference.validate_tolerance(tolerance)
 
