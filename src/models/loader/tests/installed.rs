@@ -30,6 +30,67 @@ fn write_manifest(dir: &TempDir, manifest: &Value) {
     .unwrap();
 }
 
+#[test]
+fn installed_registry_id_comes_from_the_manifest() {
+    let (dir, manifest) = fixture();
+    write_manifest(&dir, &manifest);
+    assert_eq!(
+        InstalledModel::registry_id(dir.path()).unwrap(),
+        "bge-base-en-v1.5"
+    );
+    fs::remove_file(dir.path().join("model.safetensors")).unwrap();
+    assert_eq!(
+        InstalledModel::registry_id(dir.path()).unwrap(),
+        "bge-base-en-v1.5"
+    );
+}
+
+#[test]
+fn installed_registry_id_rejects_unknown_manifest_members() {
+    let (dir, mut manifest) = fixture();
+    manifest["model"]["extra"] = json!(true);
+    write_manifest(&dir, &manifest);
+    let error = InstalledModel::registry_id(dir.path()).unwrap_err();
+    assert!(error.to_string().starts_with("invalid_manifest"));
+}
+
+#[test]
+fn installed_registry_id_requires_a_registered_identity() {
+    let cases = [
+        ("id", "unregistered", "installed_model_not_registered"),
+        (
+            "repository",
+            "other/repository",
+            "installed_repository_mismatch",
+        ),
+        ("revision", "other-revision", "installed_revision_mismatch"),
+    ];
+    for (member, value, code) in cases {
+        let (dir, mut manifest) = fixture();
+        manifest["model"][member] = json!(value);
+        write_manifest(&dir, &manifest);
+        let error = InstalledModel::registry_id(dir.path()).unwrap_err();
+        assert!(error.to_string().starts_with(code), "{error}");
+    }
+}
+
+#[test]
+fn installed_registry_id_rejects_an_unsupported_schema() {
+    let (dir, mut manifest) = fixture();
+    manifest["schema_version"] = json!(2);
+    write_manifest(&dir, &manifest);
+    let error = InstalledModel::registry_id(dir.path()).unwrap_err();
+    assert!(error.to_string().starts_with("unsupported_manifest_schema"));
+}
+
+#[test]
+fn installed_registry_id_names_a_missing_manifest() {
+    let dir = tempfile::tempdir().unwrap();
+    let error = InstalledModel::registry_id(dir.path()).unwrap_err();
+    assert!(error.to_string().starts_with("installed_artifact_io"));
+    assert!(error.to_string().contains("manifest.json"));
+}
+
 fn refusal(dir: &TempDir, manifest: &Value, name: &str, filename: &str) {
     write_manifest(dir, manifest);
     let Err(error) = InstalledModel::open("bge-base-en-v1.5", dir.path()) else {
