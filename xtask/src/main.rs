@@ -3,6 +3,9 @@ use std::path::PathBuf;
 
 // The build script consumes the complete schema; the policy command only needs
 // the validation subset, so some shared fields are intentionally unused here.
+#[cfg(test)]
+#[path = "../../build_support/model_constant.rs"]
+mod model_constant;
 #[allow(dead_code)]
 #[path = "../../build_support/schema.rs"]
 mod schema;

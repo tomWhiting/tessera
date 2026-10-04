@@ -124,6 +124,80 @@ fn validate_with_dense_change(
 }
 
 #[test]
+fn safetensors_only_weights_are_accepted() {
+    validate_with_dense_change(|model| {
+        model["files"]["weights"] = serde_json::json!({"safetensors": "model.safetensors"});
+    });
+}
+
+#[test]
+fn legacy_only_weights_are_accepted() {
+    validate_with_dense_change(|model| {
+        model["files"]["weights"] = serde_json::json!({"pytorch": "pytorch_model.bin"});
+    });
+}
+
+#[test]
+fn onnx_only_weight_metadata_is_accepted() {
+    validate_with_dense_change(|model| {
+        model["files"]["weights"] = serde_json::json!({"onnx": "onnx/model.onnx"});
+    });
+}
+
+#[test]
+#[should_panic(expected = "Model bge-base-en-v1.5 must declare at least one weight artifact")]
+fn no_weight_file_is_refused_by_model_name() {
+    validate_with_dense_change(|model| {
+        model["files"]["weights"] = serde_json::json!({});
+    });
+}
+
+#[test]
+#[should_panic(expected = "Model bge-base-en-v1.5 has an empty PyTorch artifact path")]
+fn blank_legacy_weight_file_is_refused() {
+    validate_with_dense_change(|model| {
+        model["files"]["weights"]["pytorch"] = serde_json::json!("   ");
+    });
+}
+
+#[test]
+fn generated_weight_metadata_preserves_each_format_and_absence() {
+    for (weights, safetensors, pytorch, onnx) in [
+        (
+            serde_json::json!({"safetensors": "model.safetensors"}),
+            "Some(\"model.safetensors\")",
+            "None",
+            "None",
+        ),
+        (
+            serde_json::json!({"pytorch": "pytorch_model.bin"}),
+            "None",
+            "Some(\"pytorch_model.bin\")",
+            "None",
+        ),
+        (
+            serde_json::json!({"onnx": "onnx/model.onnx"}),
+            "None",
+            "None",
+            "Some(\"onnx/model.onnx\")",
+        ),
+    ] {
+        let mut catalog = catalog_json();
+        catalog["model_categories"]["dense"]["models"][0]["files"]["weights"] = weights;
+        let registry =
+            serde_json::from_value::<ModelRegistry>(catalog).expect("catalog should deserialize");
+        let model = registry
+            .models()
+            .find(|model| model.id == "bge-base-en-v1.5")
+            .expect("model metadata");
+        let generated = crate::model_constant::generate_model_constant(model);
+        assert!(generated.contains(&format!("safetensors_file: {safetensors},")));
+        assert!(generated.contains(&format!("pytorch_file: {pytorch},")));
+        assert!(generated.contains(&format!("onnx_file: {onnx},")));
+    }
+}
+
+#[test]
 #[should_panic(expected = "must declare prompts")]
 fn dense_entries_require_prompts() {
     validate_with_dense_change(|model| {
