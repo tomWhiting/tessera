@@ -2960,6 +2960,7 @@ dependencies = [
  "numpy",
  "pdf2image",
  "pyo3",
+ "rayon",
  "serde",
  "serde_json",
  "sha2",

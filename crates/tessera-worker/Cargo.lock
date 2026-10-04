@@ -2047,6 +2047,7 @@ dependencies = [
  "clap",
  "image",
  "ndarray",
+ "rayon",
  "serde",
  "serde_json",
  "sha2",
