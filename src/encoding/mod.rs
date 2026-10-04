@@ -12,6 +12,7 @@
 //! implementing paradigm-specific logic.
 
 pub mod dense;
+pub mod minicoil;
 pub mod sparse;
 pub mod vision;
 
