@@ -44,7 +44,7 @@ fn bge_base_identity_without_a_manifest() {
             max_tokens: 512,
             special_tokens: 2,
             normalised: true,
-            distance: Distance::Dot,
+            distance: Distance::Cosine,
         }
     );
 }

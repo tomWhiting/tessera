@@ -378,3 +378,122 @@ fn limit_must_hold_special_tokens_longer_prompt_and_one_token() {
         .validate_cut_configuration_with(&prompts)
         .unwrap();
 }
+
+mod metaspace_whitespace {
+    use tokenizers::models::unigram::Unigram;
+    use tokenizers::models::wordpiece::WordPiece;
+    use tokenizers::pre_tokenizers::metaspace::{Metaspace, PrependScheme};
+    use tokenizers::pre_tokenizers::sequence::Sequence;
+    use tokenizers::pre_tokenizers::whitespace::WhitespaceSplit;
+    use tokenizers::pre_tokenizers::PreTokenizerWrapper;
+    use tokenizers::AddedToken;
+
+    use super::super::{split_whitespace_before_metaspace, HfTokenizer, Tokenizer};
+    use crate::runtime::ResourcePolicy;
+
+    const LONE: u32 = 1;
+    const ONE: u32 = 2;
+    const TWO: u32 = 3;
+
+    fn metaspace() -> PreTokenizerWrapper {
+        PreTokenizerWrapper::Metaspace(Metaspace::new('▁', PrependScheme::Always, true))
+    }
+
+    fn unigram(pre_tokenizer: PreTokenizerWrapper) -> HfTokenizer {
+        let vocabulary = ["<unk>", "▁", "▁one", "▁two", "one", "two"]
+            .into_iter()
+            .map(|piece| (piece.to_string(), -1.0))
+            .collect();
+        let mut tokenizer = HfTokenizer::new(Unigram::from(vocabulary, Some(0), false).unwrap());
+        tokenizer.with_pre_tokenizer(Some(pre_tokenizer));
+        tokenizer
+    }
+
+    fn ids(tokenizer: &HfTokenizer, text: &str) -> Vec<u32> {
+        tokenizer.encode(text, false).unwrap().get_ids().to_vec()
+    }
+
+    #[test]
+    fn lone_metaspace_without_the_rule_keeps_a_lone_marker() {
+        let tokenizer = unigram(metaspace());
+        assert_eq!(ids(&tokenizer, "one "), [ONE, LONE]);
+    }
+
+    #[test]
+    fn trailing_space_gives_no_lone_marker() {
+        let mut tokenizer = unigram(metaspace());
+        split_whitespace_before_metaspace(&mut tokenizer);
+        assert_eq!(ids(&tokenizer, "one "), [ONE]);
+        assert_eq!(ids(&tokenizer, "one   "), [ONE]);
+    }
+
+    #[test]
+    fn leading_spaces_give_no_lone_marker() {
+        let mut tokenizer = unigram(metaspace());
+        split_whitespace_before_metaspace(&mut tokenizer);
+        assert_eq!(ids(&tokenizer, " one"), [ONE]);
+        assert_eq!(ids(&tokenizer, "  one"), [ONE]);
+    }
+
+    #[test]
+    fn repeated_inner_spaces_give_no_lone_marker() {
+        let mut tokenizer = unigram(metaspace());
+        split_whitespace_before_metaspace(&mut tokenizer);
+        assert_eq!(ids(&tokenizer, "one  two"), [ONE, TWO]);
+        assert_eq!(ids(&tokenizer, "one \t\n two"), [ONE, TWO]);
+    }
+
+    #[test]
+    fn rule_reaches_plain_and_cut_encoding() {
+        let mut inner = unigram(metaspace());
+        split_whitespace_before_metaspace(&mut inner);
+        let mut tokenizer = Tokenizer {
+            inner,
+            truncating: None,
+            resource_policy: ResourcePolicy::new(2, 16, 2048, usize::MAX),
+            pad_token_id: None,
+        };
+        tokenizer.prepare_cut().unwrap();
+        assert_eq!(tokenizer.encode("one  two ", false).unwrap().0, [ONE, TWO]);
+        let cut = tokenizer.encode_cut("", "one  two  one ").unwrap();
+        assert_eq!(cut.token_ids, [ONE, TWO]);
+        assert_eq!(cut.tokens_total, 3);
+    }
+
+    #[test]
+    fn word_piece_is_left_as_loaded() {
+        let mut tokenizer = HfTokenizer::new(WordPiece::default());
+        tokenizer.with_pre_tokenizer(Some(metaspace()));
+        split_whitespace_before_metaspace(&mut tokenizer);
+        assert_eq!(tokenizer.get_pre_tokenizer(), Some(&metaspace()));
+    }
+
+    #[test]
+    fn unigram_with_a_sequence_is_left_as_loaded() {
+        let sequence = PreTokenizerWrapper::Sequence(Sequence::new(vec![
+            PreTokenizerWrapper::WhitespaceSplit(WhitespaceSplit),
+            metaspace(),
+        ]));
+        let mut tokenizer = unigram(sequence.clone());
+        split_whitespace_before_metaspace(&mut tokenizer);
+        assert_eq!(tokenizer.get_pre_tokenizer(), Some(&sequence));
+    }
+
+    /// R5: what the rule does for these inputs, unchecked against the reference.
+    #[test]
+    fn recorded_behaviour_for_other_white_space_and_markers() {
+        let mut tokenizer = unigram(metaspace());
+        split_whitespace_before_metaspace(&mut tokenizer);
+        // U+00A0 and U+3000 are white space to char::is_whitespace, so they split.
+        assert_eq!(ids(&tokenizer, "one\u{a0}two\u{a0}"), [ONE, TWO]);
+        assert_eq!(ids(&tokenizer, "one\u{3000}two"), [ONE, TWO]);
+        // A literal marker is not white space; Metaspace splits before it as before.
+        assert_eq!(ids(&tokenizer, "one▁two"), [ONE, TWO]);
+        assert_eq!(ids(&tokenizer, "one▁"), [ONE, LONE]);
+        // An added token is matched before pre-tokenisation and keeps its id.
+        let added = tokenizer.add_special_tokens(&[AddedToken::from("<x>", true)]);
+        assert_eq!(added, 1);
+        let x = tokenizer.token_to_id("<x>").unwrap();
+        assert_eq!(ids(&tokenizer, "one <x> two"), [ONE, x, TWO]);
+    }
+}

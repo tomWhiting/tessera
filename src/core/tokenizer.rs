@@ -8,6 +8,10 @@
 //! models without a complete, audited artifact path remain catalog-only.
 
 use anyhow::{Context, Result};
+use tokenizers::models::ModelWrapper;
+use tokenizers::pre_tokenizers::sequence::Sequence;
+use tokenizers::pre_tokenizers::whitespace::WhitespaceSplit;
+use tokenizers::pre_tokenizers::PreTokenizerWrapper;
 use tokenizers::{PostProcessor, Tokenizer as HfTokenizer, TruncationParams};
 
 use crate::models::loader::ModelFileResolver;
@@ -39,6 +43,25 @@ pub struct PromptConfigurationError {
     pub special_tokens: usize,
     /// Tokens in the longer of the model's prompts.
     pub prompt_tokens: usize,
+}
+
+/// Splits on white space before a lone `Metaspace` on a Unigram model.
+///
+/// SentencePiece references strip edge spaces and collapse repeats before
+/// adding the `▁` marker; a `tokenizer.json` declaring `Metaspace` alone keeps a
+/// lone `▁` for them instead. Every other tokenizer is left as loaded.
+pub(crate) fn split_whitespace_before_metaspace(tokenizer: &mut HfTokenizer) {
+    if !matches!(tokenizer.get_model(), ModelWrapper::Unigram(_)) {
+        return;
+    }
+    let Some(PreTokenizerWrapper::Metaspace(metaspace)) = tokenizer.get_pre_tokenizer() else {
+        return;
+    };
+    let sequence = Sequence::new(vec![
+        PreTokenizerWrapper::WhitespaceSplit(WhitespaceSplit),
+        PreTokenizerWrapper::Metaspace(metaspace.clone()),
+    ]);
+    tokenizer.with_pre_tokenizer(Some(PreTokenizerWrapper::Sequence(sequence)));
 }
 
 #[derive(Debug)]
@@ -102,6 +125,7 @@ impl Tokenizer {
         let mut inner = HfTokenizer::from_file(&tokenizer_path)
             .map_err(|error| anyhow::anyhow!("Failed to load tokenizer: {error}"))
             .with_context(|| format!("Loading tokenizer from {}", tokenizer_path.display()))?;
+        split_whitespace_before_metaspace(&mut inner);
 
         inner
             .with_truncation(None)

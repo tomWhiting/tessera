@@ -108,6 +108,43 @@ pub(crate) fn verify_cached(
         .collect()
 }
 
+pub(crate) fn cached_artifact_path(
+    repository: &Path,
+    loaded: &LoadedSpec,
+    filename: &str,
+) -> CertResult<PathBuf> {
+    configure_cache(repository)?;
+    Cache::from_env()
+        .repo(pinned_repo(loaded))
+        .get(filename)
+        .ok_or_else(|| {
+            format!(
+                "model '{}' is missing cached artifact '{filename}'",
+                loaded.spec.model.id
+            )
+            .into()
+        })
+}
+
+pub(crate) fn verify_directory(
+    directory: &Path,
+    loaded: &LoadedSpec,
+) -> CertResult<Vec<VerifiedArtifact>> {
+    loaded
+        .spec
+        .artifacts
+        .iter()
+        .map(|expected| {
+            verify_one(
+                &directory.join(&expected.path),
+                &expected.path,
+                expected.size_bytes,
+                &expected.sha256,
+            )
+        })
+        .collect()
+}
+
 pub(crate) fn cache_state(repository: &Path, loaded: &LoadedSpec) -> CertResult<CacheState> {
     let root = cache_root(repository);
     if !root.exists() {

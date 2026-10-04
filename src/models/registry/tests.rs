@@ -141,7 +141,9 @@ fn support_contract_matches_the_audited_catalog() {
 
     let expected = [
         ("bge-base-en-v1.5", SupportTier::Supported),
+        ("bge-large-en-v1.5", SupportTier::Experimental),
         ("bge-m3-multi", SupportTier::CatalogOnly),
+        ("bge-small-en-v1.5", SupportTier::Experimental),
         ("chronos-bolt-small", SupportTier::CatalogOnly),
         ("colbert-small", SupportTier::Experimental),
         ("colbert-v2", SupportTier::Experimental),
@@ -156,6 +158,8 @@ fn support_contract_matches_the_audited_catalog() {
         ("jina-embeddings-v2-small-en", SupportTier::Experimental),
         ("jina-embeddings-v3", SupportTier::CatalogOnly),
         ("minicoil-v1", SupportTier::CatalogOnly),
+        ("multilingual-e5-small", SupportTier::Experimental),
+        ("mxbai-embed-large-v1", SupportTier::Experimental),
         ("nomic-embed-v1.5", SupportTier::Experimental),
         ("snowflake-arctic-l", SupportTier::Experimental),
         ("splade-pp-en-v1", SupportTier::Experimental),
@@ -200,6 +204,10 @@ fn runnable_models_excludes_catalog_only_entries() {
         "jina-embeddings-v2-base-en",
         "nomic-embed-v1.5",
         "snowflake-arctic-l",
+        "multilingual-e5-small",
+        "bge-small-en-v1.5",
+        "bge-large-en-v1.5",
+        "mxbai-embed-large-v1",
         "colbert-small",
         "colbert-v2",
         "colpali-v1.2",
@@ -380,7 +388,7 @@ const DENSE_RETRIEVAL: &[(&str, &str, &str, Distance, &str, &str)] = &[
         "bge-base-en-v1.5",
         BGE_QUERY,
         "",
-        Distance::Dot,
+        Distance::Cosine,
         "similarity = embeddings_1 @ embeddings_2.T",
         "https://huggingface.co/BAAI/bge-base-en-v1.5/blob/a5beb1e3e68b9ab74eb54cfd186867f64f240e1a/README.md#L2772",
     ),
@@ -412,7 +420,7 @@ const DENSE_RETRIEVAL: &[(&str, &str, &str, Distance, &str, &str)] = &[
         "jina-embeddings-v3",
         "Represent the query for retrieving evidence documents: ",
         "Represent the document for retrieval: ",
-        Distance::Dot,
+        Distance::Cosine,
         "print(embeddings[0] @ embeddings[1].T)",
         "https://huggingface.co/jinaai/jina-embeddings-v3/blob/ab036b023d30b4d1138c4c3bfa9f0c445ab455d6/README.md#L25179",
     ),
@@ -431,6 +439,38 @@ const DENSE_RETRIEVAL: &[(&str, &str, &str, Distance, &str, &str)] = &[
         Distance::Cosine,
         "# Compute cosine similarity scores",
         "https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0/blob/ac6544c8a46e00af67e330e85a9028c66b8cfd9a/README.md#L9126",
+    ),
+    (
+        "multilingual-e5-small",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-small/blob/614241f622f53c4eeff9890bdc4f31cfecc418b3/README.md#L18355",
+    ),
+    (
+        "bge-small-en-v1.5",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarity = embeddings_1 @ embeddings_2.T",
+        "https://huggingface.co/BAAI/bge-small-en-v1.5/blob/5c38ec7c405ec4b44b94cc5a9bb96e735b38267a/README.md#L2771",
+    ),
+    (
+        "bge-large-en-v1.5",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarity = embeddings_1 @ embeddings_2.T",
+        "https://huggingface.co/BAAI/bge-large-en-v1.5/blob/d4aa6901d3a41ba39fb536a557fa166f842b0e09/README.md#L2770",
+    ),
+    (
+        "mxbai-embed-large-v1",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarities = cos_sim(query_embedding, docs_embeddings)",
+        "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1/blob/b33106f585b9ce46904ad7443a3b52b7a63e231c/README.md#L2671",
     ),
 ];
 
@@ -462,7 +502,7 @@ fn every_dense_entry_has_its_cards_prompts_and_distance() {
 #[test]
 fn distance_words_are_the_registry_vocabulary() {
     assert_eq!(
-        [Distance::Cosine, Distance::Dot, Distance::Euclidean].map(Distance::as_str),
+        [Distance::Cosine, Distance::Cosine, Distance::Euclidean].map(Distance::as_str),
         ["cosine", "dot", "euclidean"]
     );
 }
