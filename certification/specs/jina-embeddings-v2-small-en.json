@@ -184,7 +184,10 @@
         "min_free_disk_bytes": 800000000,
         "max_peak_rss_bytes": 1500000000
       },
-      "official_reference": null
+      "official_reference": {
+        "path": "jina-embeddings-v2-small-en/long-context-2k.json",
+        "sha256": "957a74e2c3a503afa78232bf773f0d37d0da5c3d6ea494d88def3a5b67bf3205"
+      }
     }
   },
   "smoke": {
