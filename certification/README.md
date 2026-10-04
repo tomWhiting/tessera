@@ -19,6 +19,24 @@ budget must fit below its parent-process RSS watchdog.
 
 ## Commands
 
+Measure one dense profile's checked reference text across batch positions and
+CPU thread counts:
+
+```bash
+cargo run --locked --offline -p tessera-xtask --features certification -- \
+  cert measure --model bge-base-en-v1.5 --profile smoke
+```
+
+`--model-dir DIR` selects an installed folder. Three fresh offline children
+measure the text alone and at positions 0, 7 and 15 of a sixteen-text batch,
+then alone with one thread and the configured thread count. Fifteen fixed
+texts of different lengths fill each batch. Only the batch and job item
+limits become sixteen; token, byte, memory and process limits stay in force.
+The JSON record has extension `.measure` under `.tessera/cert-evidence/MODEL/`.
+It reports byte equality, largest absolute difference and cosine for each
+comparison, with source, revision, thread counts and any installed manifest
+digest. It has no pass/fail verdict and readiness ignores it.
+
 Build the optional runner and list its checked specifications without loading a
 model:
 

@@ -7,9 +7,51 @@ use serde::{Deserialize, Serialize};
 
 use super::artifacts::VerifiedArtifact;
 use super::reference::ReferenceComparison;
-use super::spec::{CapabilityScope, CertResult, LoadedSpec, ProcessLimits, ResourceLimits};
+use super::spec::{
+    CapabilityScope, CertResult, LoadedSpec, ProcessLimits, Representation, ResourceLimits,
+};
 
 pub(crate) const EVIDENCE_SCHEMA_VERSION: u32 = 2;
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub(crate) struct NotRunCheck {
+    pub(crate) name: String,
+    pub(crate) reason: String,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct DenseBatchPlan {
+    pub(super) batch_size: usize,
+    max_batch_items: usize,
+    max_job_items: usize,
+}
+
+impl DenseBatchPlan {
+    pub(super) fn for_limits(limits: &ResourceLimits) -> Self {
+        Self {
+            batch_size: limits.max_batch_items.min(limits.max_job_items).min(2),
+            max_batch_items: limits.max_batch_items,
+            max_job_items: limits.max_job_items,
+        }
+    }
+
+    pub(super) fn not_run_checks(self) -> Vec<NotRunCheck> {
+        if self.batch_size >= 2 {
+            return Vec::new();
+        }
+        let reason = format!(
+            "two-text batch checks not run: max_batch_items={}, max_job_items={}",
+            self.max_batch_items, self.max_job_items
+        );
+        ["batch-shape", "batch-sequential-parity"]
+            .into_iter()
+            .map(|name| NotRunCheck {
+                name: name.to_string(),
+                reason: reason.clone(),
+            })
+            .collect()
+    }
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct CheckEvidence {
@@ -54,7 +96,7 @@ pub(crate) struct PeakRssEvidence {
     pub(crate) sample_interval_ms: u64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub(crate) struct EvidenceRecord {
     pub(crate) schema_version: u32,
     pub(crate) model_id: String,
@@ -83,6 +125,8 @@ pub(crate) struct EvidenceRecord {
     pub(crate) reference_comparison: ReferenceComparison,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) installed_manifest_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) not_run_checks: Vec<NotRunCheck>,
 }
 
 pub(crate) struct RecordInput<'a> {
@@ -131,6 +175,11 @@ pub(crate) fn build_record(
         observation: input.outcome.observation,
         reference_comparison: input.outcome.reference_comparison,
         installed_manifest_sha256: input.outcome.installed_manifest_sha256,
+        not_run_checks: if input.loaded.spec.model.representation == Representation::Dense {
+            DenseBatchPlan::for_limits(&profile.resource_policy).not_run_checks()
+        } else {
+            Vec::new()
+        },
     })
 }
 
