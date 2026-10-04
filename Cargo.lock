@@ -1346,6 +1346,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 
 [[package]]
+name = "haem-frames"
+version = "0.1.0"
+source = "git+https://github.com/ablative-io/haematite?branch=main#1605372c1cd176cf9b1d54f3290e1a94a03c39cd"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "haem-worker"
+version = "0.1.0"
+source = "git+https://github.com/ablative-io/haematite?branch=main#1605372c1cd176cf9b1d54f3290e1a94a03c39cd"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "half"
 version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2957,6 +2974,18 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.20",
  "tokenizers",
+]
+
+[[package]]
+name = "tessera-worker"
+version = "0.1.0"
+dependencies = [
+ "haem-frames",
+ "haem-worker",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tessera-embeddings",
 ]
 
 [[package]]

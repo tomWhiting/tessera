@@ -43,3 +43,5 @@ shared API is on main, commit the updated lock, then use `cargo fetch --locked`
 on a gate checkout before `--locked --offline` checks. Do not fetch model files
 for builds or tests. Tests generate a small installed BERT fixture locally and
 wait on child exit, with no clock-based waits.
+
+For the fetch command only, use `CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --manifest-path crates/tessera-worker/Cargo.toml`; after committing the lock, repeat with `--locked`.
