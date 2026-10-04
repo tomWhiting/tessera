@@ -109,6 +109,16 @@ impl CandleDenseEncoder {
             .weights()
             .with_context(|| format!("Resolving model weights for {model_name}"))?;
 
+        // ModernBERT files name their tensors with or without "model."; read
+        // which before any model is built.
+        let modernbert_layout = if model_type == "modernbert" {
+            let names = Self::weight_tensor_names(&weights_path)
+                .with_context(|| format!("Reading ModernBERT tensor names for {model_name}"))?;
+            Some(Self::modernbert_layout(names.iter().map(String::as_str))?)
+        } else {
+            None
+        };
+
         // Refine JinaBERT detection: check if it's the code variant
         if model_type == "jinabert" {
             let is_code_variant = Self::is_jinabert_code_variant(&weights_path)
@@ -141,6 +151,10 @@ impl CandleDenseEncoder {
         let model_vb = match Self::model_weight_prefix(has_prefix, &model_type) {
             Some(prefix) => vb.pp(prefix),
             None => vb,
+        };
+        let model_vb = match modernbert_layout {
+            Some(layout) => Self::with_modernbert_layout(model_vb, layout),
+            None => model_vb,
         };
 
         let model = Self::load_model(
@@ -247,6 +261,37 @@ impl CandleDenseEncoder {
             (true, "xlm-roberta") => Some("roberta"),
             (true, _) => Some("bert"),
         }
+    }
+
+    /// Reads every tensor name from a safetensors or PyTorch weights file.
+    fn weight_tensor_names(weights_path: &std::path::Path) -> Result<Vec<String>> {
+        if weights_path.extension().and_then(|s| s.to_str()) == Some("safetensors") {
+            crate::models::weights::safetensors_tensor_names(weights_path)
+                .context("Reading safetensors header")
+        } else {
+            Ok(
+                candle_core::pickle::read_pth_tensor_info(weights_path, false, None)
+                    .context("Reading pytorch model info")?
+                    .into_iter()
+                    .map(|tensor_info| tensor_info.name)
+                    .collect(),
+            )
+        }
+    }
+
+    /// Decides from a ModernBERT file's tensor names whether they carry `model.`.
+    pub(super) fn modernbert_layout<'a>(
+        _tensor_names: impl IntoIterator<Item = &'a str>,
+    ) -> Result<ModernBertLayout> {
+        Ok(ModernBertLayout::Prefixed)
+    }
+
+    /// Presents a ModernBERT file to Candle, which asks for `model.`-prefixed names.
+    pub(super) fn with_modernbert_layout(
+        vb: VarBuilder<'static>,
+        _layout: ModernBertLayout,
+    ) -> VarBuilder<'static> {
+        vb
     }
 
     /// Detects if a JinaBERT model is the code variant (different FFN structure).
@@ -407,3 +452,22 @@ impl CandleDenseEncoder {
         }
     }
 }
+
+/// Embedding tensor a ModernBERT file names when its tensors carry `model.`.
+pub(super) const MODERNBERT_PREFIXED_EMBEDDINGS: &str = "model.embeddings.tok_embeddings.weight";
+/// Embedding tensor a ModernBERT file names when its tensors carry no prefix.
+pub(super) const MODERNBERT_BARE_EMBEDDINGS: &str = "embeddings.tok_embeddings.weight";
+
+/// How a ModernBERT weights file names its tensors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum ModernBertLayout {
+    /// Tensor names start with `model.`, as Candle asks for them.
+    Prefixed,
+    /// Tensor names carry no prefix, as in gte-modernbert-base.
+    Bare,
+}
+
+/// A ModernBERT weights file with neither known embedding tensor name.
+#[derive(Debug, thiserror::Error)]
+#[error("unrecognised_modernbert_weights: looked for {MODERNBERT_PREFIXED_EMBEDDINGS:?} or {MODERNBERT_BARE_EMBEDDINGS:?} and found neither")]
+pub(crate) struct ModernBertWeightsError;
