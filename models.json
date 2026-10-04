@@ -1909,7 +1909,7 @@
           "release_date": "2024",
           "support": {
             "tier": "experimental",
-            "note": "BERT MLM sparse path exists; remote checkpoint execution remains experimental."
+            "note": "Pinned CPU f32 smoke reference is bound for a 7-token probe; the 512-token window is not qualified. Remote checkpoint execution remains experimental."
           },
           "architecture": {
             "type": "bert",
