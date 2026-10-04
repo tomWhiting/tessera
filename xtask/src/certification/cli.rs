@@ -30,6 +30,13 @@ enum CertCommand {
         #[arg(long)]
         model: String,
     },
+    /// Copy one verified dense model from the certification cache into an installed folder.
+    Install {
+        #[arg(long)]
+        model: String,
+        #[arg(long)]
+        dir: PathBuf,
+    },
     /// Run one model in a fresh, monitored, offline CPU child process.
     Run {
         /// Registry model ID.
@@ -44,6 +51,9 @@ enum CertCommand {
         /// Number of fresh child processes to run serially.
         #[arg(long, default_value_t = 1)]
         repeat: usize,
+        /// Installed dense model folder; bypasses the Hugging Face cache.
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
     },
     /// Run every checked specification serially, one child process at a time.
     RunAll {
@@ -81,6 +91,8 @@ enum CertCommand {
         profile: String,
         #[arg(long)]
         outcome: PathBuf,
+        #[arg(long)]
+        model_dir: Option<PathBuf>,
     },
 }
 
@@ -98,24 +110,42 @@ pub(crate) fn run(
     match cli.command {
         CertCommand::List => list(repository),
         CertCommand::Fetch { model } => fetch(repository, &model),
+        CertCommand::Install { model, dir } => super::install::run(repository, &model, &dir),
         CertCommand::Run {
             model,
             device: _,
             profile,
             repeat,
-        } => process::run_model(repository, &model, &RunOptions { profile, repeat }),
+            model_dir,
+        } => process::run_model(
+            repository,
+            &model,
+            &RunOptions {
+                profile,
+                repeat,
+                model_dir,
+            },
+        ),
         CertCommand::RunAll {
             device: _,
             profile,
             repeat,
-        } => process::run_all(repository, &RunOptions { profile, repeat }),
+        } => process::run_all(
+            repository,
+            &RunOptions {
+                profile,
+                repeat,
+                model_dir: None,
+            },
+        ),
         CertCommand::Readiness { model, json } => readiness(repository, &model, json),
         CertCommand::Purge { model } => purge(repository, &model),
         CertCommand::One {
             model,
             profile,
             outcome,
-        } => super::child::run(repository, &model, &profile, &outcome),
+            model_dir,
+        } => super::child::run(repository, &model, &profile, &outcome, model_dir.as_deref()),
     }
 }
 
