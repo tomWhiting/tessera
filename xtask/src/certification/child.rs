@@ -199,7 +199,7 @@ fn validate_probe_token_count(expected_tokens: usize, observed_tokens: usize) ->
     Ok(())
 }
 
-fn resource_policy(profile: &ProfileSpec) -> ResourcePolicy {
+pub(super) fn resource_policy(profile: &ProfileSpec) -> ResourcePolicy {
     let limits = &profile.resource_policy;
     ResourcePolicy::new(
         limits.max_sequence_tokens,

@@ -6,6 +6,21 @@ use serde::{Deserialize, Serialize};
 
 use super::spec::CertResult;
 
+#[path = "measure_child.rs"]
+mod measure_child;
+#[path = "measure_process.rs"]
+mod measure_process;
+
+pub(crate) use measure_child::run as run_child;
+pub(crate) use measure_process::run;
+
+#[derive(Debug, Deserialize, Serialize)]
+struct ChildMeasurement {
+    vector: Vec<f32>,
+    batch: Vec<BatchComparison>,
+    installed_manifest_sha256: Option<String>,
+}
+
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 struct VectorComparison {
     byte_equal: bool,
@@ -57,7 +72,7 @@ fn compare_vectors(left: &[f32], right: &[f32]) -> CertResult<VectorComparison> 
         left_norm += left * left;
         right_norm += right * right;
     }
-    if left_norm == 0.0 || right_norm == 0.0 {
+    if left_norm <= 0.0 || right_norm <= 0.0 {
         return Err("measurement_zero_norm: cosine requires nonzero vectors".into());
     }
     Ok(VectorComparison {
@@ -71,7 +86,7 @@ fn record_path(repository: &Path, model: &str, invocation: u128) -> PathBuf {
     repository
         .join(".tessera/cert-evidence")
         .join(model)
-        .join(format!("{invocation}.measure"))
+        .join(format!("{invocation}-{}.measure", std::process::id()))
 }
 
 fn write_record(path: &Path, record: &MeasurementRecord) -> CertResult<()> {
