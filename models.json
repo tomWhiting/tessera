@@ -845,6 +845,59 @@
           },
           "license": "MIT",
           "description": "Multilingual XLM-RoBERTa embedding model with mean pooling, normalized 768-dimensional outputs, and a 512-token context. Query and document inputs require their respective query: and passage: prefixes."
+        },
+        {
+          "id": "multilingual-e5-large",
+          "type": "dense",
+          "name": "multilingual-e5-large",
+          "huggingface_id": "intfloat/multilingual-e5-large",
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+          "organization": "intfloat",
+          "release_date": "not stated",
+          "support": {
+            "tier": "experimental",
+            "note": "Pinned registry and certification inputs only; model loading and numerical parity remain unmeasured."
+          },
+          "architecture": {
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "559890946",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 512,
+            "max_position_embeddings": 514,
+            "vocab_size": 250002
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "model.safetensors"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
+            "multi_vector": false,
+            "quantization": [
+              "fp32"
+            ]
+          },
+          "license": "MIT",
+          "description": "Multilingual XLM-RoBERTa embedding model with mean pooling, normalized 1024-dimensional outputs, and a 512-token context. Query and document inputs require their respective query: and passage: prefixes."
         }
       ]
     },
