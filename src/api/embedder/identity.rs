@@ -2,9 +2,9 @@
 
 use std::fmt;
 
-use crate::core::tokenizer::CutConfigurationError;
+use crate::core::tokenizer::{CutConfigurationError, PromptConfigurationError};
 use crate::error::TesseraError;
-use crate::models::registry::ModelInfo;
+use crate::models::registry::{Distance, ModelInfo};
 use crate::models::InstalledModelError;
 
 #[cfg(test)]
@@ -33,6 +33,8 @@ pub struct ModelIdentity {
     pub special_tokens: usize,
     /// Whether returned vectors are L2-normalised.
     pub normalised: bool,
+    /// How two vectors from this model are compared.
+    pub distance: Distance,
 }
 
 /// Facts about a loaded model that the registry entry does not hold.
@@ -53,6 +55,9 @@ impl ModelIdentity {
         let revision = model
             .revision
             .ok_or_else(|| anyhow::anyhow!("Model '{}' has no pinned revision", model.id))?;
+        let distance = model
+            .distance
+            .ok_or_else(|| anyhow::anyhow!("Model '{}' has no distance", model.id))?;
         let max_tokens = facts.position_table.map_or(model.context_length, |table| {
             table.min(model.context_length)
         });
@@ -65,6 +70,7 @@ impl ModelIdentity {
             max_tokens,
             special_tokens: facts.special_tokens,
             normalised: facts.normalised,
+            distance,
         })
     }
 }
@@ -120,7 +126,9 @@ impl EmbedFailure {
     }
 
     pub(crate) fn from_cut_configuration(error: anyhow::Error) -> TesseraError {
-        if error.downcast_ref::<CutConfigurationError>().is_some() {
+        if error.downcast_ref::<CutConfigurationError>().is_some()
+            || error.downcast_ref::<PromptConfigurationError>().is_some()
+        {
             Self::limits("max_sequence_tokens", error.to_string())
         } else {
             TesseraError::ConfigError(error.to_string())

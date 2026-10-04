@@ -62,6 +62,9 @@ pub const {}: ModelInfo = ModelInfo {{
     quantization: &[{}],
     license: "{}",
     description: "{}",
+    prompts: {},
+    distance: {},
+    card_comparison: {},
 }};"#,
         pooling_definition,
         model.name,
@@ -104,6 +107,45 @@ pub const {}: ModelInfo = ModelInfo {{
         quantization,
         model.license,
         model.description,
+        prompts(model),
+        distance(model),
+        card_comparison(model),
+    )
+}
+
+fn prompts(model: &ModelMetadata) -> String {
+    model.prompts.as_ref().map_or_else(
+        || "None".to_string(),
+        |prompts| {
+            format!(
+                "Some(Prompts {{ query: {:?}, document: {:?} }})",
+                prompts.query, prompts.document
+            )
+        },
+    )
+}
+
+fn distance(model: &ModelMetadata) -> String {
+    model.distance.as_deref().map_or_else(
+        || "None".to_string(),
+        |distance| match distance {
+            "cosine" => "Some(Distance::Cosine)".to_string(),
+            "dot" => "Some(Distance::Dot)".to_string(),
+            "euclidean" => "Some(Distance::Euclidean)".to_string(),
+            other => panic!("Model {} has invalid distance '{other}'", model.id),
+        },
+    )
+}
+
+fn card_comparison(model: &ModelMetadata) -> String {
+    model.card_comparison.as_ref().map_or_else(
+        || "None".to_string(),
+        |card| {
+            format!(
+                "Some(CardComparison {{ words: {:?}, url: {:?} }})",
+                card.words, card.url
+            )
+        },
     )
 }
 

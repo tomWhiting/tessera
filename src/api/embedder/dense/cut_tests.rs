@@ -36,7 +36,7 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
                 .iter()
                 .map(|text| {
                     embedded.push(text.to_string());
-                    let input = tokenizer.encode_cut(text)?;
+                    let input = tokenizer.encode_cut("", text)?;
                     CutDenseEmbedding::new(
                         array![1.0],
                         input.tokens_read(),
@@ -236,4 +236,52 @@ fn non_finite_vector_in_a_chunk_is_named_by_its_input_position() {
             reason: "vector contains NaN or Inf values".to_string(),
         })
     );
+}
+
+#[test]
+fn limit_too_small_for_the_prompt_is_a_limits_failure() {
+    let policy = ResourcePolicy::new(4, 2, 10, usize::MAX);
+    let error = encode_cut_batch_with(
+        &["one"],
+        Err(anyhow::Error::new(crate::PromptConfigurationError {
+            limit: 4,
+            special_tokens: 2,
+            prompt_tokens: 2,
+        })),
+        policy,
+        1,
+        NonZeroUsize::MIN,
+        None,
+        |_| panic!("invalid configuration must precede embedding"),
+    )
+    .unwrap_err();
+    assert!(error
+        .to_string()
+        .starts_with("InvalidPromptConfiguration: "));
+    assert!(matches!(
+        error.embed_failure(),
+        Some(crate::EmbedFailure::Limits {
+            limit: "max_sequence_tokens",
+            ..
+        })
+    ));
+}
+
+#[test]
+fn empty_text_is_refused_before_any_prompt_is_joined() {
+    let policy = ResourcePolicy::new(8, 2, 10, usize::MAX);
+    let outcomes = encode_cut_batch_with(
+        &["", " \n"],
+        Ok(()),
+        policy,
+        1,
+        NonZeroUsize::MIN,
+        None,
+        |_| panic!("refused texts must not reach the prompt or the model"),
+    )
+    .unwrap();
+    assert!(outcomes.iter().all(|outcome| matches!(
+        outcome,
+        CutEmbeddingOutcome::Refused(EmbeddingRefusal::Empty)
+    )));
 }

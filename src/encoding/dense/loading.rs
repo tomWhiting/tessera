@@ -167,6 +167,12 @@ impl CandleDenseEncoder {
                 resource_policy,
                 transformer_profile: profile,
                 position_table: detector.max_position_embeddings.or(detector.n_positions),
+                prompts: model_info
+                    .prompts
+                    .unwrap_or(crate::models::registry::Prompts {
+                        query: "",
+                        document: "",
+                    }),
                 _residency: residency,
             },
             installed_manifest_sha256,

@@ -309,6 +309,15 @@ pub struct CutDenseEmbedding {
     cut: bool,
 }
 
+/// Whether a text is a question searched with, or a document stored.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Role {
+    /// A question; the model's query text is joined before it.
+    Query,
+    /// A stored document; the model's document text is joined before it.
+    Document,
+}
+
 /// A field that cannot be embedded without changing its input contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EmbeddingRefusal {

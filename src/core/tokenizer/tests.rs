@@ -52,7 +52,7 @@ pub fn cut_tokenizer_with_policy(policy: ResourcePolicy) -> Tokenizer {
 #[test]
 fn cut_under_limit_preserves_existing_tokens_and_counts() {
     let tokenizer = cut_tokenizer(5);
-    let input = tokenizer.encode_cut("one").unwrap();
+    let input = tokenizer.encode_cut("", "one").unwrap();
     assert_eq!(input.token_ids, [10, 2, 11]);
     assert_eq!(input.token_ids, tokenizer.encode("one", true).unwrap().0);
     assert_eq!(input.tokens_read(), 3);
@@ -63,7 +63,7 @@ fn cut_under_limit_preserves_existing_tokens_and_counts() {
 #[test]
 fn cut_exact_limit_preserves_existing_tokens_and_counts() {
     let tokenizer = cut_tokenizer(5);
-    let input = tokenizer.encode_cut("one two three").unwrap();
+    let input = tokenizer.encode_cut("", "one two three").unwrap();
     assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
     assert_eq!(
         input.token_ids,
@@ -76,7 +76,9 @@ fn cut_exact_limit_preserves_existing_tokens_and_counts() {
 
 #[test]
 fn cut_over_limit_keeps_special_tokens_and_reports_whole_count() {
-    let input = cut_tokenizer(5).encode_cut("one two three one").unwrap();
+    let input = cut_tokenizer(5)
+        .encode_cut("", "one two three one")
+        .unwrap();
     assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
     assert_eq!(input.tokens_read(), 5);
     assert_eq!(input.tokens_total, 6);
@@ -86,7 +88,7 @@ fn cut_over_limit_keeps_special_tokens_and_reports_whole_count() {
 #[test]
 fn cut_far_over_limit_keeps_start_and_reports_whole_count() {
     let text = vec!["one"; 50].join(" ");
-    let input = cut_tokenizer(5).encode_cut(&text).unwrap();
+    let input = cut_tokenizer(5).encode_cut("", &text).unwrap();
     assert_eq!(input.token_ids, [10, 2, 2, 2, 11]);
     assert_eq!(input.tokens_read(), 5);
     assert_eq!(input.tokens_total, 52);
@@ -97,25 +99,25 @@ fn cut_far_over_limit_keeps_start_and_reports_whole_count() {
 fn cut_configuration_requires_special_tokens_plus_content() {
     for limit in [0, 1, 2] {
         let tokenizer = cut_tokenizer(limit);
-        let error = tokenizer.encode_cut("one").unwrap_err();
+        let error = tokenizer.encode_cut("", "one").unwrap_err();
         let error = error
             .downcast_ref::<super::CutConfigurationError>()
             .unwrap();
         assert_eq!(error.limit, limit);
         assert_eq!(error.special_tokens, 2);
         assert!(error.to_string().starts_with("InvalidCutConfiguration:"));
-        let error = tokenizer.encode_batch_cut(&["one", "two"]).unwrap_err();
+        let error = tokenizer.encode_batch_cut("", &["one", "two"]).unwrap_err();
         assert!(error
             .downcast_ref::<super::CutConfigurationError>()
             .is_some());
-        assert!(tokenizer.encode_batch_cut(&[]).is_err());
+        assert!(tokenizer.encode_batch_cut("", &[]).is_err());
     }
 }
 
 #[test]
 fn cut_batch_preserves_order_and_accepts_long_items() {
     let inputs = cut_tokenizer(5)
-        .encode_batch_cut(&["two", "one two three one", "three"])
+        .encode_batch_cut("", &["two", "one two three one", "three"])
         .unwrap();
     assert_eq!(inputs.len(), 3);
     assert_eq!(inputs[0].token_ids, [10, 3, 11]);
@@ -132,8 +134,10 @@ fn cut_methods_still_refuse_the_byte_limit() {
         .resource_policy
         .with_max_input_bytes_per_sequence(3);
     for error in [
-        tokenizer.encode_cut("three").unwrap_err(),
-        tokenizer.encode_batch_cut(&["one", "three"]).unwrap_err(),
+        tokenizer.encode_cut("", "three").unwrap_err(),
+        tokenizer
+            .encode_batch_cut("", &["one", "three"])
+            .unwrap_err(),
     ] {
         assert_eq!(
             error.to_string(),
@@ -146,8 +150,8 @@ fn cut_methods_still_refuse_the_byte_limit() {
 fn cut_uses_the_tokenizer_prepared_once_before_calls() {
     let tokenizer = cut_tokenizer(5);
     let prepared = std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap());
-    tokenizer.encode_cut("one two three one").unwrap();
-    tokenizer.encode_cut("three two one three").unwrap();
+    tokenizer.encode_cut("", "one two three one").unwrap();
+    tokenizer.encode_cut("", "three two one three").unwrap();
     assert_eq!(
         prepared,
         std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap())
@@ -310,4 +314,67 @@ fn window_encoding_covers_content_once_by_center_ownership() {
         4
     );
     assert!(windows.iter().all(|window| window.token_ids.len() <= 3));
+}
+
+#[test]
+fn prompt_is_joined_before_the_text_and_counted() {
+    let tokenizer = cut_tokenizer(8);
+    let query = tokenizer.encode_cut("three two ", "one").unwrap();
+    assert_eq!(query.token_ids, [10, 4, 3, 2, 11]);
+    assert_eq!(query.tokens_read(), 5);
+    assert_eq!(query.tokens_total, 5);
+    assert!(!query.cut);
+    let document = tokenizer.encode_cut("", "one").unwrap();
+    assert_eq!(document.token_ids, [10, 2, 11]);
+    assert_eq!(document.tokens_total, 3);
+}
+
+#[test]
+fn cutting_keeps_the_prompt_and_removes_from_the_end() {
+    let input = cut_tokenizer(5)
+        .encode_cut("three ", "one two three one")
+        .unwrap();
+    assert_eq!(input.token_ids, [10, 4, 2, 3, 11]);
+    assert_eq!(input.tokens_read(), 5);
+    assert_eq!(input.tokens_total, 7);
+    assert!(input.cut);
+}
+
+#[test]
+fn batch_joins_the_one_prompt_before_every_text() {
+    let inputs = cut_tokenizer(8)
+        .encode_batch_cut("three ", &["one", "two"])
+        .unwrap();
+    let ids: Vec<_> = inputs.iter().map(|input| input.token_ids.clone()).collect();
+    assert_eq!(ids, [vec![10, 4, 2, 11], vec![10, 4, 3, 11]]);
+}
+
+#[test]
+fn byte_limit_counts_the_callers_text_alone() {
+    let policy = ResourcePolicy::new(8, 16, 2048, usize::MAX).with_max_input_bytes_per_sequence(3);
+    let input = cut_tokenizer_with_policy(policy)
+        .encode_cut("three two ", "one")
+        .unwrap();
+    assert_eq!(input.tokens_total, 5);
+}
+
+#[test]
+fn limit_must_hold_special_tokens_longer_prompt_and_one_token() {
+    let prompts = ["three two ", "one "];
+    let error = cut_tokenizer(4)
+        .validate_cut_configuration_with(&prompts)
+        .unwrap_err();
+    let error = error
+        .downcast_ref::<super::PromptConfigurationError>()
+        .expect("prompt configuration error");
+    assert_eq!(
+        (error.limit, error.special_tokens, error.prompt_tokens),
+        (4, 2, 2)
+    );
+    assert!(error
+        .to_string()
+        .starts_with("InvalidPromptConfiguration: "));
+    cut_tokenizer(5)
+        .validate_cut_configuration_with(&prompts)
+        .unwrap();
 }

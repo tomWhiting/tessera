@@ -6,7 +6,7 @@ use tempfile::TempDir;
 use super::{EmbedFailure, LoadedFacts, ModelIdentity, EMBED_FAILURE_MAX_CHARS};
 use crate::core::tokenizer::tests::{cut_tokenizer_with_policy, tokenizer};
 use crate::error::TesseraError;
-use crate::models::registry::get_model;
+use crate::models::registry::{get_model, Distance};
 use crate::models::InstalledModel;
 use crate::runtime::ResourcePolicy;
 
@@ -44,6 +44,7 @@ fn bge_base_identity_without_a_manifest() {
             max_tokens: 512,
             special_tokens: 2,
             normalised: true,
+            distance: Distance::Dot,
         }
     );
 }

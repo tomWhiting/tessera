@@ -108,3 +108,50 @@ fn audited_weight_metadata_preserves_absent_and_sharded_safetensors() {
         .expect("Snowflake metadata");
     assert_eq!(snowflake.specs.parameters, "568M");
 }
+
+fn validate_with_dense_change(
+    change: impl FnOnce(&mut serde_json::Map<String, serde_json::Value>),
+) {
+    let mut catalog = catalog_json();
+    change(
+        catalog["model_categories"]["dense"]["models"][0]
+            .as_object_mut()
+            .expect("model should be an object"),
+    );
+    let registry = serde_json::from_value::<ModelRegistry>(catalog)
+        .expect("modified catalog should deserialize");
+    validate_registry(&registry);
+}
+
+#[test]
+#[should_panic(expected = "must declare prompts")]
+fn dense_entries_require_prompts() {
+    validate_with_dense_change(|model| {
+        model.remove("prompts");
+    });
+}
+
+#[test]
+#[should_panic(expected = "must declare a distance")]
+fn dense_entries_require_a_distance() {
+    validate_with_dense_change(|model| {
+        model.remove("distance");
+    });
+}
+
+#[test]
+#[should_panic(expected = "has invalid distance 'angular'")]
+fn unknown_distance_words_are_rejected() {
+    validate_with_dense_change(|model| {
+        model.insert("distance".to_string(), serde_json::json!("angular"));
+    });
+}
+
+#[test]
+#[should_panic(expected = "card comparison URL must be at its pinned revision")]
+fn card_comparison_must_cite_the_pinned_revision() {
+    validate_with_dense_change(|model| {
+        model["card_comparison"]["url"] =
+            serde_json::json!("https://huggingface.co/BAAI/bge-base-en-v1.5/blob/main/README.md");
+    });
+}

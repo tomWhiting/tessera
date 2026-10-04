@@ -1,6 +1,6 @@
 use crate::api::embedder::{EmbedFailure, ModelIdentity};
 use crate::api::TesseraDenseBuilder;
-use crate::core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
+use crate::core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal, Role};
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
@@ -171,21 +171,25 @@ impl TesseraDense {
 
     /// Returns the text's vector and token counts, or a named input refusal.
     ///
-    /// Special tokens count toward the resource policy's sequence limit.
+    /// With a role, the model's text for it is joined directly before `text` and
+    /// is never cut. It and the special tokens count toward the sequence limit and
+    /// both token counts; refusals and the byte limit look at `text` alone.
+    /// Without a role, `text` is embedded as it stands.
     ///
     /// # Errors
-    /// Returns a configuration error if the limit cannot hold special tokens plus
-    /// one content token, or an error for job limits or inference. Empty or
-    /// whitespace-only input is refused; oversized nonempty input is refused.
-    pub fn encode_cut(&self, text: &str) -> Result<CutEmbeddingOutcome> {
+    /// Returns a configuration error if the limit cannot hold special tokens,
+    /// the longer of the model's two texts (with a role) and one content token, or an error
+    /// for job limits or inference. Empty or whitespace-only input is refused;
+    /// oversized nonempty input is refused.
+    pub fn encode_cut(&self, text: &str, role: Option<Role>) -> Result<CutEmbeddingOutcome> {
         encode_cut_batch_with(
             &[text],
-            self.encoder.validate_cut_configuration(),
+            self.encoder.validate_cut_configuration(role),
             self.resource_policy,
             self.identity.dimensions,
             NonZeroUsize::MIN,
             None,
-            |_| self.encoder.encode_cut(text).map(|value| vec![value]),
+            |_| self.encoder.encode_cut(text, role).map(|value| vec![value]),
         )?
         .into_iter()
         .next()
@@ -197,25 +201,30 @@ impl TesseraDense {
 
     /// Returns one vector or named input refusal per text, in input order.
     ///
-    /// Each chunk uses sequential model forwards on unpadded, cut inputs.
+    /// Each chunk uses sequential model forwards on unpadded, cut inputs. One
+    /// role applies to every text, joined as in [`Self::encode_cut`].
     ///
     /// # Errors
     /// Returns a configuration error before any item is embedded if the sequence
-    /// limit cannot hold special tokens plus content. Job, batch, output and
+    /// limit cannot hold special tokens, the longer model text and content. Job, batch, output and
     /// inference limits apply to accepted items; refused items use none of them.
-    pub fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutEmbeddingOutcome>> {
+    pub fn encode_batch_cut(
+        &self,
+        texts: &[&str],
+        role: Option<Role>,
+    ) -> Result<Vec<CutEmbeddingOutcome>> {
         let batch_size = self
             .batch_size
             .or_else(|| NonZeroUsize::new(self.resource_policy.max_batch_items()))
             .unwrap_or(NonZeroUsize::MIN);
         encode_cut_batch_with(
             texts,
-            self.encoder.validate_cut_configuration(),
+            self.encoder.validate_cut_configuration(role),
             self.resource_policy,
             self.identity.dimensions,
             batch_size,
             self.yield_ms.map(std::time::Duration::from_millis),
-            |accepted| self.encoder.encode_batch_cut(accepted),
+            |accepted| self.encoder.encode_batch_cut(accepted, role),
         )
     }
 

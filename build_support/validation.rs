@@ -49,7 +49,50 @@ pub fn validate_registry(registry: &ModelRegistry) {
         }
 
         validate_pooling(model);
+        validate_retrieval(model);
     }
+}
+
+fn validate_retrieval(model: &ModelMetadata) {
+    if model.model_type != "dense" {
+        return;
+    }
+    assert!(
+        model.prompts.is_some(),
+        "Dense model {} must declare prompts",
+        model.id
+    );
+    let distance = model
+        .distance
+        .as_deref()
+        .unwrap_or_else(|| panic!("Dense model {} must declare a distance", model.id));
+    let valid = ["cosine", "dot", "euclidean"];
+    assert!(
+        valid.contains(&distance),
+        "Model {} has invalid distance '{}'. Valid: {:?}",
+        model.id,
+        distance,
+        valid
+    );
+    let card = model
+        .card_comparison
+        .as_ref()
+        .unwrap_or_else(|| panic!("Dense model {} must declare its card comparison", model.id));
+    assert!(
+        !card.words.trim().is_empty(),
+        "Model {} must quote its card comparison",
+        model.id
+    );
+    let revision = model.revision.as_deref().unwrap_or_default();
+    let prefix = format!(
+        "https://huggingface.co/{}/blob/{revision}/",
+        model.huggingface_id
+    );
+    assert!(
+        !revision.is_empty() && card.url.starts_with(&prefix),
+        "Model {} card comparison URL must be at its pinned revision",
+        model.id
+    );
 }
 
 fn validate_weight_metadata(model: &ModelMetadata) {

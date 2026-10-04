@@ -124,6 +124,7 @@ pub struct CandleDenseEncoder {
     resource_policy: ResourcePolicy,
     transformer_profile: TransformerProfile,
     position_table: Option<usize>,
+    prompts: crate::models::registry::Prompts,
     _residency: ModelResidencyPermit<'static>,
 }
 
