@@ -14,7 +14,7 @@ use crate::models::loader::ModelFileResolver;
 use crate::runtime::{plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow};
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 type TokenizedInput = (Vec<u32>, Vec<u32>);
 type UnpaddedBatch = (Vec<TokenizedInput>, usize);
@@ -46,6 +46,7 @@ impl CutTokenizedInput {
 /// Wrapper around `HuggingFace` tokenizer for BERT models.
 pub struct Tokenizer {
     inner: HfTokenizer,
+    truncating: Option<HfTokenizer>,
     resource_policy: ResourcePolicy,
     pad_token_id: Option<u32>,
 }
@@ -98,6 +99,7 @@ impl Tokenizer {
 
         Ok(Self {
             inner,
+            truncating: None,
             resource_policy,
             pad_token_id,
         })
@@ -128,10 +130,7 @@ impl Tokenizer {
     }
 
     pub(crate) fn validate_cut_configuration(&self) -> Result<()> {
-        let special_tokens = self
-            .inner
-            .get_post_processor()
-            .map_or(0, |processor| processor.added_tokens(false));
+        let special_tokens = self.cut_special_tokens();
         let limit = self.resource_policy.max_sequence_tokens();
         if limit <= special_tokens {
             return Err(CutConfigurationError {
@@ -141,6 +140,28 @@ impl Tokenizer {
             .into());
         }
         Ok(())
+    }
+
+    pub(crate) fn prepare_cut(&mut self) -> Result<()> {
+        if self.resource_policy.max_sequence_tokens() <= self.cut_special_tokens() {
+            // Cut calls report invalid limits; ordinary encoding retains its behavior.
+            return Ok(());
+        }
+        let mut truncating = self.inner.clone();
+        truncating
+            .with_truncation(Some(TruncationParams {
+                max_length: self.resource_policy.max_sequence_tokens(),
+                ..TruncationParams::default()
+            }))
+            .map_err(|error| anyhow::anyhow!("Failed to configure cut tokenization: {error}"))?;
+        self.truncating = Some(truncating);
+        Ok(())
+    }
+
+    fn cut_special_tokens(&self) -> usize {
+        self.inner
+            .get_post_processor()
+            .map_or(0, |processor| processor.added_tokens(false))
     }
 
     pub(crate) fn encode_cut(&self, text: &str) -> Result<CutTokenizedInput> {
@@ -155,16 +176,10 @@ impl Tokenizer {
         let cut = tokens_total > limit;
         if cut {
             drop(encoding);
-            let mut truncating = self.inner.clone();
-            truncating
-                .with_truncation(Some(TruncationParams {
-                    max_length: limit,
-                    ..TruncationParams::default()
-                }))
-                .map_err(|error| {
-                    anyhow::anyhow!("Failed to configure cut tokenization: {error}")
-                })?;
-            encoding = truncating
+            encoding = self
+                .truncating
+                .as_ref()
+                .context("Cut tokenizer was not prepared during model loading")?
                 .encode(text, true)
                 .map_err(|error| anyhow::anyhow!("Failed to encode cut text: {error}"))?;
         }

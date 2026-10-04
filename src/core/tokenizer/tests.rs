@@ -25,13 +25,18 @@ fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
 
     Tokenizer {
         inner,
+        truncating: None,
         resource_policy,
         pad_token_id: Some(1),
     }
 }
 
 fn cut_tokenizer(limit: usize) -> Tokenizer {
-    let mut tokenizer = tokenizer(ResourcePolicy::new(limit, 16, 2048, usize::MAX));
+    cut_tokenizer_with_policy(ResourcePolicy::new(limit, 16, 2048, usize::MAX))
+}
+
+pub fn cut_tokenizer_with_policy(policy: ResourcePolicy) -> Tokenizer {
+    let mut tokenizer = tokenizer(policy);
     tokenizer.inner.with_post_processor(Some(
         TemplateProcessing::builder()
             .try_single("[START] $A [END]")
@@ -40,6 +45,7 @@ fn cut_tokenizer(limit: usize) -> Tokenizer {
             .build()
             .unwrap(),
     ));
+    tokenizer.prepare_cut().unwrap();
     tokenizer
 }
 
@@ -134,6 +140,18 @@ fn cut_methods_still_refuse_the_byte_limit() {
             "Input byte count 5 exceeds resource policy limit 3"
         );
     }
+}
+
+#[test]
+fn cut_uses_the_tokenizer_prepared_once_before_calls() {
+    let tokenizer = cut_tokenizer(5);
+    let prepared = std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap());
+    tokenizer.encode_cut("one two three one").unwrap();
+    tokenizer.encode_cut("three two one three").unwrap();
+    assert_eq!(
+        prepared,
+        std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap())
+    );
 }
 
 #[test]

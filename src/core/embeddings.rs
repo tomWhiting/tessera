@@ -309,6 +309,53 @@ pub struct CutDenseEmbedding {
     cut: bool,
 }
 
+/// A field that cannot be embedded without changing its input contract.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmbeddingRefusal {
+    /// The text has no non-whitespace character.
+    Empty,
+    /// The text exceeds the per-sequence UTF-8 byte limit.
+    TooLarge {
+        /// Measured UTF-8 bytes.
+        input_bytes: usize,
+        /// Maximum permitted UTF-8 bytes.
+        limit: usize,
+    },
+}
+
+impl EmbeddingRefusal {
+    pub(crate) fn for_text(text: &str, limit: usize) -> Option<Self> {
+        if text.chars().all(char::is_whitespace) {
+            Some(Self::Empty)
+        } else if text.len() > limit {
+            Some(Self::TooLarge {
+                input_bytes: text.len(),
+                limit,
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Returns the stable code for this refusal.
+    #[must_use]
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Empty => "embed_input_empty",
+            Self::TooLarge { .. } => "embed_input_too_large",
+        }
+    }
+}
+
+/// One input's vector and counts, or its named refusal.
+#[derive(Debug, Clone)]
+pub enum CutEmbeddingOutcome {
+    /// The input was embedded, possibly after cutting content from its end.
+    Embedded(CutDenseEmbedding),
+    /// The input was refused before tokenization or inference.
+    Refused(EmbeddingRefusal),
+}
+
 impl CutDenseEmbedding {
     pub(crate) fn new(
         embedding: Array1<f32>,
