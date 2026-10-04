@@ -141,7 +141,9 @@ fn support_contract_matches_the_audited_catalog() {
 
     let expected = [
         ("bge-base-en-v1.5", SupportTier::Supported),
+        ("bge-large-en-v1.5", SupportTier::Experimental),
         ("bge-m3-multi", SupportTier::CatalogOnly),
+        ("bge-small-en-v1.5", SupportTier::Experimental),
         ("chronos-bolt-small", SupportTier::CatalogOnly),
         ("colbert-small", SupportTier::Experimental),
         ("colbert-v2", SupportTier::Experimental),
@@ -157,6 +159,7 @@ fn support_contract_matches_the_audited_catalog() {
         ("jina-embeddings-v3", SupportTier::CatalogOnly),
         ("minicoil-v1", SupportTier::CatalogOnly),
         ("multilingual-e5-small", SupportTier::Experimental),
+        ("mxbai-embed-large-v1", SupportTier::Experimental),
         ("nomic-embed-v1.5", SupportTier::Experimental),
         ("snowflake-arctic-l", SupportTier::Experimental),
         ("splade-pp-en-v1", SupportTier::Experimental),
@@ -202,6 +205,9 @@ fn runnable_models_excludes_catalog_only_entries() {
         "nomic-embed-v1.5",
         "snowflake-arctic-l",
         "multilingual-e5-small",
+        "bge-small-en-v1.5",
+        "bge-large-en-v1.5",
+        "mxbai-embed-large-v1",
         "colbert-small",
         "colbert-v2",
         "colpali-v1.2",
