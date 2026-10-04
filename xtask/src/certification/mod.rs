@@ -2,6 +2,7 @@ mod artifacts;
 mod child;
 mod cli;
 mod evidence;
+mod install;
 mod process;
 mod readiness;
 mod reference;

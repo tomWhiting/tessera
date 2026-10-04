@@ -46,6 +46,23 @@ fn dense_embeddings_require_nonempty_finite_vector() {
 }
 
 #[test]
+fn cut_dense_embeddings_validate_values_and_counts_without_storing_text() {
+    assert!(CutDenseEmbedding::new(Array1::zeros(0), 3, 3, false).is_err());
+    assert!(CutDenseEmbedding::new(array![f32::INFINITY], 3, 3, false).is_err());
+    assert!(CutDenseEmbedding::new(array![1.0], 4, 3, false).is_err());
+    assert!(CutDenseEmbedding::new(array![1.0], 3, 3, true).is_err());
+    let whole = CutDenseEmbedding::new(array![1.0, 2.0], 3, 3, false).unwrap();
+    assert_eq!(whole.dim(), 2);
+    assert_eq!(whole.values(), &array![1.0, 2.0]);
+    assert_eq!(whole.tokens_read(), 3);
+    assert_eq!(whole.tokens_total(), 3);
+    assert!(!whole.cut());
+    let cut = CutDenseEmbedding::new(array![1.0], 3, 9, true).unwrap();
+    assert!(cut.cut());
+    assert_eq!(cut.into_values(), array![1.0]);
+}
+
+#[test]
 fn sparse_embeddings_require_valid_canonical_entries() {
     assert!(SparseEmbedding::new(Vec::new(), 0, String::new()).is_err());
     assert!(SparseEmbedding::new(vec![(4, 1.0)], 4, String::new()).is_err());

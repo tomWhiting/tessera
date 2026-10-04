@@ -26,11 +26,18 @@ pub(crate) fn run(
     model_id: &str,
     profile_name: &str,
     outcome_path: &Path,
+    model_dir: Option<&Path>,
 ) -> CertResult<()> {
     let loaded = super::spec::load_model(repository, model_id)?;
     let profile = loaded.spec.profile(profile_name)?;
-    artifacts::configure_cache(repository)?;
-    std::env::set_var("TESSERA_OFFLINE", "1");
+    if model_dir.is_some() {
+        super::install::require_dense(loaded.spec.model.representation)?;
+        std::env::remove_var("HF_HOME");
+        std::env::remove_var("TESSERA_OFFLINE");
+    } else {
+        artifacts::configure_cache(repository)?;
+        std::env::set_var("TESSERA_OFFLINE", "1");
+    }
     configure_cpu_threads(profile.process.cpu_threads)?;
 
     let official_reference = reference::load_optional(repository, &loaded.spec, profile_name)?;
@@ -39,9 +46,16 @@ pub(crate) fn run(
         &loaded.spec,
         profile,
         official_reference.as_ref(),
+        model_dir,
     );
     let outcome = match result {
-        Ok((verified_artifacts, observation, reference_comparison)) => {
+        Ok(execution) => {
+            let Execution {
+                verified_artifacts,
+                observation,
+                reference_comparison,
+                installed_manifest_sha256,
+            } = execution;
             let passed = observation.checks.iter().all(|check| check.passed)
                 && reference_comparison.status != ComparisonStatus::Failed;
             ChildOutcome {
@@ -52,6 +66,7 @@ pub(crate) fn run(
                 verified_artifacts,
                 observation: Some(observation),
                 reference_comparison,
+                installed_manifest_sha256,
             }
         }
         Err(error) => ChildOutcome {
@@ -59,6 +74,7 @@ pub(crate) fn run(
             error: Some(error.to_string()),
             verified_artifacts: Vec::new(),
             observation: None,
+            installed_manifest_sha256: None,
             reference_comparison: official_reference.as_ref().map_or_else(
                 ReferenceComparison::not_configured,
                 |loaded| {
@@ -79,37 +95,61 @@ pub(crate) fn run(
     }
 }
 
+struct Execution {
+    verified_artifacts: Vec<artifacts::VerifiedArtifact>,
+    observation: SmokeObservation,
+    reference_comparison: ReferenceComparison,
+    installed_manifest_sha256: Option<String>,
+}
+
 fn execute(
     repository: &Path,
     spec: &CertificationSpec,
     profile: &ProfileSpec,
     official_reference: Option<&LoadedReference>,
-) -> CertResult<(
-    Vec<artifacts::VerifiedArtifact>,
-    SmokeObservation,
-    ReferenceComparison,
-)> {
+    model_dir: Option<&Path>,
+) -> CertResult<Execution> {
     if profile.kind == ProfileKind::LongContext && official_reference.is_none() {
         return Err(
             "long-context execution requires a checked near-limit official reference probe".into(),
         );
     }
-    let verified = artifacts::verify_cached(
-        repository,
-        &super::spec::load_model(repository, &spec.model.id)?,
-    )?;
     let policy = resource_policy(profile);
-    if let Some(reference) = official_reference {
-        verify_probe_tokens(spec, policy, reference)?;
-    }
-    let (observation, observed_reference) = match spec.model.representation {
-        Representation::Dense => dense_smoke(spec, policy, official_reference)?,
-        Representation::MultiVector => multi_vector_smoke(spec, policy, official_reference)?,
-        Representation::Sparse => sparse_smoke(spec, policy, official_reference)?,
-        Representation::Vision => {
-            super::vision_smoke::run(repository, spec, policy, official_reference)?
-        }
-    };
+    let loaded = super::spec::load_model(repository, &spec.model.id)?;
+    let (verified, observation, observed_reference, installed_manifest_sha256) =
+        if let Some(directory) = model_dir {
+            super::install::require_dense(spec.model.representation)?;
+            let embedder = dense_embedder(spec, policy, Some(directory))?;
+            let verified = artifacts::verify_directory(directory, &loaded)?;
+            let digest = embedder
+                .installed_manifest_sha256()
+                .ok_or("installed dense embedder did not retain its manifest digest")?
+                .to_string();
+            let (observation, observed_reference) =
+                dense_smoke(spec, &embedder, official_reference, true)?;
+            (verified, observation, observed_reference, Some(digest))
+        } else {
+            let verified = artifacts::verify_cached(repository, &loaded)?;
+            if let Some(reference) = official_reference {
+                verify_probe_tokens(spec, policy, reference)?;
+            }
+            let (observation, observed_reference) = match spec.model.representation {
+                Representation::Dense => dense_smoke(
+                    spec,
+                    &dense_embedder(spec, policy, None)?,
+                    official_reference,
+                    false,
+                )?,
+                Representation::MultiVector => {
+                    multi_vector_smoke(spec, policy, official_reference)?
+                }
+                Representation::Sparse => sparse_smoke(spec, policy, official_reference)?,
+                Representation::Vision => {
+                    super::vision_smoke::run(repository, spec, policy, official_reference)?
+                }
+            };
+            (verified, observation, observed_reference, None)
+        };
     let comparison = match (official_reference, observed_reference) {
         (Some(reference), Some(observed)) => reference::compare(reference, &observed)?,
         (Some(reference), None) => {
@@ -117,7 +157,12 @@ fn execute(
         }
         (None, _) => ReferenceComparison::not_configured(),
     };
-    Ok((verified, observation, comparison))
+    Ok(Execution {
+        verified_artifacts: verified,
+        observation,
+        reference_comparison: comparison,
+        installed_manifest_sha256,
+    })
 }
 
 fn verify_probe_tokens(
@@ -164,18 +209,29 @@ fn resource_policy(profile: &ProfileSpec) -> ResourcePolicy {
     .with_max_activation_bytes(limits.max_activation_bytes)
 }
 
-fn dense_smoke(
+fn dense_embedder(
     spec: &CertificationSpec,
     policy: ResourcePolicy,
-    official_reference: Option<&LoadedReference>,
-) -> CertResult<(SmokeObservation, Option<ReferenceOutput>)> {
-    let fixture = &spec.smoke.fixture;
-    let embedder = TesseraDense::builder()
+    model_dir: Option<&Path>,
+) -> CertResult<TesseraDense> {
+    let mut builder = TesseraDense::builder()
         .model(&spec.model.id)
         .device(Device::Cpu)
         .batch_size(2)
-        .resource_policy(policy)
-        .build()?;
+        .resource_policy(policy);
+    if let Some(directory) = model_dir {
+        builder = builder.model_dir(directory);
+    }
+    Ok(builder.build()?)
+}
+
+fn dense_smoke(
+    spec: &CertificationSpec,
+    embedder: &TesseraDense,
+    official_reference: Option<&LoadedReference>,
+    installed: bool,
+) -> CertResult<(SmokeObservation, Option<ReferenceOutput>)> {
+    let fixture = &spec.smoke.fixture;
     let query = embedder.encode(&fixture.query)?;
     let repeated = embedder.encode(&fixture.query)?;
     let positive = embedder.encode(&fixture.positive)?;
@@ -250,7 +306,7 @@ fn dense_smoke(
             format!("norm range {:?}", min_max(&norms)),
         ));
     }
-    let observed_reference = child_reference::dense(&embedder, official_reference)?;
+    let observed_reference = child_reference::dense(embedder, official_reference, installed)?;
     Ok((
         observation(
             "dense",

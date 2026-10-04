@@ -41,6 +41,8 @@ pub(crate) struct ChildOutcome {
     pub(crate) verified_artifacts: Vec<VerifiedArtifact>,
     pub(crate) observation: Option<SmokeObservation>,
     pub(crate) reference_comparison: ReferenceComparison,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) installed_manifest_sha256: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -79,6 +81,8 @@ pub(crate) struct EvidenceRecord {
     pub(crate) verified_artifacts: Vec<VerifiedArtifact>,
     pub(crate) observation: Option<SmokeObservation>,
     pub(crate) reference_comparison: ReferenceComparison,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) installed_manifest_sha256: Option<String>,
 }
 
 pub(crate) struct RecordInput<'a> {
@@ -126,6 +130,7 @@ pub(crate) fn build_record(
         verified_artifacts: input.outcome.verified_artifacts,
         observation: input.outcome.observation,
         reference_comparison: input.outcome.reference_comparison,
+        installed_manifest_sha256: input.outcome.installed_manifest_sha256,
     })
 }
 
