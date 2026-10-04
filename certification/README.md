@@ -261,3 +261,33 @@ and 660,602,880 at 2,048. The 2k activation cap is 700,000,000 bytes. Short
 model/artifact/RSS ceilings are 700,000,000 / 700,000,000 / 1,700,000,000
 bytes; long RSS is 2,400,000,000. No 8k profile is defined at this admission
 window, and these limits are estimates, not measured evidence.
+
+## Jina code qualification owed
+
+`jina-embeddings-v2-base-code` stays catalog-only: its source defines Q/K layer
+norms and an `up_gated_layer`/`down_layer` MLP, while Candle's current Jina
+adapter loads `gated_layers`/`wo` and has no matching Q/K norms. Merely detecting
+the code variant does not supply that implementation. The adapter, references
+and all qualification remain owed; no model execution is recorded.
+
+Model pin: `jinaai/jina-embeddings-v2-base-code@516f4baf13dec4ddddda8631e019b5737c8bc250`.
+Repository code pin: `jinaai/jina-bert-v2-qk-post-norm@3baf9e3ac750e76e8edd3019170176884695fb94`.
+This differs from the English Jina v2 models' implementation repository. Use
+both `--code-repository jinaai/jina-bert-v2-qk-post-norm` and
+`--code-revision 3baf9e3ac750e76e8edd3019170176884695fb94` with the legacy
+reference entry when execution is permitted. Config/model/processor loading
+must preserve that code pin and run offline after the explicit fetch.
+
+The registry's unmeasured window is 2,048 tokens. Four short profiles and the
+one-item `long-context-2k` require two clean-head runs each. The cut reference
+must count a 3,000-token source and record `cut_at_tokens: 2048`, including
+special tokens. The pinned card uses mean pooling and explicit L2, compares
+by cosine, and shows no required query/document prefixes. Its ST module graph
+contains no Normalize module.
+
+The current one-item f32 estimator gives 660,602,880 activation bytes at
+2,048, capped at 700,000,000; at 8,192 it gives 9,890,168,832 bytes. Two
+isolated full-window runs remain owed before 8,192 may be offered. No 8k
+profile is defined while the registry admits 2,048. Model/artifact/short RSS
+ceilings are 800,000,000 / 400,000,000 / 2,000,000,000 bytes; long
+RSS is 2,700,000,000. These budgets are estimates, not measurements.

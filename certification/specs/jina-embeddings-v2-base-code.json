@@ -1,0 +1,202 @@
+{
+  "schema_version": 2,
+  "model": {
+    "id": "jina-embeddings-v2-base-code",
+    "repository": "jinaai/jina-embeddings-v2-base-code",
+    "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
+    "representation": "dense"
+  },
+  "artifacts": [
+    {
+      "path": "config.json",
+      "size_bytes": 1216,
+      "sha256": "e426aa684c7f9a95c5f020aa855faf93a24f065f5fad0c9e17b124670cabdea6"
+    },
+    {
+      "path": "tokenizer.json",
+      "size_bytes": 2561316,
+      "sha256": "b01c78a902aa4facb2f47f95449f48e2f7bbfea5d2472ee2f6ce92323c6f86e5"
+    },
+    {
+      "path": "model.safetensors",
+      "size_bytes": 321767312,
+      "sha256": "8b53bfd4ae2cd586004a6ca4a16551b630a2a1b1d655ff1ee9be1286a1781c5b"
+    }
+  ],
+  "profiles": {
+    "smoke": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 800000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
+      },
+      "official_reference": null
+    },
+    "paragraph": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 800000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
+      },
+      "official_reference": null
+    },
+    "non-ascii": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 800000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
+      },
+      "official_reference": null
+    },
+    "whitespace": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 800000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
+      },
+      "official_reference": null
+    },
+    "long-context-2k": {
+      "kind": "long_context",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "document",
+        "max_sequence_tokens": 2048,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 2048,
+        "max_batch_items": 1,
+        "max_batch_tokens": 2048,
+        "max_model_bytes": 800000000,
+        "max_input_bytes_per_sequence": 1048576,
+        "max_attention_cells": 4194304,
+        "max_job_items": 1,
+        "max_job_input_bytes": 1048576,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 700000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 3600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 800000000,
+        "max_peak_rss_bytes": 2700000000
+      },
+      "official_reference": null
+    }
+  },
+  "smoke": {
+    "fixture": {
+      "query": "What is machine learning?",
+      "positive": "Machine learning allows computers to learn patterns from data.",
+      "negative": "The recipe bakes sourdough bread in a hot oven."
+    },
+    "expected_dimension": 768,
+    "expected_vocabulary_size": null,
+    "normalized": true,
+    "minimum_score_margin": 0.01,
+    "repeat_similarity_minimum": 0.9999
+  },
+  "promotion": {
+    "minimum_successful_runs": 2,
+    "required_profiles": [
+      "smoke",
+      "paragraph",
+      "non-ascii",
+      "whitespace",
+      "long-context-2k"
+    ],
+    "require_clean_source": true,
+    "require_enforced_rss": true
+  }
+}
