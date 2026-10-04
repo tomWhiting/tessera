@@ -103,7 +103,7 @@ def matrix_values(matrix, columns):
     }
 
 
-def colbert_output(session, inputs, role, operations, torch):
+def colbert_output(session, inputs, role, operations, torch, columns):
     if role == "late_interaction_query":
         matrix = operations.query(session, *inputs)[0]
     elif role == "late_interaction_document":
@@ -112,7 +112,7 @@ def colbert_output(session, inputs, role, operations, torch):
         raise ValueError("unsupported ColBERT semantic mode")
     if matrix.dtype != torch.float32 or matrix.ndim != 2:
         raise ValueError("ColBERT output must be a float32 matrix")
-    return matrix_values(matrix.tolist(), 96)
+    return matrix_values(matrix.tolist(), columns)
 
 
 def colbert_source_version():
@@ -129,7 +129,47 @@ def colbert_source_version():
     return distribution.version
 
 
-def load_colbert(snapshot, limit, torch):
+def colbert_settings(artifact, columns, defaults, tokenizer):
+    if type(columns) is not int or columns <= 0:
+        raise ValueError("ColBERT projection dimension must be a positive integer")
+    required = {
+        "dim": columns,
+        "query_maxlen": 32,
+        "query_token_id": defaults.query_token_id,
+        "doc_token_id": defaults.doc_token_id,
+        "mask_punctuation": True,
+        "attend_to_mask_tokens": False,
+    }
+    markers = {"query_token_id", "doc_token_id"}
+    settings, recorded = {}, {}
+    vocabulary = tokenizer.get_vocab()
+    for name, value in required.items():
+        selected = artifact.get(name, value) if name in markers else artifact.get(name)
+        if type(selected) is not type(value) or selected != value:
+            raise ValueError(
+                f"pinned ColBERT artifact settings differ from its recipe: {name}"
+            )
+        settings[name] = selected
+        recorded[name] = {
+            "value": selected,
+            "source": "metadata" if name in artifact else "upstream_default",
+        }
+        if name in markers:
+            token_id = vocabulary.get(selected)
+            if (
+                type(token_id) is not int
+                or token_id < 0
+                or token_id == tokenizer.unk_token_id
+                or tokenizer.convert_tokens_to_ids(selected) != token_id
+            ):
+                raise ValueError(
+                    f"pinned ColBERT tokenizer is missing marker: {selected}"
+                )
+            recorded[name]["token_id"] = token_id
+    return settings, recorded
+
+
+def load_colbert(snapshot, limit, columns, torch):
     from colbert.infra import ColBERTConfig
     from colbert.modeling.colbert import ColBERT
     from colbert.modeling.hf_colbert import class_factory
@@ -138,28 +178,18 @@ def load_colbert(snapshot, limit, torch):
     from transformers import PreTrainedModel
 
     artifact = json.loads((snapshot / "artifact.metadata").read_text(encoding="utf-8"))
-    required = {
-        "dim": 96,
-        "query_maxlen": 32,
-        "query_token_id": "[unused0]",
-        "doc_token_id": "[unused1]",
-        "mask_punctuation": True,
-        "attend_to_mask_tokens": False,
-    }
-    if any(artifact.get(key) != value for key, value in required.items()):
-        raise ValueError("pinned ColBERT artifact settings differ from its recipe")
+    defaults = ColBERTConfig()
+    model_class = class_factory(str(snapshot))
+    tokenizer = model_class.raw_tokenizer_from_pretrained(str(snapshot))
+    settings, recorded = colbert_settings(artifact, columns, defaults, tokenizer)
     config = ColBERTConfig(
         checkpoint=str(snapshot),
         model_name=str(snapshot),
-        dim=96,
-        query_maxlen=32,
         doc_maxlen=limit,
-        mask_punctuation=True,
-        attend_to_mask_tokens=False,
         gpus=0,
         nranks=1,
+        **settings,
     )
-    model_class = class_factory(str(snapshot))
     model, loading = PreTrainedModel.from_pretrained.__func__(
         model_class,
         str(snapshot),
@@ -188,13 +218,25 @@ def load_colbert(snapshot, limit, torch):
         skiplist=skiplist,
     )
     session.mask = MethodType(ColBERT.mask, session)
-    return session, query, document_tokenizer, ColBERT
+    return session, query, document_tokenizer, ColBERT, recorded
 
 
-def document(identity, capability, tolerance, profile, probe, count, output, versions):
+def document(
+    identity,
+    capability,
+    tolerance,
+    profile,
+    probe,
+    count,
+    output,
+    versions,
+    settings=None,
+):
     producer = "pinned model card recipe on CPU, float32"
     if identity["representation"] == "multi_vector":
         producer += f"; upstream code {COLBERT_REPOSITORY}@{COLBERT_REVISION}"
+        if settings is not None:
+            producer += "; ColBERT settings " + json.dumps(settings, sort_keys=True)
     return {
         "schema_version": 1,
         "model_id": identity["id"],
@@ -223,7 +265,12 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot):
     validate_tolerance(tolerance)
 
     identity = spec["model"]
-    selected = {"splade-pp-en-v1": "sparse", "colbert-small": "multi_vector"}
+    selected = {
+        "splade-pp-en-v1": "sparse",
+        "splade-pp-en-v2": "sparse",
+        "colbert-small": "multi_vector",
+        "colbert-v2": "multi_vector",
+    }
     if selected.get(identity["id"]) != identity["representation"]:
         raise ValueError("model has no pinned retrieval recipe")
     config = json.loads((snapshot / "config.json").read_text(encoding="utf-8"))
@@ -240,6 +287,7 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot):
     tokenizer = transformers.AutoTokenizer.from_pretrained(
         str(snapshot), local_files_only=True, token=False, trust_remote_code=False
     )
+    settings = None
     if identity["representation"] == "sparse":
         count = probe_count(tokenizer, probe, limit)
         model, loading = transformers.AutoModelForMaskedLM.from_pretrained(
@@ -264,12 +312,23 @@ def make_reference(spec, capability, tolerance, profile, probe, snapshot):
             min(limit, 32) if role == "late_interaction_query" else limit,
             extra_tokens=1,
         )
-        session, query, doc, operations = load_colbert(snapshot, limit, torch)
+        columns = spec["smoke"]["expected_dimension"]
+        session, query, doc, operations, settings = load_colbert(
+            snapshot, limit, columns, torch
+        )
         inputs = (query if role == "late_interaction_query" else doc).tensorize([probe])
         with torch.inference_mode():
-            output = colbert_output(session, inputs, role, operations, torch)
+            output = colbert_output(session, inputs, role, operations, torch, columns)
     return document(
-        identity, capability, tolerance, profile, probe, count, output, versions
+        identity,
+        capability,
+        tolerance,
+        profile,
+        probe,
+        count,
+        output,
+        versions,
+        settings,
     )
 
 
