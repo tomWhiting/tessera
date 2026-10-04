@@ -39,6 +39,7 @@ pub(crate) struct ModelFileResolver {
 impl ModelFileResolver {
     /// Creates a resolver directly from immutable generated registry metadata.
     pub(crate) fn new(model: &'static ModelInfo) -> Result<Self> {
+        registry_revision(model)?;
         #[cfg(not(feature = "fetch"))]
         {
             Err(crate::error::TesseraError::FetchingNotBuiltIn {
@@ -126,14 +127,18 @@ impl ModelFileResolver {
     }
 }
 
-#[cfg(feature = "fetch")]
-fn validated_repo(model: &ModelInfo) -> Result<Repo> {
-    let pinned_revision = model.revision.ok_or_else(|| {
+fn registry_revision(model: &ModelInfo) -> Result<&str> {
+    model.revision.ok_or_else(|| {
         anyhow::anyhow!(
             "Model '{}' has no pinned HuggingFace revision and cannot load artifacts",
             model.id
         )
-    })?;
+    })
+}
+
+#[cfg(feature = "fetch")]
+fn validated_repo(model: &ModelInfo) -> Result<Repo> {
+    let pinned_revision = registry_revision(model)?;
     let repo = Repo::with_revision(
         model.huggingface_id.to_string(),
         RepoType::Model,
