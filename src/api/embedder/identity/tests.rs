@@ -68,6 +68,15 @@ fn max_tokens_never_exceeds_the_position_table() {
     }
 }
 
+#[test]
+fn identity_reports_the_longer_loaded_role_prefix() {
+    let model = get_model("bge-base-en-v1.5").unwrap();
+    let mut loaded = facts(Some(512));
+    loaded.prefix_tokens = 7;
+    let identity = ModelIdentity::new(model, loaded, None).unwrap();
+    assert_eq!(identity.prefix_tokens, 7);
+}
+
 fn fixture() -> (TempDir, Value) {
     let dir = tempfile::tempdir().unwrap();
     let artifacts: Vec<Value> = ["config.json", "tokenizer.json", "model.safetensors"]
