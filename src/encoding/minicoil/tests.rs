@@ -420,3 +420,59 @@ fn every_resolution_branch_in_order() {
         ]
     );
 }
+
+#[test]
+fn token_output_glue_matches_direct_conversion_for_every_fixture() {
+    let tables = tables();
+    for name in FIXTURES {
+        let fixture = fixture(name);
+        let vectors = fixture.token_vectors.concat();
+        let mut rows = ProjectionRows::default();
+        for (id, matrix) in &fixture.projection_rows {
+            rows.insert(id.parse().expect("numeric id"), matrix.concat());
+        }
+        let role = match fixture.role.as_str() {
+            "document" => Role::Document,
+            "question" => Role::Question,
+            other => panic!("unexpected role {other}"),
+        };
+        let borrowed = fixture
+            .tokens
+            .iter()
+            .map(String::as_str)
+            .collect::<Vec<_>>();
+        let expected = sparse_vector(
+            &borrowed,
+            &vectors,
+            role,
+            &tables,
+            &rows,
+            &MinicoilConstants::default(),
+        )
+        .expect("direct conversion");
+        let actual =
+            super::embedder::sparse_from_tokens(&fixture.tokens, &vectors, role, &tables, &rows)
+                .expect("token-output glue");
+        assert_eq!(actual, expected, "{name}");
+    }
+}
+
+#[test]
+fn token_output_glue_names_wrong_vector_count() {
+    let error = super::embedder::sparse_from_tokens(
+        &["[CLS]".to_string(), "[SEP]".to_string()],
+        &[0.0; 512],
+        Role::Question,
+        &tables(),
+        &ProjectionRows::default(),
+    )
+    .expect_err("one vector for two tokens");
+    assert!(matches!(
+        error,
+        MinicoilError::TokenVectors {
+            tokens: 2,
+            values: 512,
+            expected: 1024,
+        }
+    ));
+}
