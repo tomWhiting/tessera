@@ -282,7 +282,9 @@ window, and these limits are estimates, not measured evidence.
 
 ## Jina code qualification owed
 
-`jina-embeddings-v2-base-code` stays catalog-only: its source defines Q/K layer
+`jina-embeddings-v2-base-code` stays catalog-only. Its specification is kept at
+`certification/unbound-specs/jina-embeddings-v2-base-code.json`, outside the
+runnable bound set, because its adapter is still owed. In particular, its source defines Q/K layer
 norms and an `up_gated_layer`/`down_layer` MLP, while Candle's current Jina
 adapter loads `gated_layers`/`wo` and has no matching Q/K norms. Merely detecting
 the code variant does not supply that implementation. The adapter, references

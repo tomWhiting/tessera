@@ -1692,8 +1692,8 @@
           "organization": "Alibaba-NLP",
           "release_date": "not stated",
           "support": {
-            "tier": "catalog_only",
-            "note": "Pinned bare tensor names do not match the current Candle model namespace; adapter and certification are owed."
+            "tier": "experimental",
+            "note": "Bare and prefixed weight namespaces have a native adapter; certification against checked references is pending."
           },
           "architecture": {
             "type": "modernbert",
