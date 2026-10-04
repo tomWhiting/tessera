@@ -204,12 +204,18 @@ be added together with a registry window increase after measurement.
 
 Both Jina v2 entries currently admit 2,048 tokens. Their required long profile
 is `long-context-2k`, with a 3,000-token source cut at 2,048 including special
-tokens. Neither 2k reference nor run is recorded yet. The eight short references were produced before the registry window was
+tokens. Jina Small is certified at a 2,048-token window on commit
+`1033f04c0ea08651e2a37fad5b7933a586e87c56`: ten isolated CPU f32 runs passed,
+two for each of the five required profiles, and readiness reported ready.
+Both long runs recorded 3,000 total tokens and 2,048 used tokens and passed
+their official reference comparisons. This result does not qualify 8,192 tokens.
+
+Jina Base remains pending its 2,048-token reference and all five profiles'
+runs. The eight short references were produced before the registry window was
 lowered. Only their declared `capability.context_window_tokens` changed from
 8,192 to 2,048; texts, vectors, tolerances, provenance and the 128-token limits
-remain byte for byte. Their specifications bind the new file hashes. All
-profiles must be rerun at the new clean head to check that the vectors still
-hold; both Jina models remain uncertified at that head until those runs pass.
+remain byte for byte. Their specifications bind the new file hashes. Small's
+reruns passed at the commit above; Base's reruns remain owed.
 
 The two checked probe files were built with each specification's
 SHA-256-verified tokenizer. Rebuild them with the following commands. The helper reads the same two repository
