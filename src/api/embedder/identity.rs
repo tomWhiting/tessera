@@ -31,6 +31,8 @@ pub struct ModelIdentity {
     pub max_tokens: usize,
     /// Special tokens the tokenizer adds to one sequence.
     pub special_tokens: usize,
+    /// Token count of the longer role prefix, excluding special tokens.
+    pub prefix_tokens: usize,
     /// Whether returned vectors are L2-normalised.
     pub normalised: bool,
     /// How two vectors from this model are compared.
@@ -42,6 +44,7 @@ pub struct ModelIdentity {
 pub struct LoadedFacts {
     pub dimensions: usize,
     pub special_tokens: usize,
+    pub prefix_tokens: usize,
     pub normalised: bool,
     pub position_table: Option<usize>,
 }
@@ -69,6 +72,7 @@ impl ModelIdentity {
             dimensions: facts.dimensions,
             max_tokens,
             special_tokens: facts.special_tokens,
+            prefix_tokens: facts.prefix_tokens,
             normalised: facts.normalised,
             distance,
         })

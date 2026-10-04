@@ -17,6 +17,7 @@ fn facts(position_table: Option<usize>) -> LoadedFacts {
     LoadedFacts {
         dimensions: 768,
         special_tokens: 2,
+        prefix_tokens: 0,
         normalised: true,
         position_table,
     }
@@ -43,6 +44,7 @@ fn bge_base_identity_without_a_manifest() {
             dimensions: 768,
             max_tokens: 512,
             special_tokens: 2,
+            prefix_tokens: 0,
             normalised: true,
             distance: Distance::Cosine,
         }
