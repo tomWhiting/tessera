@@ -334,6 +334,12 @@ fn validate_probe(
             )
             .into());
         }
+        let limit = profile.resource_policy.max_sequence_tokens;
+        if used != limit {
+            return Err(format!(
+                "cut_at_tokens_profile_mismatch: cut_at_tokens={used} differs from max_sequence_tokens={limit}"
+            ).into());
+        }
         used
     } else {
         total
