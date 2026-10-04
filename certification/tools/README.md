@@ -9,6 +9,12 @@ uv run certification/tools/make_reference.py \
 The output must not exist and its parent directory must exist. The generator
 reads the model identity and capability from the selected specification profile.
 It uses the existing official reference only for its comparison tolerances.
+When that reference does not exist, all three of `--absolute-tolerance`,
+`--relative-tolerance`, and `--minimum-cosine` must be supplied explicitly.
+These arguments have no defaults. For example, append
+`--absolute-tolerance 0.001 --relative-tolerance 0.01 --minimum-cosine 0.999`
+to generate the first reference for a profile. Once a reference exists, its
+tolerances are used and the arguments do not override them.
 The three framework dependencies are pinned in the script's inline metadata.
 
 Downloads use the specification's immutable revision and stay under

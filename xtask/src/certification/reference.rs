@@ -42,6 +42,8 @@ pub(crate) struct ReferenceProvenance {
     pub(crate) framework_version: String,
     pub(crate) source_repository: String,
     pub(crate) source_revision: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) probe_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]

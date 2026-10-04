@@ -21,6 +21,51 @@ class ReferenceTests(unittest.TestCase):
         self.assertEqual(capability, source["profiles"]["smoke"]["capability"])
         self.assertEqual(tolerance["minimum_cosine"], 0.999)
 
+    def spec_without_reference(self, directory):
+        path = Path(directory) / "specs" / "model.json"
+        path.parent.mkdir()
+        source = json.loads(self.spec_path.read_text())
+        path.write_text(json.dumps(source))
+        return path
+
+    def test_missing_reference_requires_explicit_tolerances(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.spec_without_reference(directory)
+            with self.assertRaisesRegex(ValueError, "requires.*tolerance"):
+                read_inputs(path, "smoke", self.probe)
+
+    def test_missing_reference_uses_explicit_tolerances(self):
+        expected = {"absolute": 0.001, "relative": 0.01, "minimum_cosine": 0.999}
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.spec_without_reference(directory)
+            spec, capability, tolerance = read_inputs(
+                path, "smoke", self.probe, tolerance_arguments=expected
+            )
+            self.assertEqual(tolerance, expected)
+            self.assertEqual(capability["semantic_mode"], "query")
+            self.assertEqual(
+                spec["model"], json.loads(self.spec_path.read_text())["model"]
+            )
+
+    def test_missing_reference_refuses_partial_tolerances(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.spec_without_reference(directory)
+            with self.assertRaisesRegex(ValueError, "requires.*tolerance"):
+                read_inputs(
+                    path, "smoke", self.probe, tolerance_arguments={"absolute": 0.001}
+                )
+
+    def test_existing_reference_keeps_its_tolerances(self):
+        arguments = {"absolute": 0.2, "relative": 0.3, "minimum_cosine": 0.4}
+        spec, capability, tolerance = read_inputs(
+            self.spec_path, "smoke", self.probe, tolerance_arguments=arguments
+        )
+        self.assertEqual(
+            tolerance, {"absolute": 0.001, "relative": 0.01, "minimum_cosine": 0.999}
+        )
+        self.assertEqual(capability["semantic_mode"], "query")
+        self.assertEqual(spec["model"]["representation"], "dense")
+
     def test_unknown_profile_is_refused(self):
         with self.assertRaisesRegex(ValueError, "unknown profile"):
             read_inputs(self.spec_path, "missing", self.probe)

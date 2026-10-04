@@ -20,7 +20,7 @@ import sys
 import tempfile
 
 
-def read_inputs(spec_path, profile_name, probe):
+def read_inputs(spec_path, profile_name, probe, tolerance_arguments=None):
     spec = json.loads(spec_path.read_text(encoding="utf-8"))
     if profile_name not in spec["profiles"]:
         raise ValueError(f"unknown profile: {profile_name}")
@@ -45,10 +45,19 @@ def read_inputs(spec_path, profile_name, probe):
     relative = PurePosixPath(profile["official_reference"]["path"])
     if relative.is_absolute() or ".." in relative.parts:
         raise ValueError("reference path must stay within the references directory")
-    reference = json.loads(
-        (spec_path.parent.parent / "references" / relative).read_text(encoding="utf-8")
-    )
-    tolerance = reference["tolerance"]
+    reference_path = spec_path.parent.parent / "references" / relative
+    try:
+        reference_text = reference_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        required = {"absolute", "relative", "minimum_cosine"}
+        if tolerance_arguments is None or not required.issubset(tolerance_arguments):
+            raise ValueError(
+                "missing reference requires explicit tolerance arguments: "
+                "--absolute-tolerance, --relative-tolerance, --minimum-cosine"
+            ) from None
+        tolerance = {name: tolerance_arguments[name] for name in sorted(required)}
+    else:
+        tolerance = json.loads(reference_text)["tolerance"]
     for name in ("absolute", "relative", "minimum_cosine"):
         value = tolerance[name]
         if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
@@ -202,14 +211,26 @@ def main():
     parser.add_argument("profile")
     parser.add_argument("probe")
     parser.add_argument("output", type=Path)
+    parser.add_argument("--absolute-tolerance", type=float, default=argparse.SUPPRESS)
+    parser.add_argument("--relative-tolerance", type=float, default=argparse.SUPPRESS)
+    parser.add_argument("--minimum-cosine", type=float, default=argparse.SUPPRESS)
     arguments = parser.parse_args()
     try:
         if os.path.lexists(arguments.output):
             raise FileExistsError(f"output already exists: {arguments.output}")
         if not arguments.output.parent.is_dir():
             raise ValueError("output parent directory must already exist")
+        tolerance_arguments = {
+            name: vars(arguments)[argument]
+            for name, argument in (
+                ("absolute", "absolute_tolerance"),
+                ("relative", "relative_tolerance"),
+                ("minimum_cosine", "minimum_cosine"),
+            )
+            if argument in vars(arguments)
+        }
         spec, capability, tolerance = read_inputs(
-            arguments.spec, arguments.profile, arguments.probe
+            arguments.spec, arguments.profile, arguments.probe, tolerance_arguments
         )
         cache = Path(__file__).resolve().parents[2] / ".tessera" / "reference-cache"
         cache.mkdir(parents=True, exist_ok=True)

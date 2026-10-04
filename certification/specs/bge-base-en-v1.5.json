@@ -56,6 +56,105 @@
         "path": "bge-base-en-v1.5/smoke.json",
         "sha256": "b0e43b70f0548c20e5e2ac96f89d7ccff5be03fcf37eee927155b2d94f549f9c"
       }
+    },
+    "paragraph": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 512
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 600000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 500000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "bge-base-en-v1.5/paragraph.json",
+        "sha256": "f28e40a6d2b123bfaeea10d331749018db21fc64af8fe314f4809dbdae485e59"
+      }
+    },
+    "non-ascii": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 512
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 600000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 500000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "bge-base-en-v1.5/non-ascii.json",
+        "sha256": "d7684135c69b9be76694c45092010426b23604d517b2e93a3130628af3d28f7f"
+      }
+    },
+    "whitespace": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 512
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 600000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 500000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "bge-base-en-v1.5/whitespace.json",
+        "sha256": "df24ae481f657a7c99565a3c7a940ebc30143b7e2b75e65c9b2b34de045d3d7f"
+      }
     }
   },
   "smoke": {
@@ -73,7 +172,10 @@
   "promotion": {
     "minimum_successful_runs": 2,
     "required_profiles": [
-      "smoke"
+      "smoke",
+      "paragraph",
+      "non-ascii",
+      "whitespace"
     ],
     "require_clean_source": true,
     "require_enforced_rss": true
