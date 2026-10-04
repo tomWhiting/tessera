@@ -36,12 +36,18 @@ checked with the shared validator before it is written. All failures end the
 worker; no partial batch is sent. Clean EOF before a frame exits zero. Failure
 frames exit one; a failed frame write exits two.
 
-The worker is a workspace member outside the default members, and is not
-published. Its two shared crates come from haematite main without a manifest
-revision. `Cargo.lock` records the resolved revision. Resolve/fetch after the
-shared API is on main, commit the updated lock, then use `cargo fetch --locked`
-on a gate checkout before `--locked --offline` checks. Do not fetch model files
-for builds or tests. Tests generate a small installed BERT fixture locally and
-wait on child exit, with no clock-based waits.
+The worker is its own workspace, excluded from the library's, and is not
+published: its two shared crates come from the private haematite repository,
+and the library and `xtask` must resolve and build for someone without that
+access. Those crates come from haematite main without a manifest revision;
+`crates/tessera-worker/Cargo.lock` records the resolved revision. Every cargo
+command for the worker names its manifest, for example
+`cargo build --release --locked --manifest-path crates/tessera-worker/Cargo.toml`,
+and builds into `crates/tessera-worker/target` unless `CARGO_TARGET_DIR` says
+otherwise. Its profiles are kept equal to the library's. Resolve/fetch after
+the shared API is on main, commit the updated lock, then use
+`cargo fetch --locked` on a gate checkout before `--locked --offline` checks.
+Do not fetch model files for builds or tests. Tests generate a small installed
+BERT fixture locally and wait on child exit, with no clock-based waits.
 
 For the fetch command only, use `CARGO_NET_GIT_FETCH_WITH_CLI=true cargo fetch --manifest-path crates/tessera-worker/Cargo.toml`; after committing the lock, repeat with `--locked`.

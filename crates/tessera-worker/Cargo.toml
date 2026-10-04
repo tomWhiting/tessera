@@ -24,3 +24,18 @@ missing_docs = "warn"
 all = "warn"
 pedantic = "warn"
 nursery = "warn"
+
+# Its own workspace, outside the library's: resolving it needs the private
+# haematite repository, and the library must build without that access.
+[workspace]
+
+# Kept equal to the library's profiles.
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 8
+strip = "symbols"
+panic = "unwind"
+
+[profile.dev]
+opt-level = 1
