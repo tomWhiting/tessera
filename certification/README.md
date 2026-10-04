@@ -182,3 +182,132 @@ upstream model's documented inference implementation, reviewed, placed under
 `certification/references/`, hashed, and connected to exactly one capability
 profile. Fetching Tessera's pinned weights remains a separate explicit command,
 and certification children remain offline.
+
+## Full-window measurements owed
+
+`gte-modernbert-base` has an unmeasured 2,048-token certification window. Its
+required long profile will use a 3,000-token source cut to 2,048 tokens, recording
+both counts through `cut_at_tokens`. No reference or run is recorded yet. The
+upstream 8,192-token window still needs two isolated full-window runs; the
+current scratch estimator requires 9,890,168,832 activation bytes at 8,192
+tokens (one item, f32). An 8k profile must be added when the registry window is
+raised; it cannot coexist with the current 2,048-token admission limit.
+
+`snowflake-arctic-l` likewise has no reference or run for its required
+2,048-token profile. Its future 3,000-token source must record the original
+count and the 2,048-token cut. Two isolated full-window runs remain owed for
+the upstream 8,192-token window; the current scratch estimator requires
+13,186,891,776 activation bytes there (one item, f32). The 8k profile must
+be added together with a registry window increase after measurement.
+
+## Jina v2 window qualification
+
+Both Jina v2 entries currently admit 2,048 tokens. Their required long profile
+is `long-context-2k`, with a 3,000-token source cut at 2,048 including special
+tokens. Neither 2k reference nor run is recorded yet. The eight short references were produced before the registry window was
+lowered. Only their declared `capability.context_window_tokens` changed from
+8,192 to 2,048; texts, vectors, tolerances, provenance and the 128-token limits
+remain byte for byte. Their specifications bind the new file hashes. All
+profiles must be rerun at the new clean head to check that the vectors still
+hold; both Jina models remain uncertified at that head until those runs pass.
+
+The two checked probe files were built with each specification's
+SHA-256-verified tokenizer. Rebuild them with the following commands. The helper reads the same two repository
+files at its fixed source commit, preserving source bytes and word boundaries:
+
+```bash
+uv run --offline certification/tools/make_long_probe.py \
+  certification/specs/jina-embeddings-v2-small-en.json \
+  certification/probes/jina-embeddings-v2-small-en-3k.txt \
+  --minimum-tokens 3000 --maximum-tokens 3000
+uv run --offline certification/tools/make_long_probe.py \
+  certification/specs/jina-embeddings-v2-base-en.json \
+  certification/probes/jina-embeddings-v2-base-en-3k.txt \
+  --minimum-tokens 3000 --maximum-tokens 3000
+```
+
+After the checked tokenizer files are present, both reference entry points
+accept `--cut-at-tokens 2048`. Use the legacy entry for these Jina checkpoints,
+together with the existing pinned code repository/revision and explicit
+0.001 absolute, 0.01 relative and 0.999 cosine tolerances. `token_count` records
+the whole source before truncation; `cut_at_tokens` records the inference cut.
+Inputs at or below that cut are refused. Python reference RSS must remain
+below 4,000,000,000 bytes; generation and certification await the compile turn.
+
+The 2k profiles use activation ceilings rounded upward by 100 MB from the
+current f32 scratch estimator: small 500,000,000 bytes (estimate
+440,401,920), base 700,000,000 bytes (estimate 660,602,880). Model ceilings remain 200,000,000 and
+700,000,000 bytes; artifact ceilings 100,000,000 and 350,000,000 bytes. RSS
+ceilings are 1,500,000,000 and 2,200,000,000 bytes respectively. One item,
+2,048 batch tokens and 4,194,304 attention cells are admitted. These ceilings
+are limits, not measurements. The hashed pinned configs give hidden/intermediate
+sizes 512/2048 with 8 heads for small, and 768/3072 with 12 heads for base.
+
+Two isolated 8,000-token runs remain owed for each model before the upstream
+8,192-token window can be offered. The current f32 activation estimator gives
+6,593,445,888 bytes for small and 9,890,168,832 bytes for base at an
+8,192-token limit, one item. No 8k profile is defined while the registry admits
+2,048. The small model's old 8,000-token reference is retained unbound at
+`references/jina-embeddings-v2-small-en/long-context-8k.json`, originally
+committed in `b0320d59df676df122ebb54c9ca38010e56d8c1a`; it is not evidence
+for the new cut profile. The base model has no 8k reference.
+
+## Nomic native-vector qualification owed
+
+`nomic-embed-v1.5` is entered for native 768-dimensional vectors and a
+2,048-token window. No reference or run is recorded. Its four short profiles
+and one-item `long-context-2k` need official references and two clean-head runs
+apiece. The long source must exceed the limit: use a 3,000-token probe with
+`cut_at_tokens: 2048` and record both counts.
+
+The pinned card requires `search_query: ` for queries and `search_document: `
+for documents. Its sentence-transformers modules contain mean pooling and no
+Normalize module; its inference example applies L2 explicitly. The card's
+Matryoshka example applies pooled layer normalization before truncation and
+L2. Tessera does not apply that pooled layer norm, so the registry currently
+declares only native 768 dimensions. Lower upstream dimensions are unqualified.
+The card does not explicitly prescribe cosine or dot comparison. The agreed
+normalized-vector policy selects cosine for the service; that declaration is
+to be added when the identity metadata reaches this branch.
+
+Config `max_position_embeddings` is 2,048, while `n_positions` is 8,192. The
+card's extension recipe changes rotary scaling; the current pinned recipe
+and the current loader have not been measured beyond 2,048. Full-window
+qualification remains owed before an 8,192-token window can be offered. The
+current one-item f32 scratch estimator requires 9,890,168,832 bytes at 8,192,
+and 660,602,880 at 2,048. The 2k activation cap is 700,000,000 bytes. Short
+model/artifact/RSS ceilings are 700,000,000 / 700,000,000 / 1,700,000,000
+bytes; long RSS is 2,400,000,000. No 8k profile is defined at this admission
+window, and these limits are estimates, not measured evidence.
+
+## Jina code qualification owed
+
+`jina-embeddings-v2-base-code` stays catalog-only. Its specification is kept at
+`certification/unbound-specs/jina-embeddings-v2-base-code.json`, outside the
+runnable bound set, because its adapter is still owed. In particular, its source defines Q/K layer
+norms and an `up_gated_layer`/`down_layer` MLP, while Candle's current Jina
+adapter loads `gated_layers`/`wo` and has no matching Q/K norms. Merely detecting
+the code variant does not supply that implementation. The adapter, references
+and all qualification remain owed; no model execution is recorded.
+
+Model pin: `jinaai/jina-embeddings-v2-base-code@516f4baf13dec4ddddda8631e019b5737c8bc250`.
+Repository code pin: `jinaai/jina-bert-v2-qk-post-norm@3baf9e3ac750e76e8edd3019170176884695fb94`.
+This differs from the English Jina v2 models' implementation repository. Use
+both `--code-repository jinaai/jina-bert-v2-qk-post-norm` and
+`--code-revision 3baf9e3ac750e76e8edd3019170176884695fb94` with the legacy
+reference entry when execution is permitted. Config/model/processor loading
+must preserve that code pin and run offline after the explicit fetch.
+
+The registry's unmeasured window is 2,048 tokens. Four short profiles and the
+one-item `long-context-2k` require two clean-head runs each. The cut reference
+must count a 3,000-token source and record `cut_at_tokens: 2048`, including
+special tokens. The pinned card uses mean pooling and explicit L2, compares
+by cosine, and shows no required query/document prefixes. Its ST module graph
+contains no Normalize module.
+
+The current one-item f32 estimator gives 660,602,880 activation bytes at
+2,048, capped at 700,000,000; at 8,192 it gives 9,890,168,832 bytes. Two
+isolated full-window runs remain owed before 8,192 may be offered. No 8k
+profile is defined while the registry admits 2,048. Model/artifact/short RSS
+ceilings are 800,000,000 / 400,000,000 / 2,000,000,000 bytes; long
+RSS is 2,700,000,000. These budgets are estimates, not measurements.

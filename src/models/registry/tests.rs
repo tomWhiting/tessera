@@ -150,6 +150,7 @@ fn support_contract_matches_the_audited_catalog() {
         ("colpali-v1.2", SupportTier::Experimental),
         ("colpali-v1.3-hf", SupportTier::CatalogOnly),
         ("gte-modern-colbert", SupportTier::CatalogOnly),
+        ("gte-modernbert-base", SupportTier::Experimental),
         ("jina-colbert-v2", SupportTier::CatalogOnly),
         ("jina-colbert-v2-64", SupportTier::CatalogOnly),
         ("jina-colbert-v2-96", SupportTier::CatalogOnly),
@@ -158,6 +159,8 @@ fn support_contract_matches_the_audited_catalog() {
         ("jina-embeddings-v2-small-en", SupportTier::Experimental),
         ("jina-embeddings-v3", SupportTier::CatalogOnly),
         ("minicoil-v1", SupportTier::CatalogOnly),
+        ("multilingual-e5-base", SupportTier::Experimental),
+        ("multilingual-e5-large", SupportTier::Experimental),
         ("multilingual-e5-small", SupportTier::Experimental),
         ("mxbai-embed-large-v1", SupportTier::Experimental),
         ("nomic-embed-v1.5", SupportTier::Experimental),
@@ -208,6 +211,9 @@ fn runnable_models_excludes_catalog_only_entries() {
         "bge-small-en-v1.5",
         "bge-large-en-v1.5",
         "mxbai-embed-large-v1",
+        "multilingual-e5-base",
+        "multilingual-e5-large",
+        "gte-modernbert-base",
         "colbert-small",
         "colbert-v2",
         "colpali-v1.2",
@@ -289,9 +295,9 @@ fn corrected_checkpoint_metadata_is_exposed() {
     );
 
     let snowflake = get_model("snowflake-arctic-l").expect("registered Snowflake model");
-    assert_eq!(snowflake.parameters, "568M");
+    assert_eq!(snowflake.parameters, "567754752");
     assert_eq!(snowflake.architecture_type, "xlm-roberta");
-    assert_eq!(snowflake.context_length, 8192);
+    assert_eq!(snowflake.context_length, 2048);
     assert_eq!(snowflake.max_position_embeddings, 8194);
     assert_eq!(snowflake.vocab_size, 250_002);
     assert_eq!(
@@ -471,6 +477,30 @@ const DENSE_RETRIEVAL: &[(&str, &str, &str, Distance, &str, &str)] = &[
         Distance::Cosine,
         "similarities = cos_sim(query_embedding, docs_embeddings)",
         "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1/blob/b33106f585b9ce46904ad7443a3b52b7a63e231c/README.md#L2671",
+    ),
+    (
+        "multilingual-e5-base",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-base/blob/d128750597153bb5987e10b1c3493a34e5a4502a/README.md#L6821",
+    ),
+    (
+        "multilingual-e5-large",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-large/blob/3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3/README.md#L5994",
+    ),
+    (
+        "gte-modernbert-base",
+        "",
+        "",
+        Distance::Cosine,
+        "scores = (embeddings[:1] @ embeddings[1:].T) * 100",
+        "https://huggingface.co/Alibaba-NLP/gte-modernbert-base/blob/e7f32e3c00f91d699e8c43b53106206bcc72bb22/README.md#L77",
     ),
 ];
 

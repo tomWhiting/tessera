@@ -40,19 +40,104 @@
           },
           "capabilities": {
             "languages": [
-              "en", "zh", "es", "fr", "de", "ar", "hi", "ja", "ko", "ru",
-              "th", "tr", "vi", "id", "ms", "fa", "uk", "ro", "cs", "sv",
-              "da", "no", "fi", "el", "he", "bg", "hr", "sk", "sl", "et",
-              "lv", "lt", "hu", "ca", "eu", "gl", "cy", "sq", "mk", "sr",
-              "bs", "mt", "is", "ga", "af", "sw", "zu", "xh", "st", "tn",
-              "ny", "sn", "yo", "ig", "ha", "am", "ti", "om", "so", "mg",
-              "mi", "sm", "to", "fj", "haw", "ht", "qu", "gn", "ay", "tt",
-              "ug", "kk", "ky", "tg", "uz", "tk", "mn", "bo", "dz", "ne",
-              "si", "my", "km", "lo", "pl", "it", "pt", "nl"
+              "en",
+              "zh",
+              "es",
+              "fr",
+              "de",
+              "ar",
+              "hi",
+              "ja",
+              "ko",
+              "ru",
+              "th",
+              "tr",
+              "vi",
+              "id",
+              "ms",
+              "fa",
+              "uk",
+              "ro",
+              "cs",
+              "sv",
+              "da",
+              "no",
+              "fi",
+              "el",
+              "he",
+              "bg",
+              "hr",
+              "sk",
+              "sl",
+              "et",
+              "lv",
+              "lt",
+              "hu",
+              "ca",
+              "eu",
+              "gl",
+              "cy",
+              "sq",
+              "mk",
+              "sr",
+              "bs",
+              "mt",
+              "is",
+              "ga",
+              "af",
+              "sw",
+              "zu",
+              "xh",
+              "st",
+              "tn",
+              "ny",
+              "sn",
+              "yo",
+              "ig",
+              "ha",
+              "am",
+              "ti",
+              "om",
+              "so",
+              "mg",
+              "mi",
+              "sm",
+              "to",
+              "fj",
+              "haw",
+              "ht",
+              "qu",
+              "gn",
+              "ay",
+              "tt",
+              "ug",
+              "kk",
+              "ky",
+              "tg",
+              "uz",
+              "tk",
+              "mn",
+              "bo",
+              "dz",
+              "ne",
+              "si",
+              "my",
+              "km",
+              "lo",
+              "pl",
+              "it",
+              "pt",
+              "nl"
             ],
-            "modalities": ["text"],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "MIT",
           "description": "Unified XLM-RoBERTa text embedding catalog entry with 1024-dimensional multi-vector outputs and an 8192-token context."
@@ -92,10 +177,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "ColBERT text embedding model using a small BERT architecture with a 96-dimensional projection and a 512-token context."
@@ -135,10 +228,19 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8", "binary"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8",
+              "binary"
+            ]
           },
           "license": "MIT",
           "description": "ColBERT text embedding model using BERT-base with a 128-dimensional projection and a 512-token context."
@@ -180,10 +282,19 @@
             }
           },
           "capabilities": {
-            "languages": ["multilingual"],
-            "modalities": ["vision", "text"],
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "vision",
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "gemma",
           "description": "Vision-language multi-vector model using PaliGemma with 128-dimensional outputs for image and text inputs."
@@ -225,10 +336,19 @@
             }
           },
           "capabilities": {
-            "languages": ["multilingual"],
-            "modalities": ["vision", "text"],
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "vision",
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "gemma",
           "description": "Vision-language multi-vector catalog entry using PaliGemma with 128-dimensional outputs for image and text inputs."
@@ -268,10 +388,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "ColBERT text embedding catalog entry using ModernBERT with a 128-dimensional projection and an 8192-token context."
@@ -312,19 +440,104 @@
           },
           "capabilities": {
             "languages": [
-              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
-              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
-              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
-              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
-              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
-              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
-              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
-              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
-              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "nl",
+              "pl",
+              "ru",
+              "zh",
+              "ja",
+              "ko",
+              "ar",
+              "hi",
+              "th",
+              "tr",
+              "vi",
+              "id",
+              "ms",
+              "fa",
+              "uk",
+              "ro",
+              "cs",
+              "sv",
+              "da",
+              "no",
+              "fi",
+              "el",
+              "he",
+              "bg",
+              "hr",
+              "sk",
+              "sl",
+              "et",
+              "lv",
+              "lt",
+              "hu",
+              "ca",
+              "eu",
+              "gl",
+              "cy",
+              "sq",
+              "mk",
+              "sr",
+              "bs",
+              "mt",
+              "is",
+              "ga",
+              "af",
+              "sw",
+              "zu",
+              "xh",
+              "st",
+              "tn",
+              "ny",
+              "sn",
+              "yo",
+              "ig",
+              "ha",
+              "am",
+              "ti",
+              "om",
+              "so",
+              "mg",
+              "mi",
+              "sm",
+              "to",
+              "fj",
+              "haw",
+              "ht",
+              "qu",
+              "gn",
+              "ay",
+              "tt",
+              "ug",
+              "kk",
+              "ky",
+              "tg",
+              "uz",
+              "tk",
+              "mn",
+              "bo",
+              "dz",
+              "ne",
+              "si",
+              "my",
+              "km",
+              "lo"
             ],
-            "modalities": ["text"],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "CC-BY-NC-4.0",
           "description": "XLM-RoBERTa ColBERT text embedding catalog entry with a 64-dimensional projection and an 8192-token context."
@@ -365,19 +578,104 @@
           },
           "capabilities": {
             "languages": [
-              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
-              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
-              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
-              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
-              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
-              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
-              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
-              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
-              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "nl",
+              "pl",
+              "ru",
+              "zh",
+              "ja",
+              "ko",
+              "ar",
+              "hi",
+              "th",
+              "tr",
+              "vi",
+              "id",
+              "ms",
+              "fa",
+              "uk",
+              "ro",
+              "cs",
+              "sv",
+              "da",
+              "no",
+              "fi",
+              "el",
+              "he",
+              "bg",
+              "hr",
+              "sk",
+              "sl",
+              "et",
+              "lv",
+              "lt",
+              "hu",
+              "ca",
+              "eu",
+              "gl",
+              "cy",
+              "sq",
+              "mk",
+              "sr",
+              "bs",
+              "mt",
+              "is",
+              "ga",
+              "af",
+              "sw",
+              "zu",
+              "xh",
+              "st",
+              "tn",
+              "ny",
+              "sn",
+              "yo",
+              "ig",
+              "ha",
+              "am",
+              "ti",
+              "om",
+              "so",
+              "mg",
+              "mi",
+              "sm",
+              "to",
+              "fj",
+              "haw",
+              "ht",
+              "qu",
+              "gn",
+              "ay",
+              "tt",
+              "ug",
+              "kk",
+              "ky",
+              "tg",
+              "uz",
+              "tk",
+              "mn",
+              "bo",
+              "dz",
+              "ne",
+              "si",
+              "my",
+              "km",
+              "lo"
             ],
-            "modalities": ["text"],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "CC-BY-NC-4.0",
           "description": "XLM-RoBERTa ColBERT text embedding catalog entry with a 96-dimensional projection and an 8192-token context."
@@ -418,19 +716,104 @@
           },
           "capabilities": {
             "languages": [
-              "en", "de", "fr", "es", "it", "pt", "nl", "pl", "ru", "zh",
-              "ja", "ko", "ar", "hi", "th", "tr", "vi", "id", "ms", "fa",
-              "uk", "ro", "cs", "sv", "da", "no", "fi", "el", "he", "bg",
-              "hr", "sk", "sl", "et", "lv", "lt", "hu", "ca", "eu", "gl",
-              "cy", "sq", "mk", "sr", "bs", "mt", "is", "ga", "af", "sw",
-              "zu", "xh", "st", "tn", "ny", "sn", "yo", "ig", "ha", "am",
-              "ti", "om", "so", "mg", "mi", "sm", "to", "fj", "haw", "ht",
-              "qu", "gn", "ay", "tt", "ug", "kk", "ky", "tg", "uz", "tk",
-              "mn", "bo", "dz", "ne", "si", "my", "km", "lo"
+              "en",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "nl",
+              "pl",
+              "ru",
+              "zh",
+              "ja",
+              "ko",
+              "ar",
+              "hi",
+              "th",
+              "tr",
+              "vi",
+              "id",
+              "ms",
+              "fa",
+              "uk",
+              "ro",
+              "cs",
+              "sv",
+              "da",
+              "no",
+              "fi",
+              "el",
+              "he",
+              "bg",
+              "hr",
+              "sk",
+              "sl",
+              "et",
+              "lv",
+              "lt",
+              "hu",
+              "ca",
+              "eu",
+              "gl",
+              "cy",
+              "sq",
+              "mk",
+              "sr",
+              "bs",
+              "mt",
+              "is",
+              "ga",
+              "af",
+              "sw",
+              "zu",
+              "xh",
+              "st",
+              "tn",
+              "ny",
+              "sn",
+              "yo",
+              "ig",
+              "ha",
+              "am",
+              "ti",
+              "om",
+              "so",
+              "mg",
+              "mi",
+              "sm",
+              "to",
+              "fj",
+              "haw",
+              "ht",
+              "qu",
+              "gn",
+              "ay",
+              "tt",
+              "ug",
+              "kk",
+              "ky",
+              "tg",
+              "uz",
+              "tk",
+              "mn",
+              "bo",
+              "dz",
+              "ne",
+              "si",
+              "my",
+              "km",
+              "lo"
             ],
-            "modalities": ["text"],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "CC-BY-NC-4.0",
           "description": "XLM-RoBERTa ColBERT text embedding catalog entry with a 128-dimensional projection and an 8192-token context."
@@ -479,10 +862,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "MIT",
           "description": "Dense BERT-base text embedding model with CLS pooling, 768-dimensional outputs, and a 512-token context.",
@@ -522,7 +913,7 @@
             "parameters": "33M",
             "embedding_dim": 512,
             "hidden_dim": 512,
-            "context_length": 8192,
+            "context_length": 2048,
             "max_position_embeddings": 8192,
             "vocab_size": 30528
           },
@@ -535,13 +926,21 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Dense JinaBERT text embedding model with mean pooling, 512-dimensional outputs, and an 8192-token context.",
+          "description": "Dense JinaBERT text embedding model with mean pooling, 512-dimensional outputs, and a 2048-token certification window. The upstream 8192-token window is not yet measured.",
           "prompts": {
             "query": "",
             "document": ""
@@ -578,7 +977,7 @@
             "parameters": "137M",
             "embedding_dim": 768,
             "hidden_dim": 768,
-            "context_length": 8192,
+            "context_length": 2048,
             "max_position_embeddings": 8192,
             "vocab_size": 30528
           },
@@ -591,13 +990,21 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Dense JinaBERT text embedding model with mean pooling, 768-dimensional outputs, and an 8192-token context.",
+          "description": "Dense JinaBERT text embedding model with mean pooling, 768-dimensional outputs, and a 2048-token certification window. The upstream 8192-token window is not yet measured.",
           "prompts": {
             "query": "",
             "document": ""
@@ -615,13 +1022,13 @@
           "huggingface_id": "jinaai/jina-embeddings-v2-base-code",
           "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
           "organization": "Jina AI",
-          "release_date": "2023",
+          "release_date": "not stated",
           "support": {
             "tier": "catalog_only",
-            "note": "Code-specific JinaBERT checkpoint is not supported by the current dense adapter."
+            "note": "Pinned code uses Q/K norms and up_gated_layer/down_layer MLP keys absent from the current Candle Jina adapter."
           },
           "architecture": {
-            "type": "jina-bert-v2",
+            "type": "jinabert-code",
             "variant": "jina-bert-v2-base-code",
             "has_projection": false,
             "projection_dims": null
@@ -631,10 +1038,10 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "161M",
+            "parameters": "160869120",
             "embedding_dim": 768,
             "hidden_dim": 768,
-            "context_length": 8192,
+            "context_length": 2048,
             "max_position_embeddings": 8192,
             "vocab_size": 61056
           },
@@ -643,17 +1050,23 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "pytorch": "model.safetensors"
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp16"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Dense JinaBERT v2 text embedding catalog entry with mean pooling, 768-dimensional outputs, and an 8192-token context.",
+          "description": "JinaBERT code embedding catalog entry with mean pooling, normalized 768-dimensional outputs and a 2048-token certification window. The upstream 8192-token window is not yet measured; the code-specific adapter remains incomplete.",
           "prompts": {
             "query": "",
             "document": ""
@@ -693,7 +1106,15 @@
               "matryoshka": {
                 "min": 32,
                 "max": 1024,
-                "supported": [32, 64, 128, 256, 512, 768, 1024],
+                "supported": [
+                  32,
+                  64,
+                  128,
+                  256,
+                  512,
+                  768,
+                  1024
+                ],
                 "strategy": "truncate_pooled"
               }
             },
@@ -711,10 +1132,29 @@
             }
           },
           "capabilities": {
-            "languages": ["en", "zh", "de", "fr", "es", "it", "pt", "ja", "ko", "ar", "ru", "multilingual"],
-            "modalities": ["text"],
+            "languages": [
+              "en",
+              "zh",
+              "de",
+              "fr",
+              "es",
+              "it",
+              "pt",
+              "ja",
+              "ko",
+              "ar",
+              "ru",
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "Dense XLM-RoBERTa text embedding catalog entry with mean pooling, Matryoshka dimensions from 32 to 1024, and an 8192-token context.",
@@ -735,13 +1175,13 @@
           "huggingface_id": "nomic-ai/nomic-embed-text-v1.5",
           "revision": "e9b6763023c676ca8431644204f50c2b100d9aab",
           "organization": "Nomic AI",
-          "release_date": "2024",
+          "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "Nomic BERT adapter exists; remote checkpoint execution remains experimental."
+            "note": "Native 768-dimensional path is unmeasured; lower upstream dimensions require pooled layer norm absent from Tessera."
           },
           "architecture": {
-            "type": "bert",
+            "type": "nomic-bert",
             "variant": "nomic-bert",
             "has_projection": false,
             "projection_dims": null
@@ -751,19 +1191,11 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "137M",
-            "embedding_dim": {
-              "default": 768,
-              "matryoshka": {
-                "min": 64,
-                "max": 768,
-                "supported": [64, 128, 256, 512, 768],
-                "strategy": "truncate_pooled"
-              }
-            },
+            "parameters": "136731648",
+            "embedding_dim": 768,
             "hidden_dim": 768,
-            "context_length": 8192,
-            "max_position_embeddings": 8192,
+            "context_length": 2048,
+            "max_position_embeddings": 2048,
             "vocab_size": 30528
           },
           "files": {
@@ -771,17 +1203,23 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "pytorch": "model.safetensors"
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Dense BERT text embedding model with mean pooling, Matryoshka dimensions from 64 to 768, and an 8192-token context.",
+          "description": "NomicBERT text model with mean pooling and normalized native 768-dimensional outputs. The certification window is 2048 tokens; the upstream extended 8192-token window is not yet measured. Task prefixes are required.",
           "prompts": {
             "query": "search_query: ",
             "document": "search_document: "
@@ -799,10 +1237,10 @@
           "huggingface_id": "Snowflake/snowflake-arctic-embed-l-v2.0",
           "revision": "ac6544c8a46e00af67e330e85a9028c66b8cfd9a",
           "organization": "Snowflake",
-          "release_date": "2024",
+          "release_date": "not stated",
           "support": {
             "tier": "experimental",
-            "note": "XLM-R dense path exists; remote checkpoint execution remains experimental."
+            "note": "Pinned registry and certification inputs only; native and truncated vectors remain unmeasured."
           },
           "architecture": {
             "type": "xlm-roberta",
@@ -815,18 +1253,21 @@
             "normalize": true
           },
           "specs": {
-            "parameters": "568M",
+            "parameters": "567754752",
             "embedding_dim": {
               "default": 1024,
               "matryoshka": {
                 "min": 256,
                 "max": 1024,
-                "supported": [256, 512, 768, 1024],
+                "supported": [
+                  256,
+                  1024
+                ],
                 "strategy": "truncate_pooled"
               }
             },
             "hidden_dim": 1024,
-            "context_length": 8192,
+            "context_length": 2048,
             "max_position_embeddings": 8194,
             "vocab_size": 250002
           },
@@ -835,17 +1276,23 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "pytorch": "model.safetensors"
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32"
+            ]
           },
           "license": "Apache-2.0",
-          "description": "Dense XLM-RoBERTa text embedding model with CLS pooling, Matryoshka dimensions from 256 to 1024, and an 8192-token context.",
+          "description": "Multilingual XLM-RoBERTa model with CLS pooling, normalized native 1024-dimensional vectors and upstream 256-dimensional Matryoshka truncation. The certification window is 2048 tokens; the upstream 8192-token window is not yet measured.",
           "prompts": {
             "query": "query: ",
             "document": ""
@@ -895,10 +1342,18 @@
             }
           },
           "capabilities": {
-            "languages": ["multilingual"],
-            "modalities": ["text"],
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "MIT",
           "description": "Dense multilingual BERT text embedding model with mean pooling, 384-dimensional outputs, and a 512-token context; inputs carry a 'query: ' or 'passage: ' prefix written by the caller.",
@@ -951,10 +1406,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "MIT",
           "description": "Dense BERT-small text embedding model with CLS pooling, 384-dimensional outputs, and a 512-token context.",
@@ -1007,10 +1470,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "MIT",
           "description": "Dense BERT-large text embedding model with CLS pooling, 1024-dimensional outputs, and a 512-token context.",
@@ -1063,10 +1534,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "Dense BERT-large text embedding model with CLS pooling, 1024-dimensional outputs, and a 512-token context; upstream stores float16 weights.",
@@ -1078,6 +1557,192 @@
           "card_comparison": {
             "words": "similarities = cos_sim(query_embedding, docs_embeddings)",
             "url": "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1/blob/b33106f585b9ce46904ad7443a3b52b7a63e231c/README.md#L2671"
+          }
+        },
+        {
+          "id": "multilingual-e5-base",
+          "type": "dense",
+          "name": "multilingual-e5-base",
+          "huggingface_id": "intfloat/multilingual-e5-base",
+          "revision": "d128750597153bb5987e10b1c3493a34e5a4502a",
+          "organization": "intfloat",
+          "release_date": "not stated",
+          "support": {
+            "tier": "experimental",
+            "note": "Pinned registry and certification inputs only; model loading and numerical parity remain unmeasured."
+          },
+          "architecture": {
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "278044162",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 512,
+            "max_position_embeddings": 514,
+            "vocab_size": 250002
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "model.safetensors"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
+            "multi_vector": false,
+            "quantization": [
+              "fp32"
+            ]
+          },
+          "license": "MIT",
+          "description": "Multilingual XLM-RoBERTa embedding model with mean pooling, normalized 768-dimensional outputs, and a 512-token context. Query and document inputs require their respective query: and passage: prefixes.",
+          "prompts": {
+            "query": "query: ",
+            "document": "passage: "
+          },
+          "distance": "cosine",
+          "card_comparison": {
+            "words": "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+            "url": "https://huggingface.co/intfloat/multilingual-e5-base/blob/d128750597153bb5987e10b1c3493a34e5a4502a/README.md#L6821"
+          }
+        },
+        {
+          "id": "multilingual-e5-large",
+          "type": "dense",
+          "name": "multilingual-e5-large",
+          "huggingface_id": "intfloat/multilingual-e5-large",
+          "revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+          "organization": "intfloat",
+          "release_date": "not stated",
+          "support": {
+            "tier": "experimental",
+            "note": "Pinned registry and certification inputs only; model loading and numerical parity remain unmeasured."
+          },
+          "architecture": {
+            "type": "xlm-roberta",
+            "variant": "xlm-roberta-large",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "mean",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "559890946",
+            "embedding_dim": 1024,
+            "hidden_dim": 1024,
+            "context_length": 512,
+            "max_position_embeddings": 514,
+            "vocab_size": 250002
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "model.safetensors"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "multilingual"
+            ],
+            "modalities": [
+              "text"
+            ],
+            "multi_vector": false,
+            "quantization": [
+              "fp32"
+            ]
+          },
+          "license": "MIT",
+          "description": "Multilingual XLM-RoBERTa embedding model with mean pooling, normalized 1024-dimensional outputs, and a 512-token context. Query and document inputs require their respective query: and passage: prefixes.",
+          "prompts": {
+            "query": "query: ",
+            "document": "passage: "
+          },
+          "distance": "cosine",
+          "card_comparison": {
+            "words": "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+            "url": "https://huggingface.co/intfloat/multilingual-e5-large/blob/3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3/README.md#L5994"
+          }
+        },
+        {
+          "id": "gte-modernbert-base",
+          "type": "dense",
+          "name": "GTE ModernBERT Base",
+          "huggingface_id": "Alibaba-NLP/gte-modernbert-base",
+          "revision": "e7f32e3c00f91d699e8c43b53106206bcc72bb22",
+          "organization": "Alibaba-NLP",
+          "release_date": "not stated",
+          "support": {
+            "tier": "experimental",
+            "note": "Bare and prefixed weight namespaces have a native adapter; certification against checked references is pending."
+          },
+          "architecture": {
+            "type": "modernbert",
+            "variant": "modernbert-base",
+            "has_projection": false,
+            "projection_dims": null
+          },
+          "pooling": {
+            "strategy": "cls",
+            "normalize": true
+          },
+          "specs": {
+            "parameters": "149014272",
+            "embedding_dim": 768,
+            "hidden_dim": 768,
+            "context_length": 2048,
+            "max_position_embeddings": 8192,
+            "vocab_size": 50368
+          },
+          "files": {
+            "tokenizer": "tokenizer.json",
+            "config": "config.json",
+            "weights": {
+              "safetensors": "model.safetensors",
+              "pytorch": "model.safetensors"
+            }
+          },
+          "capabilities": {
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
+            "multi_vector": false,
+            "quantization": [
+              "fp16"
+            ]
+          },
+          "license": "Apache-2.0",
+          "description": "ModernBERT model with CLS pooling and optional L2 normalization selected for cosine comparison. The certification window is 2048 tokens; the upstream 8192-token window is not yet measured.",
+          "prompts": {
+            "query": "",
+            "document": ""
+          },
+          "distance": "cosine",
+          "card_comparison": {
+            "words": "scores = (embeddings[:1] @ embeddings[1:].T) * 100",
+            "url": "https://huggingface.co/Alibaba-NLP/gte-modernbert-base/blob/e7f32e3c00f91d699e8c43b53106206bcc72bb22/README.md#L77"
           }
         }
       ]
@@ -1120,10 +1785,18 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "Sparse BERT-family text embedding catalog entry with 4-dimensional outputs and a 512-token context."
@@ -1163,10 +1836,17 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16"]
+            "quantization": [
+              "fp32",
+              "fp16"
+            ]
           },
           "license": "CC-BY-NC-SA-4.0",
           "description": "Sparse BERT-family text embedding catalog entry with 30522-dimensional outputs and a 512-token context."
@@ -1207,8 +1887,12 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
             "quantization": []
           },
@@ -1251,8 +1935,12 @@
             }
           },
           "capabilities": {
-            "languages": ["en"],
-            "modalities": ["text"],
+            "languages": [
+              "en"
+            ],
+            "modalities": [
+              "text"
+            ],
             "multi_vector": false,
             "quantization": []
           },
@@ -1307,10 +1995,16 @@
           },
           "capabilities": {
             "languages": [],
-            "modalities": ["timeseries"],
+            "modalities": [
+              "timeseries"
+            ],
             "multi_vector": false,
             "probabilistic": true,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "Time-series catalog entry using a T5 encoder-decoder architecture with 512-dimensional outputs and a context length of 2048."
@@ -1351,9 +2045,15 @@
           },
           "capabilities": {
             "languages": [],
-            "modalities": ["timeseries"],
+            "modalities": [
+              "timeseries"
+            ],
             "multi_vector": false,
-            "quantization": ["fp32", "fp16", "int8"]
+            "quantization": [
+              "fp32",
+              "fp16",
+              "int8"
+            ]
           },
           "license": "Apache-2.0",
           "description": "Time-series catalog entry using a patched decoder-transformer architecture with 1280-dimensional outputs and a context length of 512."

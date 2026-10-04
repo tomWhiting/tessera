@@ -1,26 +1,26 @@
 {
   "schema_version": 2,
   "model": {
-    "id": "jina-embeddings-v2-base-en",
-    "repository": "jinaai/jina-embeddings-v2-base-en",
-    "revision": "322d4d7e2f35e84137961a65af894fda0385eb7a",
+    "id": "jina-embeddings-v2-base-code",
+    "repository": "jinaai/jina-embeddings-v2-base-code",
+    "revision": "516f4baf13dec4ddddda8631e019b5737c8bc250",
     "representation": "dense"
   },
   "artifacts": [
     {
       "path": "config.json",
-      "size_bytes": 1176,
-      "sha256": "93d07cb65c3fc338e2f67f6a039f4c0857de9f8f7b377a6a60afc53532722d4e"
+      "size_bytes": 1216,
+      "sha256": "e426aa684c7f9a95c5f020aa855faf93a24f065f5fad0c9e17b124670cabdea6"
     },
     {
       "path": "tokenizer.json",
-      "size_bytes": 711577,
-      "sha256": "65253d92409e63bf4cf61361085cd4657c735713aa239002d496d8413a6ed5dc"
+      "size_bytes": 2561316,
+      "sha256": "b01c78a902aa4facb2f47f95449f48e2f7bbfea5d2472ee2f6ce92323c6f86e5"
     },
     {
       "path": "model.safetensors",
-      "size_bytes": 274757256,
-      "sha256": "6b70f1386f05b9703ea4edf7f1550a8925399f9580e4cc754cc099efc1e736d8"
+      "size_bytes": 321767312,
+      "sha256": "8b53bfd4ae2cd586004a6ca4a16551b630a2a1b1d655ff1ee9be1286a1781c5b"
     }
   ],
   "profiles": {
@@ -37,25 +37,22 @@
         "max_sequence_tokens": 128,
         "max_batch_items": 2,
         "max_batch_tokens": 256,
-        "max_model_bytes": 700000000,
+        "max_model_bytes": 800000000,
         "max_input_bytes_per_sequence": 65536,
         "max_attention_cells": 32768,
         "max_job_items": 2,
         "max_job_input_bytes": 131072,
         "max_output_bytes": 16777216,
-        "max_activation_bytes": 1200000000
+        "max_activation_bytes": 1000000000
       },
       "process": {
         "cpu_threads": 2,
-        "timeout_seconds": 900,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 2200000000
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/smoke.json",
-        "sha256": "75b2b8068f4c002d300e9eb812e32d426e31e1769619b17629dee1f66ae971dc"
-      }
+      "official_reference": null
     },
     "paragraph": {
       "kind": "smoke",
@@ -70,25 +67,22 @@
         "max_sequence_tokens": 128,
         "max_batch_items": 2,
         "max_batch_tokens": 256,
-        "max_model_bytes": 700000000,
+        "max_model_bytes": 800000000,
         "max_input_bytes_per_sequence": 65536,
         "max_attention_cells": 32768,
         "max_job_items": 2,
         "max_job_input_bytes": 131072,
         "max_output_bytes": 16777216,
-        "max_activation_bytes": 1200000000
+        "max_activation_bytes": 1000000000
       },
       "process": {
         "cpu_threads": 2,
-        "timeout_seconds": 900,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 2200000000
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/paragraph.json",
-        "sha256": "4d989a4508672a2a7ce00c7f6ced75a026ac1d9bd16a675d330984773248ea19"
-      }
+      "official_reference": null
     },
     "non-ascii": {
       "kind": "smoke",
@@ -103,25 +97,22 @@
         "max_sequence_tokens": 128,
         "max_batch_items": 2,
         "max_batch_tokens": 256,
-        "max_model_bytes": 700000000,
+        "max_model_bytes": 800000000,
         "max_input_bytes_per_sequence": 65536,
         "max_attention_cells": 32768,
         "max_job_items": 2,
         "max_job_input_bytes": 131072,
         "max_output_bytes": 16777216,
-        "max_activation_bytes": 1200000000
+        "max_activation_bytes": 1000000000
       },
       "process": {
         "cpu_threads": 2,
-        "timeout_seconds": 900,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 2200000000
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/non-ascii.json",
-        "sha256": "505163c227697753ce3b26ba4ece7c969c8abbecc5d5dc5da9ee6ae21a630719"
-      }
+      "official_reference": null
     },
     "whitespace": {
       "kind": "smoke",
@@ -136,25 +127,22 @@
         "max_sequence_tokens": 128,
         "max_batch_items": 2,
         "max_batch_tokens": 256,
-        "max_model_bytes": 700000000,
+        "max_model_bytes": 800000000,
         "max_input_bytes_per_sequence": 65536,
         "max_attention_cells": 32768,
         "max_job_items": 2,
         "max_job_input_bytes": 131072,
         "max_output_bytes": 16777216,
-        "max_activation_bytes": 1200000000
+        "max_activation_bytes": 1000000000
       },
       "process": {
         "cpu_threads": 2,
-        "timeout_seconds": 900,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 2200000000
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 2000000000
       },
-      "official_reference": {
-        "path": "jina-embeddings-v2-base-en/whitespace.json",
-        "sha256": "414ffffc0154e2c4eea73daaaf4dc7abd4157b0b03ff8c79cc2d8462f4ab0da8"
-      }
+      "official_reference": null
     },
     "long-context-2k": {
       "kind": "long_context",
@@ -169,7 +157,7 @@
         "max_sequence_tokens": 2048,
         "max_batch_items": 1,
         "max_batch_tokens": 2048,
-        "max_model_bytes": 700000000,
+        "max_model_bytes": 800000000,
         "max_input_bytes_per_sequence": 1048576,
         "max_attention_cells": 4194304,
         "max_job_items": 1,
@@ -179,10 +167,10 @@
       },
       "process": {
         "cpu_threads": 2,
-        "timeout_seconds": 7200,
-        "max_artifact_bytes": 350000000,
-        "min_free_disk_bytes": 1200000000,
-        "max_peak_rss_bytes": 2200000000
+        "timeout_seconds": 3600,
+        "max_artifact_bytes": 400000000,
+        "min_free_disk_bytes": 800000000,
+        "max_peak_rss_bytes": 2700000000
       },
       "official_reference": null
     }
