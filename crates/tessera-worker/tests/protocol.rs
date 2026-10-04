@@ -397,3 +397,49 @@ fn nonfinite_model_output_is_named_and_ends_without_vectors() {
         [Message::Ready(_), Message::Failed(_)]
     ));
 }
+
+#[test]
+fn ready_names_the_source_commit_and_compute_build() {
+    let model = fixture::installed();
+    let output = execute(&frames(&[Message::Start(start(model.path(), limits()))]));
+    assert!(output.status.success(), "{:?}", output.stderr);
+    let decoded = messages(&output);
+    let [Message::Ready(ready)] = decoded.as_slice() else {
+        panic!("expected Ready, got {decoded:?}")
+    };
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let head = Command::new("git")
+        .current_dir(&root)
+        .args(["rev-parse", "--verify", "HEAD"])
+        .output()
+        .unwrap();
+    assert!(head.status.success(), "{:?}", head.stderr);
+    let head = String::from_utf8(head.stdout).unwrap();
+    let head = head.trim();
+    let status = Command::new("git")
+        .current_dir(&root)
+        .args(["status", "--porcelain=v1", "--untracked-files=normal"])
+        .output()
+        .unwrap();
+    assert!(status.status.success(), "{:?}", status.stderr);
+    let changes = if status.stdout.is_empty() {
+        ""
+    } else {
+        "+changes"
+    };
+    let commit = format!("{}{changes}", &head[..12]);
+    assert_eq!(env!("TESSERA_SOURCE_COMMIT"), commit);
+    let compute = if cfg!(feature = "accelerate") {
+        "accelerate"
+    } else {
+        "plain"
+    };
+    assert_eq!(
+        ready.worker,
+        format!(
+            "tessera-worker {} commit {commit} {compute}",
+            env!("CARGO_PKG_VERSION")
+        )
+    );
+    haem_frames::embedding::check_ready(ready).unwrap();
+}
