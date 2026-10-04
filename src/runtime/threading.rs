@@ -36,6 +36,14 @@ pub enum CpuThreadConfigError {
     /// The requested default ceiling was zero.
     #[error("CPU thread ceiling must be greater than zero")]
     ZeroThreadCeiling,
+    /// A resolved CPU pool thread count was zero.
+    #[error("Resolved CPU thread count for {name} must be greater than zero, got {value}")]
+    InvalidResolvedThreadCount {
+        /// CPU pool environment variable name.
+        name: &'static str,
+        /// Resolved count rejected before configuring the pool.
+        value: usize,
+    },
     /// A pre-existing environment override was not a positive integer.
     #[error("Environment variable {name} must be a positive integer, got '{value}'")]
     InvalidEnvironmentOverride {
@@ -79,14 +87,20 @@ fn initialize_cpu_threads(
     let candle_override =
         read_override("CANDLE_NUM_THREADS")?.map(|threads| cap_threads(threads, max_threads));
     let available = std::thread::available_parallelism().unwrap_or(NonZeroUsize::MIN);
-    let default_threads =
-        NonZeroUsize::new(available.get().min(max_threads.get())).unwrap_or(NonZeroUsize::MIN);
-    let shared_threads = rayon_override
-        .or(candle_override)
-        .unwrap_or(default_threads);
+    let default_threads = available.get().min(max_threads.get());
+    let shared_threads = match (rayon_override, candle_override) {
+        (Some(threads), _) | (None, Some(threads)) => threads,
+        (None, None) => default_threads,
+    };
 
-    let rayon_threads = rayon_override.unwrap_or(shared_threads);
-    let candle_threads = candle_override.unwrap_or(shared_threads);
+    let rayon_threads = resolve_threads(
+        rayon_override.unwrap_or(shared_threads),
+        "RAYON_NUM_THREADS",
+    )?;
+    let candle_threads = resolve_threads(
+        candle_override.unwrap_or(shared_threads),
+        "CANDLE_NUM_THREADS",
+    )?;
     std::env::set_var("RAYON_NUM_THREADS", rayon_threads.to_string());
     std::env::set_var("CANDLE_NUM_THREADS", candle_threads.to_string());
 
@@ -96,16 +110,20 @@ fn initialize_cpu_threads(
     })
 }
 
-fn cap_threads(threads: NonZeroUsize, ceiling: NonZeroUsize) -> NonZeroUsize {
-    NonZeroUsize::new(threads.get().min(ceiling.get())).unwrap_or(NonZeroUsize::MIN)
+fn cap_threads(threads: usize, ceiling: NonZeroUsize) -> usize {
+    threads.min(ceiling.get())
 }
 
-fn read_override(name: &'static str) -> Result<Option<NonZeroUsize>, CpuThreadConfigError> {
+fn resolve_threads(value: usize, name: &'static str) -> Result<NonZeroUsize, CpuThreadConfigError> {
+    NonZeroUsize::new(value).ok_or(CpuThreadConfigError::InvalidResolvedThreadCount { name, value })
+}
+
+fn read_override(name: &'static str) -> Result<Option<usize>, CpuThreadConfigError> {
     let Some(value) = std::env::var_os(name) else {
         return Ok(None);
     };
     let value = value.to_string_lossy().into_owned();
-    let parsed = value.parse::<usize>().ok().and_then(NonZeroUsize::new);
+    let parsed = value.parse::<usize>().ok().filter(|threads| *threads > 0);
     parsed
         .map(Some)
         .ok_or(CpuThreadConfigError::InvalidEnvironmentOverride { name, value })
