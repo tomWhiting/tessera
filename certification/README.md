@@ -233,3 +233,31 @@ Two isolated 8,000-token runs remain owed for each model before the upstream
 `references/jina-embeddings-v2-small-en/long-context-8k.json`, originally
 committed in `b0320d59df676df122ebb54c9ca38010e56d8c1a`; it is not evidence
 for the new cut profile. The base model has no 8k reference.
+
+## Nomic native-vector qualification owed
+
+`nomic-embed-v1.5` is entered for native 768-dimensional vectors and a
+2,048-token window. No reference or run is recorded. Its four short profiles
+and one-item `long-context-2k` need official references and two clean-head runs
+apiece. The long source must exceed the limit: use a 3,000-token probe with
+`cut_at_tokens: 2048` and record both counts.
+
+The pinned card requires `search_query: ` for queries and `search_document: `
+for documents. Its sentence-transformers modules contain mean pooling and no
+Normalize module; its inference example applies L2 explicitly. The card's
+Matryoshka example applies pooled layer normalization before truncation and
+L2. Tessera does not apply that pooled layer norm, so the registry currently
+declares only native 768 dimensions. Lower upstream dimensions are unqualified.
+The card does not explicitly prescribe cosine or dot comparison. The agreed
+normalized-vector policy selects cosine for the service; that declaration is
+to be added when the identity metadata reaches this branch.
+
+Config `max_position_embeddings` is 2,048, while `n_positions` is 8,192. The
+card's extension recipe changes rotary scaling; the current pinned recipe
+and the current loader have not been measured beyond 2,048. Full-window
+qualification remains owed before an 8,192-token window can be offered. The
+current one-item f32 scratch estimator requires 9,890,168,832 bytes at 8,192,
+and 660,602,880 at 2,048. The 2k activation cap is 700,000,000 bytes. Short
+model/artifact/RSS ceilings are 700,000,000 / 700,000,000 / 1,700,000,000
+bytes; long RSS is 2,400,000,000. No 8k profile is defined at this admission
+window, and these limits are estimates, not measured evidence.
