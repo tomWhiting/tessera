@@ -60,3 +60,24 @@ fn model_configuration_limits_keep_the_limits_code() {
     let failed = failure::Failure::model_load(&error, Path::new("/installed")).into_message();
     assert_eq!(failed.code, FailedCode::EmbedLimits);
 }
+
+#[test]
+fn overlength_messages_keep_json_whole_through_the_failure_frame_bound() {
+    let ids = ["x".repeat(512), "y".repeat(512), "z".repeat(512)];
+    let items: Vec<(&str, usize, usize)> = ids.iter().map(|id| (id.as_str(), 26, 16)).collect();
+    let failed = failure::Failure::overlength(&items).into_message();
+    assert_eq!(failed.code, FailedCode::EmbedLimits);
+    assert!(failed.message.chars().count() <= haem_frames::embedding::FAILED_MESSAGE_CHARS);
+    let object: serde_json::Value = serde_json::from_str(
+        failed
+            .message
+            .strip_prefix("text_longer_than_model ")
+            .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        object["items"],
+        serde_json::json!([{"id":ids[0], "tokens_total":26, "tokens_limit":16}])
+    );
+    assert_eq!(object["omitted"], 2);
+}

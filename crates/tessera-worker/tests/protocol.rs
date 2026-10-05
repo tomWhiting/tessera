@@ -12,6 +12,9 @@ use haem_frames::embedding::{
 #[path = "support/fixture.rs"]
 mod fixture;
 
+#[path = "protocol/never_cut.rs"]
+mod never_cut;
+
 const fn limits() -> Limits {
     Limits {
         memory_bytes: 1 << 30,
@@ -197,9 +200,10 @@ fn mixed_documents() -> Embed {
 }
 
 #[test]
-fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
+fn installed_worker_reports_identity_roles_and_ordered_refusals() {
     let model = fixture::installed();
-    let batch = mixed_documents();
+    let mut batch = mixed_documents();
+    batch.items.remove(1);
     let query = Embed {
         kind: Kind::Query,
         items: vec![Input {
@@ -229,10 +233,10 @@ fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
     let Message::Vectors(vectors) = &decoded[1] else {
         panic!("missing Vectors")
     };
-    assert_eq!(vectors.items.len(), 4);
+    assert_eq!(vectors.items.len(), 3);
     assert_eq!(
         vectors.items.iter().map(Outcome::id).collect::<Vec<_>>(),
-        ["first", "cut", "empty", "bytes"]
+        ["first", "empty", "bytes"]
     );
     let Outcome::Vector {
         vector,
@@ -245,16 +249,15 @@ fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
     };
     assert_eq!((*tokens_read, *tokens_total), (5, 5));
     assert_eq!(decode_vector(vector).unwrap().len(), 768);
-    assert!(matches!(vectors.items[1], Outcome::Refused { .. }));
     assert!(matches!(
-        vectors.items[2],
+        vectors.items[1],
         Outcome::Refused {
             code: ItemCode::EmbedInputEmpty,
             ..
         }
     ));
     assert!(matches!(
-        vectors.items[3],
+        vectors.items[2],
         Outcome::Refused {
             code: ItemCode::EmbedInputTooLarge,
             ..

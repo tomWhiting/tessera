@@ -102,9 +102,20 @@ fn weights(bias: f32) -> Vec<u8> {
 }
 
 pub fn installed_with_bias(bias: f32) -> TempDir {
+    installed_with_tokenizer(bias, tokenizer())
+}
+
+pub fn installed_without_content_tokens() -> TempDir {
+    let mut tokenizer: Value = serde_json::from_slice(&tokenizer()).unwrap();
+    tokenizer["normalizer"] = json!({
+        "type": "Replace", "pattern": {"String": "\u{200b}"}, "content": ""
+    });
+    installed_with_tokenizer(1.0, serde_json::to_vec(&tokenizer).unwrap())
+}
+
+fn installed_with_tokenizer(bias: f32, tokenizer: Vec<u8>) -> TempDir {
     let dir = tempfile::tempdir().unwrap();
     let config = configuration();
-    let tokenizer = tokenizer();
     let weights = weights(bias);
     let mut artifacts = Vec::<Value>::new();
     for (name, bytes) in [
