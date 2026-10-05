@@ -46,8 +46,9 @@ impl MinicoilEmbedder {
             model_id == "minicoil-v1",
             "Unknown miniCOIL model {model_id}"
         );
-        let assets = Assets::registry()?;
         let model = registry::get_model(model_id).context("Unknown miniCOIL registry model")?;
+        crate::api::builder::ensure_runnable_model(model)?;
+        let assets = Assets::registry()?;
         let encoder_model =
             registry::get_model(&assets.encoder_model).context("Unknown miniCOIL encoder model")?;
         anyhow::ensure!(

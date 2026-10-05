@@ -57,6 +57,16 @@ pub enum MinicoilError {
         /// Bytes present after the header.
         actual: u64,
     },
+    /// A projection row has the wrong number of values.
+    #[error("projection row {vocab_id} has {values} values; expected {expected}")]
+    ProjectionRowValues {
+        /// The vocabulary id.
+        vocab_id: u32,
+        /// Number of values given.
+        values: usize,
+        /// Number of values expected.
+        expected: usize,
+    },
     /// A vocabulary id has no projection row.
     #[error("vocabulary id {vocab_id} has no projection row")]
     MissingRow {

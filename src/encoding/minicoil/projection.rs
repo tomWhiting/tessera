@@ -27,16 +27,19 @@ pub struct ProjectionRows {
 impl ProjectionRows {
     /// Adds the 2048 values of one vocabulary id's matrix.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `values` does not hold exactly 512 × 4 values.
-    pub fn insert(&mut self, vocab_id: u32, values: Vec<f32>) {
-        assert_eq!(
-            values.len(),
-            ROW_VALUES,
-            "a projection row holds 512 x 4 values"
-        );
+    /// Returns a named error if the row does not hold exactly 512 × 4 values.
+    pub fn insert(&mut self, vocab_id: u32, values: Vec<f32>) -> Result<(), MinicoilError> {
+        if values.len() != ROW_VALUES {
+            return Err(MinicoilError::ProjectionRowValues {
+                vocab_id,
+                values: values.len(),
+                expected: ROW_VALUES,
+            });
+        }
         self.rows.insert(vocab_id, values);
+        Ok(())
     }
 
     /// The matrix for `vocab_id`, if present.
@@ -157,7 +160,7 @@ impl ProjectionFile {
                 .chunks_exact(4)
                 .map(|value| f32::from_le_bytes([value[0], value[1], value[2], value[3]]))
                 .collect();
-            rows.insert(vocab_id, values);
+            rows.insert(vocab_id, values)?;
         }
         Ok(rows)
     }

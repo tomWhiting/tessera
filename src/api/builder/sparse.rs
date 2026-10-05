@@ -139,18 +139,18 @@ impl TesseraSparseBuilder {
             )
         })?;
 
-        if model_id == "minicoil-v1" {
-            return Err(TesseraError::ConfigError(
-                "miniCOIL returns signed u32 term indices; use MinicoilEmbedder".to_string(),
-            ));
-        }
-
         // Look up model in registry
         let model_info =
             registry::get_model(&model_id).ok_or_else(|| TesseraError::ModelNotFound {
                 model_id: model_id.clone(),
             })?;
         ensure_runnable_model(model_info)?;
+
+        if model_id == "minicoil-v1" {
+            return Err(TesseraError::ConfigError(
+                "miniCOIL returns signed u32 term indices; use MinicoilEmbedder".to_string(),
+            ));
+        }
 
         // Validate model type is Sparse
         if model_info.model_type != registry::ModelType::Sparse {

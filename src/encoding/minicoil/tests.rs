@@ -153,7 +153,8 @@ fn sparse_vectors_match_every_fixture() {
         let vectors = fixture.token_vectors.concat();
         let mut rows = ProjectionRows::default();
         for (id, matrix) in &fixture.projection_rows {
-            rows.insert(id.parse().expect("numeric id"), matrix.concat());
+            rows.insert(id.parse().expect("numeric id"), matrix.concat())
+                .expect("projection row");
         }
         let role = match fixture.role.as_str() {
             "document" => Role::Document,
@@ -429,7 +430,8 @@ fn token_output_glue_matches_direct_conversion_for_every_fixture() {
         let vectors = fixture.token_vectors.concat();
         let mut rows = ProjectionRows::default();
         for (id, matrix) in &fixture.projection_rows {
-            rows.insert(id.parse().expect("numeric id"), matrix.concat());
+            rows.insert(id.parse().expect("numeric id"), matrix.concat())
+                .expect("projection row");
         }
         let role = match fixture.role.as_str() {
             "document" => Role::Document,
@@ -512,4 +514,21 @@ fn direct_minicoil_construction_refuses_catalog_before_files() {
         Some(crate::error::TesseraError::ConfigError(message))
             if message.contains("minicoil-v1") && message.contains("catalog-only")
     ));
+}
+
+#[test]
+fn invalid_projection_row_names_width_and_preserves_existing_row() {
+    let mut rows = ProjectionRows::default();
+    rows.insert(17, vec![1.0; 2048]).expect("valid row");
+    let error = rows.insert(17, vec![0.0; 2047]).expect_err("invalid width");
+    assert!(matches!(
+        error,
+        MinicoilError::ProjectionRowValues {
+            vocab_id: 17,
+            values: 2047,
+            expected: 2048
+        }
+    ));
+    assert_eq!(rows.get(17), Some(vec![1.0; 2048].as_slice()));
+    assert!(rows.get(18).is_none());
 }
