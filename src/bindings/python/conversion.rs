@@ -27,16 +27,41 @@ fn exception_kind(err: &TesseraError) -> ExceptionKind {
         TesseraError::FetchingNotBuiltIn { .. }
         | TesseraError::ModelNotFound { .. }
         | TesseraError::ModelLoadError { .. }
-        | TesseraError::EncodingError { .. }
         | TesseraError::DeviceError(_)
         | TesseraError::TokenizationError(_)
-        | TesseraError::TensorError(_)
-        | TesseraError::Other(_) => ExceptionKind::Runtime,
+        | TesseraError::TensorError(_) => ExceptionKind::Runtime,
+        TesseraError::EncodingError { source, .. } | TesseraError::Other(source) => {
+            if source.downcast_ref::<crate::EmbeddingRefusal>().is_some() {
+                ExceptionKind::Value
+            } else {
+                ExceptionKind::Runtime
+            }
+        }
     }
 }
 
 fn exception_message(err: &TesseraError) -> String {
-    err.to_string()
+    match err {
+        TesseraError::ModelLoadError { model_id, source } => {
+            format!("Failed to load model '{model_id}': {source:#}")
+        }
+        TesseraError::EncodingError { context, source } => {
+            format!("Encoding failed: {context}: {source:#}")
+        }
+        TesseraError::Other(source) => format!("{source:#}"),
+        TesseraError::UnsupportedWeightsFormat { .. }
+        | TesseraError::FetchingNotBuiltIn { .. }
+        | TesseraError::ModelNotFound { .. }
+        | TesseraError::UnsupportedDimension { .. }
+        | TesseraError::DeviceError(_)
+        | TesseraError::QuantizationError(_)
+        | TesseraError::DimensionMismatch { .. }
+        | TesseraError::TokenizationError(_)
+        | TesseraError::ConfigError(_)
+        | TesseraError::MatryoshkaError(_)
+        | TesseraError::IoError(_)
+        | TesseraError::TensorError(_) => err.to_string(),
+    }
 }
 
 pub(super) fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
@@ -62,10 +87,12 @@ pub(super) fn dense_embedding_to_pyarray(
     embedding.into_values().into_pyarray_bound(py).unbind()
 }
 
+type SparseArrays = (Py<PyArray1<i32>>, Py<PyArray1<f32>>);
+
 pub(super) fn sparse_embedding_to_pyarrays(
     py: Python<'_>,
     embedding: &SparseEmbedding,
-) -> PyResult<(Py<PyArray1<i32>>, Py<PyArray1<f32>>)> {
+) -> PyResult<SparseArrays> {
     let indices = embedding
         .entries()
         .iter()
