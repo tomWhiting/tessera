@@ -79,7 +79,10 @@ fn long_ids_leave_whole_ordered_items_and_an_omitted_count() {
 
 #[test]
 fn a_nonempty_text_with_no_content_tokens_refuses_the_embed() {
-    let model = fixture::installed_without_content_tokens();
+    let model = fixture::installed_with_normalizer(
+        1.0,
+        Some(json!({"type": "Replace", "pattern": {"String": "\u{200b}"}, "content": ""})),
+    );
     let output = execute(&frames(&[
         Message::Start(start(model.path(), limits())),
         Message::Embed(Embed {
