@@ -164,3 +164,35 @@ fn all_plans_and_output_budgets_are_checked_before_forwarding() {
     );
     assert!(result.is_err());
 }
+
+#[test]
+fn zero_token_middle_item_is_refused_without_losing_its_neighbors() {
+    let policy = ResourcePolicy::new(4, 2, 64, usize::MAX);
+    let tokenizer = crate::core::tokenizer::tests::drop_controls_tokenizer(policy);
+    let mut forwarded = Vec::new();
+    let outcomes = encode_windows_batch_with(
+        &["one", "\u{0}", "two"],
+        policy,
+        1,
+        2,
+        |text| tokenizer.encode_spanned_windows("", text, ContextWindowConfig::new(4, 1)),
+        |windows| {
+            windows
+                .iter()
+                .map(|input| {
+                    forwarded.push(input.window.token_ids[1]);
+                    CountedDenseEmbedding::new(ndarray::array![1.0], input.window.token_ids.len())
+                })
+                .collect()
+        },
+    )
+    .unwrap();
+    assert_eq!(forwarded, [2, 3]);
+    assert_eq!(outcomes.len(), 3);
+    assert!(matches!(outcomes[0], WindowEmbeddingOutcome::Embedded(_)));
+    let WindowEmbeddingOutcome::Refused(refusal) = outcomes[1] else {
+        panic!("Zero-token text was not refused");
+    };
+    assert_eq!(refusal.code(), "embed_input_no_content_tokens");
+    assert!(matches!(outcomes[2], WindowEmbeddingOutcome::Embedded(_)));
+}

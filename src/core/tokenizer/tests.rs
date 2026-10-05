@@ -442,11 +442,11 @@ mod metaspace_whitespace {
     const ONE: u32 = 2;
     const TWO: u32 = 3;
 
-    fn metaspace() -> PreTokenizerWrapper {
+    pub(super) fn metaspace() -> PreTokenizerWrapper {
         PreTokenizerWrapper::Metaspace(Metaspace::new('▁', PrependScheme::Always, true))
     }
 
-    fn unigram(pre_tokenizer: PreTokenizerWrapper) -> HfTokenizer {
+    pub(super) fn unigram(pre_tokenizer: PreTokenizerWrapper) -> HfTokenizer {
         let vocabulary = ["<unk>", "▁", "▁one", "▁two", "one", "two"]
             .into_iter()
             .map(|piece| (piece.to_string(), -1.0))
@@ -552,23 +552,7 @@ mod metaspace_whitespace {
 
 #[test]
 fn byte_level_tokens_can_share_one_utf8_span() {
-    let mut alphabet = tokenizers::pre_tokenizers::byte_level::ByteLevel::alphabet()
-        .into_iter()
-        .collect::<Vec<_>>();
-    alphabet.sort_unstable();
-    let vocab: tokenizers::models::bpe::Vocab = alphabet
-        .into_iter()
-        .enumerate()
-        .map(|(id, token)| (token.to_string(), u32::try_from(id).unwrap()))
-        .collect();
-    let model = tokenizers::models::bpe::BPE::builder()
-        .vocab_and_merges(vocab, Vec::new())
-        .build()
-        .unwrap();
-    let mut tokenizer = HfTokenizer::new(model);
-    tokenizer.with_pre_tokenizer(Some(
-        tokenizers::pre_tokenizers::byte_level::ByteLevel::new(false, true, false),
-    ));
+    let tokenizer = byte_level_tokenizer(false);
     let text = "😀";
     let encoding = tokenizer.encode(text, false).unwrap();
     assert_eq!(encoding.len(), 4);
@@ -592,6 +576,97 @@ fn byte_level_tokens_can_share_one_utf8_span() {
     assert!(windows
         .iter()
         .all(|window| (window.byte_start, window.byte_end) == (0, 4)));
+}
+
+fn byte_level_tokenizer(add_prefix_space: bool) -> HfTokenizer {
+    let mut alphabet = tokenizers::pre_tokenizers::byte_level::ByteLevel::alphabet()
+        .into_iter()
+        .collect::<Vec<_>>();
+    alphabet.sort_unstable();
+    let vocab: tokenizers::models::bpe::Vocab = alphabet
+        .into_iter()
+        .enumerate()
+        .map(|(id, token)| (token.to_string(), u32::try_from(id).unwrap()))
+        .collect();
+    let model = tokenizers::models::bpe::BPE::builder()
+        .vocab_and_merges(vocab, Vec::new())
+        .build()
+        .unwrap();
+    let mut tokenizer = HfTokenizer::new(model);
+    tokenizer.with_pre_tokenizer(Some(
+        tokenizers::pre_tokenizers::byte_level::ByteLevel::new(add_prefix_space, true, false),
+    ));
+    tokenizer
+}
+
+fn assert_single_window_parity(kind: &str, mut inner: HfTokenizer) {
+    super::split_whitespace_before_metaspace(&mut inner);
+    let tokenizer = Tokenizer {
+        inner,
+        resource_policy: ResourcePolicy::new(64, 16, 2048, usize::MAX),
+        pad_token_id: None,
+    };
+    for prefix in ["", "one "] {
+        let ordinary = tokenizer.encode_with_prompt(prefix, "two").unwrap();
+        let (_, windows) = tokenizer
+            .encode_spanned_windows(prefix, "two", ContextWindowConfig::new(64, 0))
+            .unwrap();
+        assert_eq!(windows.len(), 1);
+        println!("{kind} prefix={prefix:?} ordinary_ids={:?} ordinary_mask={:?} window_ids={:?} window_mask={:?}", ordinary.token_ids, ordinary.attention_mask, windows[0].window.token_ids, windows[0].window.attention_mask);
+        assert_eq!(
+            (
+                &windows[0].window.token_ids,
+                &windows[0].window.attention_mask
+            ),
+            (&ordinary.token_ids, &ordinary.attention_mask),
+            "{kind} prefix={prefix:?}"
+        );
+    }
+}
+
+#[test]
+fn single_window_matches_ordinary_word_piece() {
+    let vocabulary = [
+        ("[UNK]".to_string(), 0),
+        ("one".to_string(), 2),
+        ("two".to_string(), 3),
+    ]
+    .into_iter()
+    .collect();
+    let model = tokenizers::models::wordpiece::WordPiece::builder()
+        .vocab(vocabulary)
+        .unk_token("[UNK]".to_string())
+        .build()
+        .unwrap();
+    let mut inner = HfTokenizer::new(model);
+    inner.with_pre_tokenizer(Some(Whitespace {}));
+    assert_single_window_parity("WordPiece", inner);
+}
+
+#[test]
+fn single_window_matches_ordinary_byte_level_bpe() {
+    assert_single_window_parity("ByteLevel BPE", byte_level_tokenizer(true));
+}
+
+#[test]
+fn single_window_matches_ordinary_unigram_metaspace() {
+    assert_single_window_parity(
+        "Unigram Metaspace",
+        metaspace_whitespace::unigram(metaspace_whitespace::metaspace()),
+    );
+}
+
+pub fn drop_controls_tokenizer(policy: ResourcePolicy) -> Tokenizer {
+    let mut tokenizer = cut_tokenizer_with_policy(policy);
+    tokenizer
+        .inner
+        .with_normalizer(Some(tokenizers::normalizers::bert::BertNormalizer::new(
+            true,
+            false,
+            Some(false),
+            false,
+        )));
+    tokenizer
 }
 
 #[test]
