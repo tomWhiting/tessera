@@ -6,6 +6,50 @@ use ndarray::array;
 use std::num::NonZeroUsize;
 
 #[test]
+fn normalized_away_source_is_refused_without_forwarding_it_or_its_prompt() {
+    let policy = ResourcePolicy::new(16, 2, 32, usize::MAX);
+    let tokenizer = crate::core::tokenizer::tests::drop_controls_tokenizer(policy);
+    let mut forwarded = Vec::new();
+    let outcomes = encode_outcome_batch_with(
+        &["one", "\u{200b}", "two"],
+        (
+            tokenizer.validate_cut_configuration_with(&["three "]),
+            |text| match tokenizer.encode_with_prompt("three ", text) {
+                Ok(_) => Ok(None),
+                Err(error) => error
+                    .downcast_ref::<EmbeddingRefusal>()
+                    .copied()
+                    .map_or_else(|| Err(error), |refusal| Ok(Some(refusal))),
+            },
+        ),
+        policy,
+        1,
+        NonZeroUsize::new(2).unwrap(),
+        None,
+        |accepted| {
+            accepted
+                .iter()
+                .map(|text| {
+                    forwarded.push(text.to_string());
+                    CountedDenseEmbedding::new(
+                        array![1.0],
+                        tokenizer.encode_with_prompt("three ", text)?.tokens_total,
+                    )
+                })
+                .collect()
+        },
+    )
+    .unwrap();
+    assert_eq!(forwarded, ["one", "two"]);
+    assert!(matches!(outcomes[0], EmbeddingOutcome::Embedded(_)));
+    assert!(matches!(
+        outcomes[1],
+        EmbeddingOutcome::Refused(EmbeddingRefusal::NoContentTokens)
+    ));
+    assert!(matches!(outcomes[2], EmbeddingOutcome::Embedded(_)));
+}
+
+#[test]
 fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
     let policy = ResourcePolicy::new(5, 2, 10, usize::MAX)
         .with_max_input_bytes_per_sequence(20)

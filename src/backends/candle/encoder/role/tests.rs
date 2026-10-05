@@ -27,6 +27,17 @@ fn config(query: usize, document: usize) -> ColbertConfig {
 }
 
 #[test]
+fn role_framing_cannot_supply_missing_content() {
+    for role in [InputRole::Query, InputRole::Document] {
+        let error = prepare_role_tokens(&[101, 102], role, config(7, 8), &ids()).unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::NoContentTokens)
+        );
+    }
+}
+
+#[test]
 fn query_augmentation_masks_attention_but_keeps_output_rows() {
     let prepared =
         prepare_role_tokens(&[101, 103, 11, 102], InputRole::Query, config(7, 8), &ids())

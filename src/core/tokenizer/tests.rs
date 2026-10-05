@@ -690,6 +690,74 @@ pub fn drop_controls_tokenizer(policy: ResourcePolicy) -> Tokenizer {
 }
 
 #[test]
+fn normalized_away_content_is_refused_in_generic_and_bounded_tokenization() {
+    let tokenizer = drop_controls_tokenizer(ResourcePolicy::new(16, 16, 256, usize::MAX));
+    for special in [false, true] {
+        for result in [
+            tokenizer.encode("\u{200b}", special),
+            tokenizer.encode_for_bounded_transform("\u{200b}", special),
+        ] {
+            assert_eq!(
+                result
+                    .unwrap_err()
+                    .downcast_ref::<crate::EmbeddingRefusal>(),
+                Some(&crate::EmbeddingRefusal::NoContentTokens)
+            );
+        }
+    }
+}
+
+#[test]
+fn normalized_away_content_is_refused_before_generic_batch_padding() {
+    let tokenizer = drop_controls_tokenizer(ResourcePolicy::new(16, 16, 256, usize::MAX));
+    let error = tokenizer
+        .encode_batch(&["one", "\u{200b}"], true)
+        .unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<crate::EmbeddingRefusal>(),
+        Some(&crate::EmbeddingRefusal::NoContentTokens)
+    );
+}
+
+#[test]
+fn a_prompt_cannot_supply_content_for_normalized_away_source() {
+    let tokenizer = drop_controls_tokenizer(ResourcePolicy::new(16, 16, 256, usize::MAX));
+    for prompt in ["", "one "] {
+        let error = tokenizer
+            .encode_with_prompt(prompt, "\u{200b}")
+            .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::NoContentTokens)
+        );
+        let error = tokenizer
+            .encode_batch_with_prompt(prompt, &["two", "\u{200b}"])
+            .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::NoContentTokens)
+        );
+    }
+}
+
+#[test]
+fn normalization_preserves_content_and_empty_tokenizer_probes() {
+    let tokenizer = drop_controls_tokenizer(ResourcePolicy::new(16, 16, 256, usize::MAX));
+    assert_eq!(
+        tokenizer.encode("\u{200b}one\u{200b}", true).unwrap().0,
+        [10, 2, 11]
+    );
+    assert_eq!(
+        tokenizer
+            .encode_with_prompt("two ", "\u{200b}one")
+            .unwrap()
+            .token_ids,
+        [10, 3, 2, 11]
+    );
+    assert_eq!(tokenizer.encode("", true).unwrap().0, [10, 11]);
+}
+
+#[test]
 fn unclaimed_normalized_bytes_belong_to_the_earlier_window() {
     let mut tokenizer = cut_tokenizer(3);
     tokenizer

@@ -42,6 +42,7 @@ fn long_ids_leave_whole_ordered_items_and_an_omitted_count() {
         .collect();
     let mut policy = limits();
     policy.batch_items = 8;
+    policy.frame_bytes = 131_072;
     let batch = Embed {
         kind: Kind::Document,
         items: ids
