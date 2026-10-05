@@ -1,4 +1,4 @@
-use super::{exception_kind, ExceptionKind};
+use super::{exception_kind, exception_message, ExceptionKind};
 use crate::{EmbeddingRefusal, TesseraError};
 
 #[test]
@@ -13,8 +13,8 @@ fn overlength_refusal_is_a_value_error_with_complete_token_counts() {
     };
     assert_eq!(exception_kind(&error), ExceptionKind::Value);
     assert_eq!(
-        error.to_string(),
-        "Encoding failed: Failed to encode text: Tokenizing complete input"
+        exception_message(&error),
+        "Encoding failed: Failed to encode text: Tokenizing complete input: text_longer_than_model: tokens_total=513, tokens_limit=512"
     );
 }
 
@@ -22,5 +22,5 @@ fn overlength_refusal_is_a_value_error_with_complete_token_counts() {
 fn no_content_refusal_is_a_value_error() {
     let error = TesseraError::Other(anyhow::Error::new(EmbeddingRefusal::NoContentTokens));
     assert_eq!(exception_kind(&error), ExceptionKind::Value);
-    assert_eq!(error.to_string(), "embed_input_no_content_tokens");
+    assert_eq!(exception_message(&error), "embed_input_no_content_tokens");
 }

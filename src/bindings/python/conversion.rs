@@ -35,8 +35,12 @@ fn exception_kind(err: &TesseraError) -> ExceptionKind {
     }
 }
 
+fn exception_message(err: &TesseraError) -> String {
+    err.to_string()
+}
+
 pub(super) fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
-    let message = err.to_string();
+    let message = exception_message(&err);
     match exception_kind(&err) {
         ExceptionKind::Runtime => PyRuntimeError::new_err(message),
         ExceptionKind::Value => PyValueError::new_err(message),
