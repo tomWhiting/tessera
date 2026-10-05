@@ -491,7 +491,7 @@ mod metaspace_whitespace {
     }
 
     #[test]
-    fn rule_reaches_plain_and_cut_encoding() {
+    fn rule_reaches_plain_encoding_and_overlength_refusal() {
         let mut inner = unigram(metaspace());
         split_whitespace_before_metaspace(&mut inner);
         let tokenizer = Tokenizer {
@@ -500,9 +500,16 @@ mod metaspace_whitespace {
             pad_token_id: None,
         };
         assert_eq!(tokenizer.encode("one  two ", false).unwrap().0, [ONE, TWO]);
-        let cut = tokenizer.encode_with_prompt("", "one  two  one ").unwrap();
-        assert_eq!(cut.token_ids, [ONE, TWO]);
-        assert_eq!(cut.tokens_total, 3);
+        let error = tokenizer
+            .encode_with_prompt("", "one  two  one ")
+            .unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+                tokens_total: 3,
+                tokens_limit: 2
+            })
+        );
     }
 
     #[test]
