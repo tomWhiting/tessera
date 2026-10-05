@@ -2,6 +2,59 @@ use super::{max_pool_token_logits, splade_transform};
 use anyhow::Result;
 use candle_core::{Device, Tensor};
 
+#[test]
+fn normalized_away_source_never_reaches_sparse_output() -> Result<()> {
+    use crate::core::Encoder;
+    use crate::runtime::{ModelDType, ResourcePolicy, TransformerProfile};
+    use candle_nn::{VarBuilder, VarMap};
+    let policy = ResourcePolicy::new(16, 2, 32, usize::MAX);
+    let (_, residency) = crate::runtime::preflight_and_reserve_registered_model(
+        "splade-pp-en-v1",
+        16,
+        crate::models::registry::ModelType::Sparse,
+        &Device::Cpu,
+        &policy,
+    )?;
+    let config = candle_transformers::models::bert::Config {
+        vocab_size: 16,
+        hidden_size: 8,
+        num_hidden_layers: 1,
+        num_attention_heads: 2,
+        intermediate_size: 16,
+        max_position_embeddings: 16,
+        hidden_dropout_prob: 0.0,
+        ..Default::default()
+    };
+    let variables = VarMap::new();
+    let builder = VarBuilder::from_varmap(&variables, candle_core::DType::F32, &Device::Cpu);
+    let encoder = super::CandleSparseEncoder {
+        model: super::BertVariant::Bert(candle_transformers::models::bert::BertModel::load(
+            builder.clone(),
+            &config,
+        )?),
+        mlm_head: super::MlmHead::load(builder, 8, 16)?,
+        tokenizer: crate::core::tokenizer::tests::drop_controls_tokenizer(policy),
+        device: Device::Cpu,
+        vocab_size: 16,
+        dtype: ModelDType::F32,
+        resource_policy: policy,
+        transformer_profile: TransformerProfile::new(8, 16, 2)?,
+        _residency: residency,
+    };
+    for result in [
+        encoder.encode("\u{200b}").map(|_| ()),
+        encoder.encode_batch(&["one", "\u{200b}"]).map(|_| ()),
+    ] {
+        assert_eq!(
+            result
+                .unwrap_err()
+                .downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::NoContentTokens)
+        );
+    }
+    Ok(())
+}
+
 fn deterministic_logits(sequence_length: usize, vocab_size: usize, seed: usize) -> Result<Tensor> {
     let values = (0..sequence_length * vocab_size)
         .map(|index| {

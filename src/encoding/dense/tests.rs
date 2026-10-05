@@ -55,6 +55,57 @@ fn tiny_bert() -> Result<BertVariant> {
     Ok(BertVariant::Bert(model))
 }
 
+#[test]
+fn normalized_away_source_never_reaches_dense_or_unpooled_output() -> Result<()> {
+    use crate::core::PoolingStrategy;
+    use crate::runtime::{ModelDType, ResourcePolicy, TransformerProfile};
+    let policy = ResourcePolicy::new(16, 2, 32, usize::MAX);
+    let (model, residency) = crate::runtime::preflight_and_reserve_registered_model(
+        "bge-base-en-v1.5",
+        16,
+        crate::models::registry::ModelType::Dense,
+        &Device::Cpu,
+        &policy,
+    )?;
+    let encoder = CandleDenseEncoder {
+        model: tiny_bert()?,
+        tokenizer: crate::core::tokenizer::tests::drop_controls_tokenizer(policy),
+        device: Device::Cpu,
+        config: crate::models::ModelConfig::from_registry(model.id)?,
+        pooling_strategy: PoolingStrategy::Mean,
+        normalize: false,
+        supports_padded_batch: true,
+        dtype: ModelDType::F32,
+        resource_policy: policy,
+        transformer_profile: TransformerProfile::new(8, 16, 2)?,
+        position_table: Some(16),
+        prompts: crate::models::registry::Prompts {
+            query: "one ",
+            document: "two ",
+        },
+        _residency: residency,
+    };
+    for result in [
+        encoder.encode("\u{200b}").map(|_| ()),
+        encoder.encode_batch(&["one", "\u{200b}"]).map(|_| ()),
+        encoder.encode_unpooled("\u{200b}").map(|_| ()),
+        encoder
+            .encode_outcome("\u{200b}", Some(crate::Role::Query))
+            .map(|_| ()),
+        encoder
+            .encode_batch_outcomes(&["one", "\u{200b}"], Some(crate::Role::Document))
+            .map(|_| ()),
+    ] {
+        assert_eq!(
+            result
+                .unwrap_err()
+                .downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::NoContentTokens)
+        );
+    }
+    Ok(())
+}
+
 fn assert_tensors_close(left: &Tensor, right: &Tensor, tolerance: f32) -> Result<()> {
     let left = left.flatten_all()?.to_vec1::<f32>()?;
     let right = right.flatten_all()?.to_vec1::<f32>()?;
