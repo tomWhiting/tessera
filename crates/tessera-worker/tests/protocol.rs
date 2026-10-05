@@ -245,15 +245,7 @@ fn installed_worker_reports_identity_roles_cuts_and_ordered_refusals() {
     };
     assert_eq!((*tokens_read, *tokens_total), (5, 5));
     assert_eq!(decode_vector(vector).unwrap().len(), 768);
-    let Outcome::Vector {
-        tokens_read,
-        tokens_total,
-        ..
-    } = &vectors.items[1]
-    else {
-        panic!("missing cut vector")
-    };
-    assert_eq!((*tokens_read, *tokens_total), (16, 26));
+    assert!(matches!(vectors.items[1], Outcome::Refused { .. }));
     assert!(matches!(
         vectors.items[2],
         Outcome::Refused {

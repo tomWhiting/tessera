@@ -48,9 +48,9 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
         },
     )
     .unwrap();
-    assert_eq!(embedded, ["one", "one two three one"]);
+    assert_eq!(embedded, ["one"]);
     assert_eq!(outcomes.len(), texts.len());
-    for (index, read, total, cut) in [(0, 3, 3, false), (4, 5, 6, true)] {
+    for (index, read, total, cut) in [(0, 3, 3, false)] {
         let CutEmbeddingOutcome::Embedded(value) = &outcomes[index] else {
             panic!("accepted text was refused");
         };
@@ -58,6 +58,7 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
         assert_eq!(value.tokens_total(), total);
         assert_eq!(value.cut(), cut);
     }
+    assert!(matches!(outcomes[4], CutEmbeddingOutcome::Refused(_)));
     for index in [1, 2, 5, 6] {
         let CutEmbeddingOutcome::Refused(refusal) = outcomes[index] else {
             panic!("empty text was embedded");

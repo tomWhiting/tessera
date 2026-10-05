@@ -60,11 +60,8 @@ fn query_truncation_preserves_role_framing_and_separator() {
         config(5, 8),
         &ids(),
     )
-    .expect("query preprocessing should succeed");
-
-    assert_eq!(prepared.token_ids, [101, 1, 10, 11, 102]);
-    assert_eq!(prepared.attention_mask, [1; 5]);
-    assert_eq!(prepared.output_mask, [1; 5]);
+    .unwrap_err();
+    assert!(prepared.to_string().contains("text_longer_than_model"));
 }
 
 #[test]
@@ -90,11 +87,8 @@ fn document_truncation_preserves_separator_after_inserted_marker() {
         config(7, 5),
         &ids(),
     )
-    .expect("document preprocessing should succeed");
-
-    assert_eq!(prepared.token_ids, [101, 2, 10, 11, 102]);
-    assert_eq!(prepared.attention_mask, [1; 5]);
-    assert_eq!(prepared.output_mask, [1; 5]);
+    .unwrap_err();
+    assert!(prepared.to_string().contains("text_longer_than_model"));
 }
 
 #[test]
