@@ -2,10 +2,7 @@ use std::path::Path;
 
 use tessera::{EmbeddingOutcome, TesseraDense, TesseraMultiVector};
 
-use super::{
-    reference_text, validate_probe_token_count, CertResult, LoadedReference, ReferenceOutput,
-    SemanticMode,
-};
+use super::{reference_text, CertResult, LoadedReference, ReferenceOutput, SemanticMode};
 
 pub(super) fn dense(
     embedder: &TesseraDense,
@@ -59,7 +56,7 @@ pub(super) fn dense(
         .transpose()
 }
 
-pub(super) fn validate_dense_probe_counts(
+pub(in crate::certification) fn validate_dense_probe_counts(
     expected_total: usize,
     expected_used: Option<usize>,
     observed_total: usize,
@@ -74,7 +71,7 @@ pub(super) fn validate_dense_probe_counts(
     Ok(())
 }
 
-pub(super) fn constructed_probe(
+pub(in crate::certification) fn constructed_probe(
     text: &str,
     expected_total: usize,
     used: usize,

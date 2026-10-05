@@ -19,7 +19,7 @@ use super::spec::{
 };
 
 #[path = "child_reference.rs"]
-mod child_reference;
+pub(super) mod child_reference;
 
 pub(crate) fn run(
     repository: &Path,

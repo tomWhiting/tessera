@@ -76,7 +76,7 @@ pub(crate) fn run(
             Some(directory) => directory.join(entry.tokenizer_file),
             None => artifacts::cached_artifact_path(repository, &loaded, entry.tokenizer_file)?,
         };
-        super::child_reference::constructed_probe(
+        crate::certification::child::child_reference::constructed_probe(
             text,
             reference.document.probe.token_count(),
             used,
@@ -121,7 +121,7 @@ fn encode(
         let EmbeddingOutcome::Embedded(output) = embedder.encode_outcome(text, None)? else {
             return Err("measurement_input_refused: cut reference text was refused".into());
         };
-        super::child_reference::validate_dense_probe_counts(
+        crate::certification::child::child_reference::validate_dense_probe_counts(
             probe.token_count(),
             Some(used),
             output.tokens_total(),

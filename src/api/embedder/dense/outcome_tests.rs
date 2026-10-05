@@ -54,12 +54,10 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
     .unwrap();
     assert_eq!(embedded, ["one"]);
     assert_eq!(outcomes.len(), texts.len());
-    for (index, total) in [(0, 3)] {
-        let EmbeddingOutcome::Embedded(value) = &outcomes[index] else {
-            panic!("accepted text was refused");
-        };
-        assert_eq!(value.tokens_total(), total);
-    }
+    let EmbeddingOutcome::Embedded(value) = &outcomes[0] else {
+        panic!("accepted text was refused");
+    };
+    assert_eq!(value.tokens_total(), 3);
     assert!(matches!(
         outcomes[4],
         EmbeddingOutcome::Refused(EmbeddingRefusal::TextLongerThanModel {
