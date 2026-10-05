@@ -626,7 +626,7 @@ fn assert_single_window_parity(kind: &str, mut inner: HfTokenizer) {
 
 #[test]
 fn single_window_matches_ordinary_word_piece() {
-    let vocabulary = [
+    let vocabulary: tokenizers::models::bpe::Vocab = [
         ("[UNK]".to_string(), 0),
         ("one".to_string(), 2),
         ("two".to_string(), 3),
