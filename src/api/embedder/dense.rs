@@ -612,3 +612,6 @@ fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> 
         source: anyhow::Error::new(error),
     }
 }
+
+#[cfg(test)]
+mod window_tests;
