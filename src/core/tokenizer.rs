@@ -347,10 +347,9 @@ impl Tokenizer {
             .inner
             .encode(text, false)
             .map_err(|error| anyhow::anyhow!("Failed to tokenize window content: {error}"))?;
-        anyhow::ensure!(
-            !content.is_empty(),
-            "Window content tokenization produced no tokens"
-        );
+        if content.is_empty() {
+            return Err(crate::EmbeddingRefusal::NoContentTokens.into());
+        }
         let prompt = self
             .inner
             .encode(prompt, false)

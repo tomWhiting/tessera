@@ -319,6 +319,9 @@ pub enum Role {
 /// A field that cannot be embedded without changing its input contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum EmbeddingRefusal {
+    /// Non-whitespace source text produced no content tokens to window.
+    #[error("embed_input_no_content_tokens")]
+    NoContentTokens,
     /// The text has no non-whitespace character.
     #[error("embed_input_empty")]
     Empty,
@@ -358,6 +361,7 @@ impl EmbeddingRefusal {
     #[must_use]
     pub const fn code(self) -> &'static str {
         match self {
+            Self::NoContentTokens => "embed_input_no_content_tokens",
             Self::Empty => "embed_input_empty",
             Self::TooLarge { .. } => "embed_input_too_large",
             Self::TextLongerThanModel { .. } => "text_longer_than_model",

@@ -167,7 +167,10 @@ fn all_plans_and_output_budgets_are_checked_before_forwarding() {
 
 #[test]
 fn zero_token_middle_item_is_refused_without_losing_its_neighbors() {
-    let policy = ResourcePolicy::new(4, 2, 64, usize::MAX);
+    let policy = ResourcePolicy::new(4, 2, 64, usize::MAX)
+        .with_max_job_items(2)
+        .with_max_job_input_bytes(6)
+        .with_max_output_bytes(8);
     let tokenizer = crate::core::tokenizer::tests::drop_controls_tokenizer(policy);
     let mut forwarded = Vec::new();
     let outcomes = encode_windows_batch_with(

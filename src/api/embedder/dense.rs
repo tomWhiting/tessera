@@ -710,17 +710,25 @@ where
             inputs.push(PreparedWindowInput::Refused(refusal));
             continue;
         }
-        tracker
-            .admit_input(text.len())
-            .map_err(|error| resource_error("Window input exceeds job limits", error))?;
-        let (total, windows) =
-            plan(text).map_err(|source| window_error("Failed to plan dense windows", source))?;
+        let (total, windows) = match plan(text) {
+            Ok(plan) => plan,
+            Err(source) => {
+                if let Some(refusal) = source.downcast_ref::<EmbeddingRefusal>().copied() {
+                    inputs.push(PreparedWindowInput::Refused(refusal));
+                    continue;
+                }
+                return Err(window_error("Failed to plan dense windows", source));
+            }
+        };
         if total == 0 || windows.is_empty() {
             return Err(window_error(
                 "Window planner produced no content",
                 anyhow::anyhow!("Empty content plan"),
             ));
         }
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Window input exceeds job limits", error))?;
         input_bytes = input_bytes.saturating_add(text.len());
         window_count = window_count.saturating_add(windows.len());
         policy
