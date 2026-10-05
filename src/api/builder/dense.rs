@@ -357,15 +357,18 @@ impl TesseraDenseBuilder {
             model_id: model_id.clone(),
             source: e,
         })?;
-        let identity = ModelIdentity::new(
-            model_info,
-            encoder.loaded_facts(),
-            installed_manifest_sha256,
-        )
-        .map_err(|e| TesseraError::ModelLoadError {
-            model_id: model_id.clone(),
-            source: e,
-        })?;
+        let loaded_facts =
+            encoder
+                .loaded_facts()
+                .map_err(|source| TesseraError::ModelLoadError {
+                    model_id: model_id.clone(),
+                    source,
+                })?;
+        let identity = ModelIdentity::new(model_info, loaded_facts, installed_manifest_sha256)
+            .map_err(|e| TesseraError::ModelLoadError {
+                model_id: model_id.clone(),
+                source: e,
+            })?;
 
         // Create TesseraDense instance with batch options
         Ok(TesseraDense::from_encoder_with_options(

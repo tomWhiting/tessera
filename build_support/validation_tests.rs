@@ -106,7 +106,7 @@ fn audited_weight_metadata_preserves_absent_and_sharded_safetensors() {
         .models()
         .find(|model| model.id == "snowflake-arctic-l")
         .expect("Snowflake metadata");
-    assert_eq!(snowflake.specs.parameters, "568M");
+    assert_eq!(snowflake.specs.parameters, "567754752");
 }
 
 fn validate_with_dense_change(

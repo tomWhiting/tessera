@@ -252,7 +252,7 @@ mod tests {
     fn registry_config_keeps_runnable_long_context_metadata() {
         let config = ModelConfig::from_registry("nomic-embed-v1.5").unwrap();
 
-        assert_eq!(config.max_seq_length, 8192);
+        assert_eq!(config.max_seq_length, 2048);
         assert_eq!(config.embedding_dim, 768);
     }
 }

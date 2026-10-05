@@ -11,7 +11,7 @@
     "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "sparse_query", "max_sequence_tokens": 128, "context_window_tokens": 512 },
     "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 600000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768, "max_job_items": 2, "max_job_input_bytes": 131072, "max_output_bytes": 16777216, "max_activation_bytes": 1500000000 },
     "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 500000000, "min_free_disk_bytes": 1500000000, "max_peak_rss_bytes": 2500000000 },
-    "official_reference": null
+    "official_reference": {"path": "splade-pp-en-v2/smoke.json", "sha256": "cbc9d70b198cfbba27a065f86d5fb8ca0371ad81ea432fdb32582a4a12c2710e"}
   } },
   "smoke": {
     "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },

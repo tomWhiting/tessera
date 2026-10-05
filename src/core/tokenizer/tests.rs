@@ -35,6 +35,41 @@ fn cut_tokenizer(limit: usize) -> Tokenizer {
     cut_tokenizer_with_policy(ResourcePolicy::new(limit, 16, 2048, usize::MAX))
 }
 
+#[test]
+fn prefix_tokens_take_the_longer_role_without_special_tokens() {
+    let tokenizer = cut_tokenizer(8);
+    assert_eq!(
+        tokenizer
+            .longest_prefix_tokens(&["one", "one two three"])
+            .unwrap(),
+        3
+    );
+    assert_eq!(
+        tokenizer
+            .longest_prefix_tokens(&["one two three", "one"])
+            .unwrap(),
+        3
+    );
+}
+
+#[test]
+fn prefix_tokens_are_zero_when_no_prefix_is_present() {
+    let tokenizer = cut_tokenizer(8);
+    assert_eq!(tokenizer.longest_prefix_tokens(&[]).unwrap(), 0);
+    assert_eq!(tokenizer.longest_prefix_tokens(&["", ""]).unwrap(), 0);
+}
+
+#[test]
+fn prefix_tokens_count_the_whole_prefix_above_the_sequence_limit() {
+    let tokenizer = cut_tokenizer(4);
+    assert_eq!(
+        tokenizer
+            .longest_prefix_tokens(&["one two three one two three one"])
+            .unwrap(),
+        7
+    );
+}
+
 pub fn cut_tokenizer_with_policy(policy: ResourcePolicy) -> Tokenizer {
     let mut tokenizer = tokenizer(policy);
     tokenizer.inner.with_post_processor(Some(

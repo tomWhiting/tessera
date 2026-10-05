@@ -17,6 +17,7 @@ fn facts(position_table: Option<usize>) -> LoadedFacts {
     LoadedFacts {
         dimensions: 768,
         special_tokens: 2,
+        prefix_tokens: 0,
         normalised: true,
         position_table,
     }
@@ -43,6 +44,7 @@ fn bge_base_identity_without_a_manifest() {
             dimensions: 768,
             max_tokens: 512,
             special_tokens: 2,
+            prefix_tokens: 0,
             normalised: true,
             distance: Distance::Cosine,
         }
@@ -66,6 +68,15 @@ fn max_tokens_never_exceeds_the_position_table() {
         let identity = ModelIdentity::new(model, facts(table), None).unwrap();
         assert_eq!(identity.max_tokens, expected, "{table:?}");
     }
+}
+
+#[test]
+fn identity_reports_the_longer_loaded_role_prefix() {
+    let model = get_model("bge-base-en-v1.5").unwrap();
+    let mut loaded = facts(Some(512));
+    loaded.prefix_tokens = 7;
+    let identity = ModelIdentity::new(model, loaded, None).unwrap();
+    assert_eq!(identity.prefix_tokens, 7);
 }
 
 fn fixture() -> (TempDir, Value) {

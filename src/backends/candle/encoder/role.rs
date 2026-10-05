@@ -269,12 +269,14 @@ fn prepare_role_tokens(
     role_ids.extend(content);
     role_ids.push(ids.sep);
 
-    // ColBERT query augmentation keeps every appended [MASK] position live in
-    // both self-attention and MaxSim output selection.
+    // Augmented query rows remain in the output, but their keys do not
+    // participate in contextualization.
+    let attention_length = role_ids.len();
     if role == InputRole::Query {
         role_ids.resize(max_length, ids.mask);
     }
-    let attention_mask = vec![1; role_ids.len()];
+    let mut attention_mask = vec![0; role_ids.len()];
+    attention_mask[..attention_length].fill(1);
     // Document punctuation still participates in contextualization but its
     // projected rows are excluded from the stored late-interaction vectors.
     let output_mask = if role == InputRole::Document {
@@ -283,7 +285,7 @@ fn prepare_role_tokens(
             .map(|id| u32::from(!ids.punctuation.contains(id)))
             .collect()
     } else {
-        attention_mask.clone()
+        vec![1; role_ids.len()]
     };
 
     Ok(PreparedInput {

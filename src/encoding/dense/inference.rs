@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use candle_core::{DType, Device, Tensor};
 use ndarray::Array1;
+use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::{BertVariant, CandleDenseEncoder};
 use crate::core::embeddings::{CutDenseEmbedding, Role};
@@ -137,12 +138,33 @@ impl CandleDenseEncoder {
         texts: &[&str],
         role: Option<Role>,
     ) -> Result<Vec<CutDenseEmbedding>> {
-        self.tokenizer
-            .encode_batch_cut(prompt_for(self.prompts, role), texts)?
-            .into_iter()
+        let inputs = self
+            .tokenizer
+            .encode_batch_cut(prompt_for(self.prompts, role), texts)?;
+        let Some(longest) = inputs.iter().map(|input| input.token_ids.len()).max() else {
+            return Ok(Vec::new());
+        };
+        // The forwards of one batch run side by side, so the activation budget is
+        // checked for all of them at the longest input before any starts.
+        self.resource_policy
+            .validate_transformer_activations(
+                self.transformer_profile,
+                inputs.len(),
+                longest,
+                self.dtype,
+            )
+            .map_err(|error| anyhow::anyhow!("Dense activation preflight failed: {error}"))?;
+        // One permit admits the whole batch. Its texts run on the bounded Rayon
+        // pool, so the thread ceiling still decides how many run at once.
+        let inference_permit = crate::runtime::acquire_inference_permit()
+            .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
+        let embeddings = inputs
+            .into_par_iter()
             .enumerate()
-            .map(|(index, input)| self.encode_cut_input(index, input))
-            .collect()
+            .map(|(index, input)| self.encode_cut_input_admitted(index, input))
+            .collect();
+        drop(inference_permit);
+        embeddings
     }
 
     /// Embeds one cut input; `index` is its position in the encoded slice.
@@ -152,6 +174,24 @@ impl CandleDenseEncoder {
         input: CutTokenizedInput,
     ) -> Result<CutDenseEmbedding> {
         let embedding = self.encode_tokenized(&input.token_ids, &input.attention_mask)?;
+        Self::cut_embedding(index, &input, embedding)
+    }
+
+    /// As [`Self::encode_cut_input`], for a caller that holds the inference permit.
+    fn encode_cut_input_admitted(
+        &self,
+        index: usize,
+        input: CutTokenizedInput,
+    ) -> Result<CutDenseEmbedding> {
+        let embedding = self.encode_tokenized_admitted(&input.token_ids, &input.attention_mask)?;
+        Self::cut_embedding(index, &input, embedding)
+    }
+
+    fn cut_embedding(
+        index: usize,
+        input: &CutTokenizedInput,
+        embedding: Array1<f32>,
+    ) -> Result<CutDenseEmbedding> {
         if !embedding.iter().all(|value| value.is_finite()) {
             return Err(anyhow::Error::new(
                 crate::api::embedder::EmbedFailure::OutputInvalid {
@@ -212,11 +252,6 @@ impl CandleDenseEncoder {
     }
 
     fn encode_tokenized(&self, token_ids: &[u32], attention_mask: &[u32]) -> Result<Array1<f32>> {
-        anyhow::ensure!(!token_ids.is_empty(), "Tokenized input cannot be empty");
-        anyhow::ensure!(
-            token_ids.len() == attention_mask.len(),
-            "Token ID and attention-mask lengths differ"
-        );
         self.resource_policy
             .validate_transformer_activations(
                 self.transformer_profile,
@@ -225,7 +260,26 @@ impl CandleDenseEncoder {
                 self.dtype,
             )
             .map_err(|error| anyhow::anyhow!("Dense activation preflight failed: {error}"))?;
+        let inference_permit = crate::runtime::acquire_inference_permit()
+            .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
+        let embedding = self.encode_tokenized_admitted(token_ids, attention_mask);
+        drop(inference_permit);
+        embedding
+    }
 
+    /// Runs one forward pass. The caller holds the process-wide inference
+    /// permit and has checked the activation budget for everything it runs
+    /// under that permit.
+    fn encode_tokenized_admitted(
+        &self,
+        token_ids: &[u32],
+        attention_mask: &[u32],
+    ) -> Result<Array1<f32>> {
+        anyhow::ensure!(!token_ids.is_empty(), "Tokenized input cannot be empty");
+        anyhow::ensure!(
+            token_ids.len() == attention_mask.len(),
+            "Token ID and attention-mask lengths differ"
+        );
         // Convert to tensors
         let token_ids_tensor = self.tokens_to_tensor(token_ids, 1)?;
 
@@ -252,8 +306,6 @@ impl CandleDenseEncoder {
         .context("Creating attention mask tensor")?;
 
         // Run model forward pass
-        let inference_permit = crate::runtime::acquire_inference_permit()
-            .map_err(|error| anyhow::anyhow!("Failed to acquire inference admission: {error}"))?;
         let output = self
             .model
             .forward(&token_ids_tensor, &attention_mask_tensor)
@@ -275,7 +327,6 @@ impl CandleDenseEncoder {
             .context("Flattening tensor")?
             .to_vec1::<f32>()
             .context("Converting tensor to Vec<f32>")?;
-        drop(inference_permit);
 
         let embeddings_array = Array1::from_vec(embeddings_vec);
 
