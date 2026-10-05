@@ -46,6 +46,7 @@ pub(super) fn compare(
         expected_output_sha256: Some(digest(&serde_json::to_vec(expected)?)),
         observed_output_sha256: Some(digest(&serde_json::to_vec(observed)?)),
         probe_tokens: Some(reference.document.probe.token_count()),
+        probe_tokens_used: reference.document.probe.cut_at_tokens(),
         observed_shape,
         compared_values: expected_values.len().min(observed_values.len()),
         max_absolute_error,

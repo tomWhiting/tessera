@@ -128,11 +128,24 @@ impl ModelFileResolver {
 
     /// Resolves the exact weight artifact declared by the immutable registry.
     pub(crate) fn weights(&self) -> Result<PathBuf> {
-        self.model.safetensors_file.map_or_else(
-            || self.get(self.model.pytorch_file),
-            |filename| self.get(filename),
-        )
+        self.get(supported_weight_filename(self.model)?)
     }
+}
+
+pub(crate) fn supported_weight_filename(model: &ModelInfo) -> crate::error::Result<&'static str> {
+    if let Some(filename) = model.safetensors_file.or(model.pytorch_file) {
+        return Ok(filename);
+    }
+    if model.onnx_file.is_some() {
+        return Err(crate::error::TesseraError::UnsupportedWeightsFormat {
+            model_id: model.id.to_string(),
+            format: "ONNX",
+        });
+    }
+    Err(crate::error::TesseraError::ConfigError(format!(
+        "Model '{}' must declare at least one weight artifact",
+        model.id
+    )))
 }
 
 fn registry_revision(model: &ModelInfo) -> Result<&str> {

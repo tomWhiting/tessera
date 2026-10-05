@@ -1,29 +1,217 @@
 {
   "schema_version": 2,
-  "model": { "id": "jina-embeddings-v2-base-en", "repository": "jinaai/jina-embeddings-v2-base-en", "revision": "322d4d7e2f35e84137961a65af894fda0385eb7a", "representation": "dense" },
+  "model": {
+    "id": "jina-embeddings-v2-base-en",
+    "repository": "jinaai/jina-embeddings-v2-base-en",
+    "revision": "322d4d7e2f35e84137961a65af894fda0385eb7a",
+    "representation": "dense"
+  },
   "artifacts": [
-    { "path": "config.json", "size_bytes": 1176, "sha256": "93d07cb65c3fc338e2f67f6a039f4c0857de9f8f7b377a6a60afc53532722d4e" },
-    { "path": "tokenizer.json", "size_bytes": 711577, "sha256": "65253d92409e63bf4cf61361085cd4657c735713aa239002d496d8413a6ed5dc" },
-    { "path": "model.safetensors", "size_bytes": 274757256, "sha256": "6b70f1386f05b9703ea4edf7f1550a8925399f9580e4cc754cc099efc1e736d8" }
+    {
+      "path": "config.json",
+      "size_bytes": 1176,
+      "sha256": "93d07cb65c3fc338e2f67f6a039f4c0857de9f8f7b377a6a60afc53532722d4e"
+    },
+    {
+      "path": "tokenizer.json",
+      "size_bytes": 711577,
+      "sha256": "65253d92409e63bf4cf61361085cd4657c735713aa239002d496d8413a6ed5dc"
+    },
+    {
+      "path": "model.safetensors",
+      "size_bytes": 274757256,
+      "sha256": "6b70f1386f05b9703ea4edf7f1550a8925399f9580e4cc754cc099efc1e736d8"
+    }
   ],
   "profiles": {
-  "smoke": {
-    "kind": "smoke",
-    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "query", "max_sequence_tokens": 128, "context_window_tokens": 8192 },
-    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768, "max_job_items": 2, "max_job_input_bytes": 131072, "max_output_bytes": 16777216, "max_activation_bytes": 1200000000 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 350000000, "min_free_disk_bytes": 1200000000, "max_peak_rss_bytes": 2200000000 },
-    "official_reference": null
+    "smoke": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1200000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 900,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/smoke.json",
+        "sha256": "75b2b8068f4c002d300e9eb812e32d426e31e1769619b17629dee1f66ae971dc"
+      }
+    },
+    "paragraph": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1200000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 900,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/paragraph.json",
+        "sha256": "4d989a4508672a2a7ce00c7f6ced75a026ac1d9bd16a675d330984773248ea19"
+      }
+    },
+    "non-ascii": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1200000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 900,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/non-ascii.json",
+        "sha256": "505163c227697753ce3b26ba4ece7c969c8abbecc5d5dc5da9ee6ae21a630719"
+      }
+    },
+    "whitespace": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1200000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 900,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/whitespace.json",
+        "sha256": "414ffffc0154e2c4eea73daaaf4dc7abd4157b0b03ff8c79cc2d8462f4ab0da8"
+      }
+    },
+    "long-context-2k": {
+      "kind": "long_context",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "document",
+        "max_sequence_tokens": 2048,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 2048,
+        "max_batch_items": 1,
+        "max_batch_tokens": 2048,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 1048576,
+        "max_attention_cells": 4194304,
+        "max_job_items": 1,
+        "max_job_input_bytes": 1048576,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 700000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 7200,
+        "max_artifact_bytes": 350000000,
+        "min_free_disk_bytes": 1200000000,
+        "max_peak_rss_bytes": 2200000000
+      },
+      "official_reference": {
+        "path": "jina-embeddings-v2-base-en/long-context-2k.json",
+        "sha256": "c895f3da2b218a8ae16d710d9bc2df2a511336c493eac79b5f51c826a67f76e1"
+      }
+    }
   },
-  "long-context-8k": {
-    "kind": "long_context",
-    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "document", "max_sequence_tokens": 8192, "context_window_tokens": 8192 },
-    "resource_policy": { "max_sequence_tokens": 8192, "max_batch_items": 1, "max_batch_tokens": 8192, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 1048576, "max_attention_cells": 67108864, "max_job_items": 1, "max_job_input_bytes": 1048576, "max_output_bytes": 16777216, "max_activation_bytes": 7000000000 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 7200, "max_artifact_bytes": 350000000, "min_free_disk_bytes": 1200000000, "max_peak_rss_bytes": 8000000000 },
-    "official_reference": null
-  } },
   "smoke": {
-    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
-    "expected_dimension": 768, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+    "fixture": {
+      "query": "What is machine learning?",
+      "positive": "Machine learning allows computers to learn patterns from data.",
+      "negative": "The recipe bakes sourdough bread in a hot oven."
+    },
+    "expected_dimension": 768,
+    "expected_vocabulary_size": null,
+    "normalized": true,
+    "minimum_score_margin": 0.01,
+    "repeat_similarity_minimum": 0.9999
   },
-  "promotion": { "minimum_successful_runs": 2, "required_profiles": ["smoke", "long-context-8k"], "require_clean_source": true, "require_enforced_rss": true }
+  "promotion": {
+    "minimum_successful_runs": 2,
+    "required_profiles": [
+      "smoke",
+      "paragraph",
+      "non-ascii",
+      "whitespace",
+      "long-context-2k"
+    ],
+    "require_clean_source": true,
+    "require_enforced_rss": true
+  }
 }

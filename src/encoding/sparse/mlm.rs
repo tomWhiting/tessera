@@ -2,6 +2,9 @@ use anyhow::{Context, Result};
 use candle_core::{Module, Tensor};
 use candle_nn::{layer_norm, linear, LayerNorm, Linear, VarBuilder};
 
+#[cfg(test)]
+mod tests;
+
 /// MLM (Masked Language Modeling) head for SPLADE.
 ///
 /// Projects BERT hidden states to vocabulary logits via:
@@ -66,7 +69,7 @@ impl MlmHead {
             .transform_dense
             .forward(hidden_states)
             .context("MLM transform dense forward")?;
-        let activated = transformed.gelu().context("MLM GELU activation")?;
+        let activated = transformed.gelu_erf().context("MLM GELU activation")?;
 
         // Layer norm
         let normalized = self

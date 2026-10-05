@@ -41,6 +41,26 @@ pub struct ModelMetadata {
     pub capabilities: Capabilities,
     pub license: String,
     pub description: String,
+    #[serde(default)]
+    pub prompts: Option<Prompts>,
+    #[serde(default)]
+    pub distance: Option<String>,
+    #[serde(default)]
+    pub card_comparison: Option<CardComparison>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Prompts {
+    pub query: String,
+    pub document: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CardComparison {
+    pub words: String,
+    pub url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -121,7 +141,8 @@ pub struct Files {
 #[derive(Debug, Deserialize)]
 pub struct Weights {
     pub safetensors: Option<String>,
-    pub pytorch: String,
+    pub pytorch: Option<String>,
+    pub onnx: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]

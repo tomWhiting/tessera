@@ -150,6 +150,7 @@ fn support_contract_matches_the_audited_catalog() {
         ("colpali-v1.2", SupportTier::Experimental),
         ("colpali-v1.3-hf", SupportTier::CatalogOnly),
         ("gte-modern-colbert", SupportTier::CatalogOnly),
+        ("gte-modernbert-base", SupportTier::Experimental),
         ("jina-colbert-v2", SupportTier::CatalogOnly),
         ("jina-colbert-v2-64", SupportTier::CatalogOnly),
         ("jina-colbert-v2-96", SupportTier::CatalogOnly),
@@ -158,6 +159,8 @@ fn support_contract_matches_the_audited_catalog() {
         ("jina-embeddings-v2-small-en", SupportTier::Experimental),
         ("jina-embeddings-v3", SupportTier::CatalogOnly),
         ("minicoil-v1", SupportTier::CatalogOnly),
+        ("multilingual-e5-base", SupportTier::Experimental),
+        ("multilingual-e5-large", SupportTier::Experimental),
         ("multilingual-e5-small", SupportTier::Experimental),
         ("mxbai-embed-large-v1", SupportTier::Experimental),
         ("nomic-embed-v1.5", SupportTier::Experimental),
@@ -208,6 +211,9 @@ fn runnable_models_excludes_catalog_only_entries() {
         "bge-small-en-v1.5",
         "bge-large-en-v1.5",
         "mxbai-embed-large-v1",
+        "multilingual-e5-base",
+        "multilingual-e5-large",
+        "gte-modernbert-base",
         "colbert-small",
         "colbert-v2",
         "colpali-v1.2",
@@ -289,9 +295,9 @@ fn corrected_checkpoint_metadata_is_exposed() {
     );
 
     let snowflake = get_model("snowflake-arctic-l").expect("registered Snowflake model");
-    assert_eq!(snowflake.parameters, "568M");
+    assert_eq!(snowflake.parameters, "567754752");
     assert_eq!(snowflake.architecture_type, "xlm-roberta");
-    assert_eq!(snowflake.context_length, 8192);
+    assert_eq!(snowflake.context_length, 2048);
     assert_eq!(snowflake.max_position_embeddings, 8194);
     assert_eq!(snowflake.vocab_size, 250_002);
     assert_eq!(
@@ -305,7 +311,7 @@ fn corrected_checkpoint_metadata_is_exposed() {
     for id in ["splade-pp-en-v1", "splade-pp-en-v2"] {
         let splade = get_model(id).expect("registered SPLADE model");
         assert_eq!(splade.safetensors_file, None);
-        assert_eq!(splade.pytorch_file, "pytorch_model.bin");
+        assert_eq!(splade.pytorch_file, Some("pytorch_model.bin"));
     }
 
     let colpali = get_model("colpali-v1.2").expect("registered ColPali model");
@@ -377,4 +383,156 @@ fn test_all_models_have_valid_metadata() {
     }
 
     assert_eq!(models_without_revision, ["jina-colbert-v2-96"]);
+}
+
+const BGE_QUERY: &str = "Represent this sentence for searching relevant passages: ";
+const JINA_COS_SIM: &str = "cos_sim = lambda a,b: (a @ b.T) / (norm(a)*norm(b))";
+
+/// Each dense entry's prompts, distance and card words, copied from its card.
+const DENSE_RETRIEVAL: &[(&str, &str, &str, Distance, &str, &str)] = &[
+    (
+        "bge-base-en-v1.5",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarity = embeddings_1 @ embeddings_2.T",
+        "https://huggingface.co/BAAI/bge-base-en-v1.5/blob/a5beb1e3e68b9ab74eb54cfd186867f64f240e1a/README.md#L2772",
+    ),
+    (
+        "jina-embeddings-v2-small-en",
+        "",
+        "",
+        Distance::Cosine,
+        JINA_COS_SIM,
+        "https://huggingface.co/jinaai/jina-embeddings-v2-small-en/blob/44e7d1d6caec8c883c2d4b207588504d519788d0/README.md#L2696",
+    ),
+    (
+        "jina-embeddings-v2-base-en",
+        "",
+        "",
+        Distance::Cosine,
+        JINA_COS_SIM,
+        "https://huggingface.co/jinaai/jina-embeddings-v2-base-en/blob/322d4d7e2f35e84137961a65af894fda0385eb7a/README.md#L2695",
+    ),
+    (
+        "jina-embeddings-v2-base-code",
+        "",
+        "",
+        Distance::Cosine,
+        JINA_COS_SIM,
+        "https://huggingface.co/jinaai/jina-embeddings-v2-base-code/blob/516f4baf13dec4ddddda8631e019b5737c8bc250/README.md#L145",
+    ),
+    (
+        "jina-embeddings-v3",
+        "Represent the query for retrieving evidence documents: ",
+        "Represent the document for retrieval: ",
+        Distance::Cosine,
+        "print(embeddings[0] @ embeddings[1].T)",
+        "https://huggingface.co/jinaai/jina-embeddings-v3/blob/ab036b023d30b4d1138c4c3bfa9f0c445ab455d6/README.md#L25179",
+    ),
+    (
+        "nomic-embed-v1.5",
+        "search_query: ",
+        "search_document: ",
+        Distance::Cosine,
+        "embeddings = F.normalize(embeddings, p=2, dim=1)",
+        "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/blob/e9b6763023c676ca8431644204f50c2b100d9aab/README.md#L2699",
+    ),
+    (
+        "snowflake-arctic-l",
+        "query: ",
+        "",
+        Distance::Cosine,
+        "# Compute cosine similarity scores",
+        "https://huggingface.co/Snowflake/snowflake-arctic-embed-l-v2.0/blob/ac6544c8a46e00af67e330e85a9028c66b8cfd9a/README.md#L9126",
+    ),
+    (
+        "multilingual-e5-small",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-small/blob/614241f622f53c4eeff9890bdc4f31cfecc418b3/README.md#L18355",
+    ),
+    (
+        "bge-small-en-v1.5",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarity = embeddings_1 @ embeddings_2.T",
+        "https://huggingface.co/BAAI/bge-small-en-v1.5/blob/5c38ec7c405ec4b44b94cc5a9bb96e735b38267a/README.md#L2771",
+    ),
+    (
+        "bge-large-en-v1.5",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarity = embeddings_1 @ embeddings_2.T",
+        "https://huggingface.co/BAAI/bge-large-en-v1.5/blob/d4aa6901d3a41ba39fb536a557fa166f842b0e09/README.md#L2770",
+    ),
+    (
+        "mxbai-embed-large-v1",
+        BGE_QUERY,
+        "",
+        Distance::Cosine,
+        "similarities = cos_sim(query_embedding, docs_embeddings)",
+        "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1/blob/b33106f585b9ce46904ad7443a3b52b7a63e231c/README.md#L2671",
+    ),
+    (
+        "multilingual-e5-base",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-base/blob/d128750597153bb5987e10b1c3493a34e5a4502a/README.md#L6821",
+    ),
+    (
+        "multilingual-e5-large",
+        "query: ",
+        "passage: ",
+        Distance::Cosine,
+        "scores = (embeddings[:2] @ embeddings[2:].T) * 100",
+        "https://huggingface.co/intfloat/multilingual-e5-large/blob/3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3/README.md#L5994",
+    ),
+    (
+        "gte-modernbert-base",
+        "",
+        "",
+        Distance::Cosine,
+        "scores = (embeddings[:1] @ embeddings[1:].T) * 100",
+        "https://huggingface.co/Alibaba-NLP/gte-modernbert-base/blob/e7f32e3c00f91d699e8c43b53106206bcc72bb22/README.md#L77",
+    ),
+];
+
+#[test]
+fn every_dense_entry_has_its_cards_prompts_and_distance() {
+    let dense: Vec<_> = models_by_type(ModelType::Dense)
+        .into_iter()
+        .map(|model| model.id)
+        .collect();
+    let table: Vec<_> = DENSE_RETRIEVAL.iter().map(|row| row.0).collect();
+    assert_eq!(
+        dense, table,
+        "the table must list every dense entry in order"
+    );
+    for &(id, query, document, distance, words, url) in DENSE_RETRIEVAL {
+        let model = get_model(id).unwrap();
+        let prompts = model
+            .prompts
+            .unwrap_or_else(|| panic!("{id} has no prompts"));
+        assert_eq!((prompts.query, prompts.document), (query, document), "{id}");
+        assert_eq!(model.distance, Some(distance), "{id}");
+        let card = model
+            .card_comparison
+            .unwrap_or_else(|| panic!("{id} has no card comparison"));
+        assert_eq!((card.words, card.url), (words, url), "{id}");
+    }
+}
+
+#[test]
+fn distance_words_are_the_registry_vocabulary() {
+    assert_eq!(
+        [Distance::Cosine, Distance::Dot, Distance::Euclidean].map(Distance::as_str),
+        ["cosine", "dot", "euclidean"]
+    );
 }

@@ -171,15 +171,15 @@ fn launch_one(
     }
 }
 
-struct MonitorResult {
-    status: ExitStatus,
+pub(super) struct MonitorResult {
+    pub(super) status: ExitStatus,
     peak_rss_bytes: Option<u64>,
     rss_enforced: bool,
     rss_method: String,
-    launcher_error: Option<String>,
+    pub(super) launcher_error: Option<String>,
 }
 
-fn monitor_child(
+pub(super) fn monitor_child(
     child: &mut Child,
     timeout: Duration,
     max_peak_rss_bytes: u64,
@@ -277,7 +277,7 @@ fn apply_launcher_result(
     }
 }
 
-fn configure_source(command: &mut Command, repository: &Path, model_dir: Option<&Path>) {
+pub(super) fn configure_source(command: &mut Command, repository: &Path, model_dir: Option<&Path>) {
     if let Some(directory) = model_dir {
         command
             .arg("--model-dir")

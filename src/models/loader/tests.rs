@@ -3,6 +3,53 @@ use std::ffi::OsStr;
 
 mod installed;
 
+#[test]
+fn onnx_only_weights_are_refused_before_model_loading() {
+    let mut model = crate::models::registry::get_model("bge-base-en-v1.5")
+        .expect("registered model")
+        .clone();
+    model.safetensors_file = None;
+    model.pytorch_file = None;
+    model.onnx_file = Some("onnx/model.onnx");
+    assert!(model.is_runnable());
+    let error = crate::api::builder::ensure_runnable_model(&model)
+        .expect_err("ONNX metadata must not enable a loader");
+    assert!(matches!(
+        &error,
+        crate::error::TesseraError::UnsupportedWeightsFormat { .. }
+    ));
+    assert!(error.to_string().contains("ONNX format is not supported"));
+    assert!(error.to_string().contains(model.id));
+    let error = super::supported_weight_filename(&model).expect_err("unsupported weight format");
+    assert!(matches!(
+        &error,
+        crate::error::TesseraError::UnsupportedWeightsFormat { .. }
+    ));
+    let Err(error) = super::InstalledModel::open_for_model(
+        &model,
+        std::path::Path::new("missing-installed-model"),
+    ) else {
+        panic!("format refusal must precede filesystem access");
+    };
+    assert!(error.to_string().contains("ONNX format is not supported"));
+}
+
+#[test]
+fn supported_weights_keep_safetensors_preference_and_legacy_selection() {
+    let mut model = crate::models::registry::get_model("bge-base-en-v1.5")
+        .expect("registered model")
+        .clone();
+    assert_eq!(
+        super::supported_weight_filename(&model).expect("safetensors"),
+        "model.safetensors"
+    );
+    model.safetensors_file = None;
+    assert_eq!(
+        super::supported_weight_filename(&model).expect("legacy weights"),
+        "pytorch_model.bin"
+    );
+}
+
 #[cfg(feature = "fetch")]
 use hf_hub::Cache;
 

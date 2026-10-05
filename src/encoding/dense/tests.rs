@@ -4,6 +4,9 @@ use candle_nn::{VarBuilder, VarMap};
 
 use super::{BertVariant, CandleDenseEncoder, ModelTypeDetector};
 
+#[path = "tests_modern_weights.rs"]
+mod modern_weights;
+
 const NOMIC_CONFIG: &str = r#"
 {
   "architectures": ["NomicBertModel"],
@@ -200,4 +203,60 @@ fn mixed_length_bert_batch_matches_sequential_forward() -> Result<()> {
     let short_batch_item = batch.get(0)?.narrow(0, 0, 3)?;
 
     assert_tensors_close(&short_batch_item, &sequential.squeeze(0)?, 1e-5)
+}
+
+const NOMIC_PROMPTS: crate::models::registry::Prompts = crate::models::registry::Prompts {
+    query: "search_query: ",
+    document: "search_document: ",
+};
+
+#[test]
+fn role_selects_the_models_text_and_none_selects_no_text() {
+    use super::inference::prompt_for;
+    use crate::core::embeddings::Role;
+    assert_eq!(
+        prompt_for(NOMIC_PROMPTS, Some(Role::Query)),
+        "search_query: "
+    );
+    assert_eq!(
+        prompt_for(NOMIC_PROMPTS, Some(Role::Document)),
+        "search_document: "
+    );
+    assert_eq!(prompt_for(NOMIC_PROMPTS, None), "");
+}
+
+#[test]
+fn limit_holds_both_texts_with_a_role_and_neither_without() {
+    use super::inference::prompts_to_hold;
+    use crate::core::embeddings::Role;
+    for role in [Role::Query, Role::Document] {
+        assert_eq!(
+            prompts_to_hold(NOMIC_PROMPTS, Some(role)),
+            ["search_query: ", "search_document: "]
+        );
+    }
+    assert_eq!(prompts_to_hold(NOMIC_PROMPTS, None), ["", ""]);
+}
+
+#[test]
+fn without_a_role_the_limit_needs_only_special_tokens_plus_one() {
+    use super::inference::prompts_to_hold;
+    use crate::core::tokenizer::tests::cut_tokenizer_with_policy;
+    let prompts = crate::models::registry::Prompts {
+        query: "three two ",
+        document: "",
+    };
+    let tokenizer =
+        cut_tokenizer_with_policy(crate::runtime::ResourcePolicy::new(3, 16, 2048, usize::MAX));
+    tokenizer
+        .validate_cut_configuration_with(&prompts_to_hold(prompts, None))
+        .unwrap();
+    assert!(tokenizer
+        .validate_cut_configuration_with(&prompts_to_hold(
+            prompts,
+            Some(crate::core::embeddings::Role::Document)
+        ))
+        .is_err());
+    let input = tokenizer.encode_cut(super::inference::prompt_for(prompts, None), "one");
+    assert_eq!(input.unwrap().token_ids, [10, 2, 11]);
 }

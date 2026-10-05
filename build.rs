@@ -69,6 +69,10 @@ fn generate_code(registry: &ModelRegistry) -> String {
     code.push_str(&generate_pooling_types());
     code.push_str("\n\n");
 
+    // Generate retrieval prompt, distance and card comparison types
+    code.push_str(&generate_retrieval_types());
+    code.push_str("\n\n");
+
     // Generate ModelType enum
     code.push_str(&generate_model_type_enum(registry));
     code.push_str("\n\n");
@@ -95,6 +99,52 @@ fn generate_code(registry: &ModelRegistry) -> String {
     code.push_str(&generate_accessor_functions());
 
     code
+}
+
+fn generate_retrieval_types() -> String {
+    r#"/// How two vectors from one model are compared.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub enum Distance {
+    /// Cosine similarity.
+    Cosine,
+    /// Dot product.
+    Dot,
+    /// Euclidean distance.
+    Euclidean,
+}
+
+impl Distance {
+    /// Returns the registry word for this distance.
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Cosine => "cosine",
+            Self::Dot => "dot",
+            Self::Euclidean => "euclidean",
+        }
+    }
+}
+
+/// The text a model's card puts before a question and before a document.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Prompts {
+    /// Text joined before a question; empty when the card names none.
+    pub query: &'static str,
+    /// Text joined before a document; empty when the card names none.
+    pub document: &'static str,
+}
+
+/// The comparison a model's card states, in its own words.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct CardComparison {
+    /// The card's words for the comparison.
+    pub words: &'static str,
+    /// The card's URL at the pinned revision.
+    pub url: &'static str,
+}"#
+    .to_string()
 }
 
 fn generate_pooling_types() -> String {
@@ -296,8 +346,10 @@ pub struct ModelInfo {
     pub config_file: &'static str,
     /// Safetensors artifact or shard index, when published
     pub safetensors_file: Option<&'static str>,
-    /// PyTorch weight artifact within the pinned repository
-    pub pytorch_file: &'static str,
+    /// PyTorch weight artifact within the pinned repository, when published
+    pub pytorch_file: Option<&'static str>,
+    /// ONNX artifact metadata; no ONNX loader is provided
+    pub onnx_file: Option<&'static str>,
     /// Organization that released the model
     pub organization: &'static str,
     /// Release year or date
@@ -336,6 +388,12 @@ pub struct ModelInfo {
     pub license: &'static str,
     /// Description
     pub description: &'static str,
+    /// Texts joined before questions and documents (dense models)
+    pub prompts: Option<Prompts>,
+    /// How vectors are compared (dense models)
+    pub distance: Option<Distance>,
+    /// The comparison the card states, in its words (dense models)
+    pub card_comparison: Option<CardComparison>,
 }
 
 impl ModelInfo {

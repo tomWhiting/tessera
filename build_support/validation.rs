@@ -49,7 +49,50 @@ pub fn validate_registry(registry: &ModelRegistry) {
         }
 
         validate_pooling(model);
+        validate_retrieval(model);
     }
+}
+
+fn validate_retrieval(model: &ModelMetadata) {
+    if model.model_type != "dense" {
+        return;
+    }
+    assert!(
+        model.prompts.is_some(),
+        "Dense model {} must declare prompts",
+        model.id
+    );
+    let distance = model
+        .distance
+        .as_deref()
+        .unwrap_or_else(|| panic!("Dense model {} must declare a distance", model.id));
+    let valid = ["cosine", "dot", "euclidean"];
+    assert!(
+        valid.contains(&distance),
+        "Model {} has invalid distance '{}'. Valid: {:?}",
+        model.id,
+        distance,
+        valid
+    );
+    let card = model
+        .card_comparison
+        .as_ref()
+        .unwrap_or_else(|| panic!("Dense model {} must declare its card comparison", model.id));
+    assert!(
+        !card.words.trim().is_empty(),
+        "Model {} must quote its card comparison",
+        model.id
+    );
+    let revision = model.revision.as_deref().unwrap_or_default();
+    let prefix = format!(
+        "https://huggingface.co/{}/blob/{revision}/",
+        model.huggingface_id
+    );
+    assert!(
+        !revision.is_empty() && card.url.starts_with(&prefix),
+        "Model {} card comparison URL must be at its pinned revision",
+        model.id
+    );
 }
 
 fn validate_weight_metadata(model: &ModelMetadata) {
@@ -63,11 +106,34 @@ fn validate_weight_metadata(model: &ModelMetadata) {
         "Model {} must declare a config artifact",
         model.id
     );
+    let weights = &model.files.weights;
     assert!(
-        !model.files.weights.pytorch.trim().is_empty(),
-        "Model {} must declare a PyTorch weight artifact",
+        weights.safetensors.is_some() || weights.pytorch.is_some() || weights.onnx.is_some(),
+        "Model {} must declare at least one weight artifact",
         model.id
     );
+    for (format, filename) in [
+        ("safetensors", weights.safetensors.as_deref()),
+        ("PyTorch", weights.pytorch.as_deref()),
+        ("ONNX", weights.onnx.as_deref()),
+    ] {
+        if let Some(filename) = filename {
+            assert!(
+                !filename.trim().is_empty(),
+                "Model {} has an empty {format} artifact path",
+                model.id
+            );
+        }
+    }
+    if let Some(onnx) = weights.onnx.as_deref() {
+        assert!(
+            std::path::Path::new(onnx)
+                .extension()
+                .is_some_and(|extension| extension == "onnx"),
+            "Model {} has an invalid ONNX artifact path: {onnx}",
+            model.id
+        );
+    }
 
     let Some(safetensors) = model.files.weights.safetensors.as_deref() else {
         return;

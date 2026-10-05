@@ -1,29 +1,217 @@
 {
   "schema_version": 2,
-  "model": { "id": "nomic-embed-v1.5", "repository": "nomic-ai/nomic-embed-text-v1.5", "revision": "e9b6763023c676ca8431644204f50c2b100d9aab", "representation": "dense" },
+  "model": {
+    "id": "nomic-embed-v1.5",
+    "repository": "nomic-ai/nomic-embed-text-v1.5",
+    "revision": "e9b6763023c676ca8431644204f50c2b100d9aab",
+    "representation": "dense"
+  },
   "artifacts": [
-    { "path": "config.json", "size_bytes": 2538, "sha256": "9ab00bd92cee80a569f708140b7b6c1661a65891ff3765b1519e181ba2f2c92b" },
-    { "path": "tokenizer.json", "size_bytes": 711396, "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66" },
-    { "path": "model.safetensors", "size_bytes": 546938168, "sha256": "9e7d262b1fe5ea350782829496efa831901b77486bbde1cea54a4c822d010d5c" }
+    {
+      "path": "config.json",
+      "size_bytes": 2538,
+      "sha256": "9ab00bd92cee80a569f708140b7b6c1661a65891ff3765b1519e181ba2f2c92b"
+    },
+    {
+      "path": "tokenizer.json",
+      "size_bytes": 711396,
+      "sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66"
+    },
+    {
+      "path": "model.safetensors",
+      "size_bytes": 546938168,
+      "sha256": "9e7d262b1fe5ea350782829496efa831901b77486bbde1cea54a4c822d010d5c"
+    }
   ],
   "profiles": {
-  "smoke": {
-    "kind": "smoke",
-    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "query", "max_sequence_tokens": 128, "context_window_tokens": 8192 },
-    "resource_policy": { "max_sequence_tokens": 128, "max_batch_items": 2, "max_batch_tokens": 256, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 65536, "max_attention_cells": 32768, "max_job_items": 2, "max_job_input_bytes": 131072, "max_output_bytes": 16777216, "max_activation_bytes": 1500000000 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 900, "max_artifact_bytes": 650000000, "min_free_disk_bytes": 1800000000, "max_peak_rss_bytes": 2700000000 },
-    "official_reference": null
+    "smoke": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 700000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 1700000000
+      },
+      "official_reference": {
+        "path": "nomic-embed-v1.5/smoke.json",
+        "sha256": "efbe88e51e05ec65413813b5bca84fdda09cdadbaa84b4fb68193b65fe148f4d"
+      }
+    },
+    "paragraph": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 700000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 1700000000
+      },
+      "official_reference": {
+        "path": "nomic-embed-v1.5/paragraph.json",
+        "sha256": "6d686eb2250403ae6284b79ab89a23a969f2c7639aec71aa87aeecfc9c13e543"
+      }
+    },
+    "non-ascii": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 700000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 1700000000
+      },
+      "official_reference": {
+        "path": "nomic-embed-v1.5/non-ascii.json",
+        "sha256": "b64c07ce58e5d344d86015c5fa2244f8eaebc57ae985137ea62a408f3012f5d1"
+      }
+    },
+    "whitespace": {
+      "kind": "smoke",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "query",
+        "max_sequence_tokens": 128,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 128,
+        "max_batch_items": 2,
+        "max_batch_tokens": 256,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 65536,
+        "max_attention_cells": 32768,
+        "max_job_items": 2,
+        "max_job_input_bytes": 131072,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 1000000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 600,
+        "max_artifact_bytes": 700000000,
+        "min_free_disk_bytes": 1500000000,
+        "max_peak_rss_bytes": 1700000000
+      },
+      "official_reference": {
+        "path": "nomic-embed-v1.5/whitespace.json",
+        "sha256": "8811fba0242d88f6ed7b2e2c4fd510a35aec6b0a9f9cdf05e1650b2247bc4038"
+      }
+    },
+    "long-context-2k": {
+      "kind": "long_context",
+      "capability": {
+        "device": "cpu",
+        "dtype": "f32",
+        "semantic_mode": "document",
+        "max_sequence_tokens": 2048,
+        "context_window_tokens": 2048
+      },
+      "resource_policy": {
+        "max_sequence_tokens": 2048,
+        "max_batch_items": 1,
+        "max_batch_tokens": 2048,
+        "max_model_bytes": 700000000,
+        "max_input_bytes_per_sequence": 1048576,
+        "max_attention_cells": 4194304,
+        "max_job_items": 1,
+        "max_job_input_bytes": 1048576,
+        "max_output_bytes": 16777216,
+        "max_activation_bytes": 700000000
+      },
+      "process": {
+        "cpu_threads": 2,
+        "timeout_seconds": 3600,
+        "max_artifact_bytes": 700000000,
+        "min_free_disk_bytes": 800000000,
+        "max_peak_rss_bytes": 2400000000
+      },
+      "official_reference": {
+        "path": "nomic-embed-v1.5/long-context-2k.json",
+        "sha256": "5cc763f6d0dbfc8a8ce44108e4a9a77ffbe93dac8dee8313b5a9c3fb3da269bd"
+      }
+    }
   },
-  "long-context-8k": {
-    "kind": "long_context",
-    "capability": { "device": "cpu", "dtype": "f32", "semantic_mode": "document", "max_sequence_tokens": 8192, "context_window_tokens": 8192 },
-    "resource_policy": { "max_sequence_tokens": 8192, "max_batch_items": 1, "max_batch_tokens": 8192, "max_model_bytes": 700000000, "max_input_bytes_per_sequence": 1048576, "max_attention_cells": 67108864, "max_job_items": 1, "max_job_input_bytes": 1048576, "max_output_bytes": 16777216, "max_activation_bytes": 7000000000 },
-    "process": { "cpu_threads": 2, "timeout_seconds": 7200, "max_artifact_bytes": 650000000, "min_free_disk_bytes": 1800000000, "max_peak_rss_bytes": 8000000000 },
-    "official_reference": null
-  } },
   "smoke": {
-    "fixture": { "query": "What is machine learning?", "positive": "Machine learning allows computers to learn patterns from data.", "negative": "The recipe bakes sourdough bread in a hot oven." },
-    "expected_dimension": 768, "expected_vocabulary_size": null, "normalized": true, "minimum_score_margin": 0.01, "repeat_similarity_minimum": 0.9999
+    "fixture": {
+      "query": "What is machine learning?",
+      "positive": "Machine learning allows computers to learn patterns from data.",
+      "negative": "The recipe bakes sourdough bread in a hot oven."
+    },
+    "expected_dimension": 768,
+    "expected_vocabulary_size": null,
+    "normalized": true,
+    "minimum_score_margin": 0.01,
+    "repeat_similarity_minimum": 0.9999
   },
-  "promotion": { "minimum_successful_runs": 2, "required_profiles": ["smoke", "long-context-8k"], "require_clean_source": true, "require_enforced_rss": true }
+  "promotion": {
+    "minimum_successful_runs": 2,
+    "required_profiles": [
+      "smoke",
+      "paragraph",
+      "non-ascii",
+      "whitespace",
+      "long-context-2k"
+    ],
+    "require_clean_source": true,
+    "require_enforced_rss": true
+  }
 }

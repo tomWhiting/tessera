@@ -56,6 +56,7 @@ pub fn preflight_registered_model_with_dtype(
             model_info.support_note
         );
     }
+    crate::models::loader::supported_weight_filename(model_info)?;
     if model_info.model_type != expected_model_type {
         bail!(
             "Model '{}' has registry type '{:?}', but this encoder requires '{:?}'",

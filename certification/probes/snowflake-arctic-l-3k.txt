@@ -1,0 +1,413 @@
+# Part 5: Dense Embedding Models (2024-2025) & Conclusion
+
+> [!CAUTION]
+> Historical January 2025 research snapshot. Its “current state,” deployment,
+> model-compatibility, and roadmap claims do not describe the revival. See the
+> [maintained documentation](../README.md).
+
+## Overview
+
+Dense embeddings output a **single vector per input** through pooling (CLS token, mean pooling, etc.). This section focuses EXCLUSIVELY on NEW models from 2024-2025 - old standards like all-MiniLM-L6-v2 are omitted since they're available everywhere.
+
+### Why Dense Still Matters
+
+Despite multi-vector advances, dense embeddings remain valuable:
+- **Simplicity:** Single vector per document
+- **Infrastructure:** Billions invested in vector databases optimized for dense
+- **Speed:** No late-interaction computation needed
+- **Standardization:** Well-understood, proven at scale
+
+**2024-2025 Innovations:**
+- Long contexts (128K tokens!)
+- Matryoshka (flexible dimensions)
+- Multimodal (text + images)
+- LLM-based (decoder-only architectures)
+- Instruction-tuned (task-aware)
+
+---
+
+## 1. State-of-the-Art General-Purpose Models
+
+### 1.1 NVIDIA NV-Embed-v2 (Covered in Multi-Vector)
+
+See Part 1 Section 3.3 - uses latent attention to compress 512 vectors → single 4096-dim vector
+
+**Key Stats:**
+- **MTEB: 72.31** (Rank #1, August 2024)
+- Context: 32,768 tokens
+- Dimensions: 4,096
+- Architecture: Mistral-7B decoder
+
+---
+
+### 1.2 Alibaba GTE-Qwen2-7B-instruct
+
+**HuggingFace ID:** `Alibaba-NLP/gte-Qwen2-7B-instruct`
+
+**Release Date:** June 2024
+
+**Organization:** Alibaba Tongyi Lab
+
+**Architecture:** Qwen2-7B with **bidirectional attention** (modified decoder)
+
+**Parameters:** 7B
+
+**Dimensions:** 3584
+
+**Context Length:** 32,768 tokens (32K)
+
+**Training:** Instruction tuning on **query side only** (asymmetric)
+
+**MTEB Score:** **70.24** (Rank #1 for English & Chinese, June 2024)
+
+**Unique Features:**
+- Decoder-only LLM converted to embedder
+- Bidirectional attention (modified for embedding)
+- Instruction tuning (task-aware embeddings)
+- Dual-language SOTA (English + Chinese)
+
+**Use Cases:**
+- General-purpose embedding
+- Multilingual retrieval (English/Chinese)
+- Long-document processing (32K)
+- RAG applications
+
+**Paper:** arXiv:2407.20654
+
+**Availability:** HuggingFace, open source
+
+---
+
+### 1.3 Alibaba GTE-Qwen2-1.5B-instruct
+
+**HuggingFace ID:** `Alibaba-NLP/gte-Qwen2-1.5B-instruct`
+
+**Release Date:** 2024
+
+**Organization:** Alibaba Tongyi Lab
+
+**Parameters:** 1.5B (smaller variant)
+
+**Context Length:** 32,768 tokens
+
+**Training:** Same methodology as 7B model
+
+**Use Cases:** More efficient deployment than 7B
+
+**Availability:** HuggingFace, open source
+
+---
+
+### 1.4 Voyage AI voyage-3
+
+**Model ID:** `voyage-3`
+
+**Release Date:** September 18, 2024
+
+**Organization:** Voyage AI (MongoDB partnership)
+
+**Dimensions:** 1,024
+
+**Context Length:** 32,000 tokens
+
+**Performance:** **+7.55% better than OpenAI text-embedding-3-large**
+
+**Unique Features:**
+- **3x smaller embeddings** (1024 vs 3072)
+- **2.2x lower cost** than OpenAI
+- Trained on 2 trillion tokens
+- Superior performance with smaller footprint
+
+**Pricing:** Significantly lower than OpenAI
+
+**License:** Proprietary
+
+**Availability:** Voyage AI API, Azure Marketplace
+
+---
+
+### 1.5 Voyage AI voyage-3-lite
+
+**Model ID:** `voyage-3-lite`
+
+**Release Date:** September 18, 2024
+
+**Dimensions:** 512 (even smaller)
+
+**Context Length:** 32,000 tokens
+
+**Performance:** **+3.82% better than OpenAI text-embedding-3-large**, **6x cheaper**
+
+**Use Cases:** Cost-sensitive deployments, high-throughput applications
+
+**Availability:** Voyage AI API
+
+---
+
+### 1.6 OpenAI text-embedding-3-large
+
+**Model ID:** `text-embedding-3-large`
+
+**Release Date:** January 25, 2024
+
+**Organization:** OpenAI
+
+**Dimensions:** 3,072 (Matryoshka: 256-3072)
+
+**Context Length:** 8,191 tokens
+
+**MTEB Score:** 64.6% average (up from 61.0% for ada-002)
+
+**Unique Features:**
+- Matryoshka embeddings (flexible dimensions)
+- 256d can outperform 1536d ada-002 (information front-loaded)
+
+**Pricing:** $0.00013 per 1K tokens
+
+**License:** Proprietary
+
+**Availability:** OpenAI API only
+
+---
+
+### 1.7 OpenAI text-embedding-3-small
+
+**Model ID:** `text-embedding-3-small`
+
+**Release Date:** January 25, 2024
+
+**Dimensions:** 1,536 (Matryoshka supported)
+
+**Context Length:** 8,191 tokens
+
+**Unique Features:**
+- **5x cheaper than ada-002**
+- Matryoshka support
+
+**Pricing:** $0.00002 per 1K tokens
+
+**Availability:** OpenAI API only
+
+---
+
+### 1.8 Cohere Embed v4
+
+**Model ID:** `embed-v4`
+
+**Release Date:** 2024
+
+**Organization:** Cohere
+
+**Dimensions:** 1,536 (Matryoshka: 256, 512, 1024, 1536)
+
+**Context Length:** **128,000 tokens** (128K - longest available!)
+
+**Modalities:** Text + Images (multimodal)
+
+**Languages:** 100+
+
+**Unique Features:**
+- **Longest context** among all models (128K)
+- Multimodal (text + images unified)
+- Matryoshka support
+- Byte and binary quantization
+
+**Use Cases:**
+- Extremely long documents
+- Books, technical manuals
+- Multimodal search
+
+**License:** Proprietary
+
+**Availability:** Cohere Platform, AWS SageMaker, Azure AI Foundry
+
+---
+
+### 1.9 Jina Embeddings v3
+
+**HuggingFace ID:** `jinaai/jina-embeddings-v3`
+
+**Release Date:** September 18, 2024
+
+**Organization:** Jina AI
+
+**Architecture:** Transformer encoder (XLM-RoBERTa based)
+
+**Parameters:** 570M
+
+**Dimensions:** 1,024 (Matryoshka: 32-1024)
+
+**Context Length:** 8,192 tokens
+
+**Languages:** 89 (SOTA on 30)
+
+**MTEB Score:** Rank #2 for models <1B parameters
+
+**Unique Features:**
+- **Task-specific LoRA adapters** (retrieval.query, retrieval.passage, separation, classification, text-matching)
+- Matryoshka representation learning
+- Multilingual (89 languages)
+- Apache 2.0 license (commercial-friendly)
+
+**Paper:** arXiv:2409.10173
+
+**Availability:** HuggingFace, Jina AI API
+
+---
+
+### 1.10 Snowflake Arctic Embed v2.0
+
+**HuggingFace IDs:**
+- `Snowflake/snowflake-arctic-embed-l-v2.0` (large, 334M params)
+- `Snowflake/snowflake-arctic-embed-m-v2.0` (medium)
+- Multiple size variants (xs, s, m, l)
+
+**Release Date:** December 4, 2024
+
+**Organization:** Snowflake
+
+**Architecture:** Based on BAAI/bge-m3-retromae
+
+**Parameters:** 23M-334M (5 model sizes)
+
+**Context Length:** **8,192 tokens** (v2.0 - up from 512 in v1)
+
+**Unique Features:**
+- **Matryoshka embeddings** (128-byte vectors possible)
+- **Multilingual focus** (v2.0 emphasis)
+- **Quantization-aware training**
+- Family of models for different resource needs
+
+**MTEB Performance:** SOTA for respective size categories
+
+**License:** Apache 2.0
+
+**Availability:** HuggingFace, Snowflake platform
+
+---
+
+### 1.11 Nomic Embed v1.5
+
+**HuggingFace ID:** `nomic-ai/nomic-embed-text-v1.5`
+
+**Release Date:** 2024
+
+**Organization:** Nomic AI
+
+**Dimensions:** 768 (Matryoshka: 64-768)
+
+**Context Length:** 8,192 tokens
+
+**Unique Features:**
+- **First fully reproducible open-source 8K model**
+- Matryoshka embeddings (64, 128, 256, 512, 768)
+- Outperforms OpenAI ada-002
+- Complete training code released
+
+**Paper:** arXiv:2402.01613
+
+**License:** Apache 2.0
+
+**Availability:** HuggingFace, Nomic API
+
+**Why This Matters:** Full reproducibility (training code + data) is rare.
+
+---
+
+### 1.12 Salesforce SFR-Embedding-Mistral
+
+**HuggingFace ID:** `Salesforce/SFR-Embedding-Mistral`
+
+**Release Date:** March 2024
+
+**Organization:** Salesforce AI Research
+
+**Base Model:** E5-mistral-7b-instruct (Mistral-7B)
+
+**MTEB Score:** 67.6 average (top-ranked at release)
+
+**Training:** Multi-task training on diverse datasets
+
+**License:** Research purposes
+
+**Availability:** HuggingFace
+
+---
+
+### 1.13 Salesforce SFR-Embedding-v2
+
+**HuggingFace ID:** `Salesforce/SFR-Embedding-2_R`
+
+**Release Date:** June 20, 2024
+
+**Parameters:** 7.11B
+
+**MTEB Score:** **70+** (Rank #1 at release, second to surpass 70)
+
+**Training:** Multi-stage recipe, enhanced multitasking
+
+**License:** Research purposes
+
+**Availability:** HuggingFace
+
+---
+
+### 1.14 ModernBERT / ModernBERT-embed
+
+**HuggingFace IDs:**
+- `nomic-ai/modernbert-embed-base`
+- `answerdotai/ModernBERT-base`
+- `answerdotai/ModernBERT-large`
+
+**Release Date:** December 19, 2024
+
+**Organizations:** Answer.AI & LightOn
+
+**Context Length:** 8,192 tokens
+
+**Training Data:** **2 trillion tokens**
+
+**Unique Features:**
+- **Flash Attention 2** (efficiency)
+- **RoPE positional embeddings** (vs absolute)
+- **Matryoshka support** (256d option)
+- **3x memory reduction**
+- Better than BERT across retrieval, NLU, code tasks
+
+**Performance:** "The BERT of 2024" - modernized architecture
+
+**License:** Open source
+
+**Availability:** HuggingFace
+
+---
+
+### 1.15 Google EmbeddingGemma
+
+**HuggingFace ID:** `google/embeddinggemma-300m`
+
+**Release Date:** September 4, 2025
+
+**Organization:** Google DeepMind
+
+**Architecture:** Gemma3 transformer with bidirectional attention
+
+**Parameters:** 308M
+
+**Dimensions:** 768 (can truncate to 128, 256, 512)
+
+**Context Length:** 2,048 tokens
+
+**Languages:** 100+
+
+**MTEB/MMTEB:** **SOTA for models <500M parameters**
+
+**Unique Features:**
+- **On-device optimized:** <200MB RAM when quantized
+- **<15ms latency** on EdgeTPU
+- Bi-directional attention (modified Gemma)
+- Multilingual (100+ languages)
+
+**Use Cases:**
+- Edge deployment
+- Mobile applications

@@ -33,6 +33,18 @@ pub struct CutConfigurationError {
     pub special_tokens: usize,
 }
 
+/// A sequence limit that cannot hold the framing, the longer prompt and any content.
+#[derive(Debug, thiserror::Error)]
+#[error("InvalidPromptConfiguration: sequence limit {limit} must exceed special-token count {special_tokens} plus prompt tokens {prompt_tokens}")]
+pub struct PromptConfigurationError {
+    /// Configured maximum sequence length.
+    pub limit: usize,
+    /// Special tokens added to a single sequence.
+    pub special_tokens: usize,
+    /// Tokens in the longer of the model's prompts.
+    pub prompt_tokens: usize,
+}
+
 /// Splits on white space before a lone `Metaspace` on a Unigram model.
 ///
 /// SentencePiece references strip edge spaces and collapse repeats before
@@ -166,6 +178,35 @@ impl Tokenizer {
         Ok(())
     }
 
+    /// Checks the limit holds the special tokens, the longest prompt and one token.
+    pub(crate) fn validate_cut_configuration_with(&self, prompts: &[&str]) -> Result<()> {
+        self.validate_cut_configuration()?;
+        let prompt_tokens = self.longest_prefix_tokens(prompts)?;
+        let special_tokens = self.cut_special_tokens();
+        let limit = self.resource_policy.max_sequence_tokens();
+        if limit <= special_tokens + prompt_tokens {
+            return Err(PromptConfigurationError {
+                limit,
+                special_tokens,
+                prompt_tokens,
+            }
+            .into());
+        }
+        Ok(())
+    }
+
+    pub(crate) fn longest_prefix_tokens(&self, prefixes: &[&str]) -> Result<usize> {
+        let mut longest = 0;
+        for prefix in prefixes {
+            let encoding = self
+                .inner
+                .encode(*prefix, false)
+                .map_err(|error| anyhow::anyhow!("Failed to encode prompt: {error}"))?;
+            longest = longest.max(encoding.len());
+        }
+        Ok(longest)
+    }
+
     pub(crate) fn prepare_cut(&mut self) -> Result<()> {
         if self.resource_policy.max_sequence_tokens() <= self.cut_special_tokens() {
             // Cut calls report invalid limits; ordinary encoding retains its behavior.
@@ -182,15 +223,18 @@ impl Tokenizer {
         Ok(())
     }
 
-    fn cut_special_tokens(&self) -> usize {
+    pub(crate) fn cut_special_tokens(&self) -> usize {
         self.inner
             .get_post_processor()
             .map_or(0, |processor| processor.added_tokens(false))
     }
 
-    pub(crate) fn encode_cut(&self, text: &str) -> Result<CutTokenizedInput> {
-        self.validate_cut_configuration()?;
+    /// Tokenises `prompt` joined directly before `text`, cutting from the end.
+    pub(crate) fn encode_cut(&self, prompt: &str, text: &str) -> Result<CutTokenizedInput> {
+        self.validate_cut_configuration_with(&[prompt])?;
         self.resource_policy.validate_input_bytes(text.len())?;
+        let joined = [prompt, text].concat();
+        let text = joined.as_str();
         let mut encoding = self
             .inner
             .encode(text, true)
@@ -217,7 +261,11 @@ impl Tokenizer {
         })
     }
 
-    pub(crate) fn encode_batch_cut(&self, texts: &[&str]) -> Result<Vec<CutTokenizedInput>> {
+    pub(crate) fn encode_batch_cut(
+        &self,
+        prompt: &str,
+        texts: &[&str],
+    ) -> Result<Vec<CutTokenizedInput>> {
         self.validate_cut_configuration()?;
         self.resource_policy.validate_batch(texts.len(), 0)?;
         for text in texts {
@@ -225,7 +273,7 @@ impl Tokenizer {
         }
         let inputs = texts
             .iter()
-            .map(|text| self.encode_cut(text))
+            .map(|text| self.encode_cut(prompt, text))
             .collect::<Result<Vec<_>>>()?;
         let max_len = inputs
             .iter()
