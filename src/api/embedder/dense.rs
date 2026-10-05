@@ -46,8 +46,9 @@ impl TesseraDense {
 
     /// Returns one vector and original byte span per window, in source order.
     ///
-    /// Original content is tokenized once. Prefix and special tokens are added
-    /// to each slice and count toward its input limit. `None` uses the model's
+    /// Role prefix and text are tokenized together once. Tokens reaching the text
+    /// are content; wholly prefix tokens and specials are repeated per window
+    /// and count toward its input limit. `None` uses the model's
     /// default configuration. Empty and byte-oversized texts are refused.
     ///
     /// # Errors

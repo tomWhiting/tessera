@@ -53,7 +53,7 @@ fn window_count_matches_the_closed_formula() {
 fn prefix_tokens_reduce_capacity_without_changing_content_ids() {
     let tokenizer = cut_tokenizer_with_policy(ResourcePolicy::new(5, 16, 2048, usize::MAX));
     let (total, windows) = tokenizer
-        .encode_spanned_windows("two", "one two three", ContextWindowConfig::new(5, 1))
+        .encode_spanned_windows("two ", "one two three", ContextWindowConfig::new(5, 1))
         .unwrap();
     assert_eq!(total, 3);
     assert_eq!(windows.len(), 2);

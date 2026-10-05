@@ -420,7 +420,7 @@ pub struct WindowedDenseEmbedding {
 }
 
 impl WindowedDenseEmbedding {
-    /// Original content tokens, excluding role prefix and special tokens.
+    /// Tokens reaching the original text, excluding wholly prefix tokens and specials.
     #[must_use]
     pub const fn tokens_total(&self) -> usize {
         self.tokens_total

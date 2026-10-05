@@ -343,31 +343,46 @@ impl Tokenizer {
         ) {
             return Err(refusal.into());
         }
-        let content = self
+        let joined = [prompt, text].concat();
+        let encoding = self
             .inner
-            .encode(text, false)
+            .encode(joined.as_str(), false)
             .map_err(|error| anyhow::anyhow!("Failed to tokenize window content: {error}"))?;
-        if content.is_empty() {
+        let prefix_bytes = prompt.len();
+        let split = encoding
+            .get_offsets()
+            .partition_point(|offset| offset.1 <= prefix_bytes);
+        anyhow::ensure!(
+            encoding.get_offsets()[..split]
+                .iter()
+                .all(|offset| offset.1 <= prefix_bytes)
+                && encoding.get_offsets()[split..]
+                    .iter()
+                    .all(|offset| offset.1 > prefix_bytes),
+            "Tokenizer prefix/content offsets are not contiguous"
+        );
+        let content_ids = &encoding.get_ids()[split..];
+        if content_ids.is_empty() {
             return Err(crate::EmbeddingRefusal::NoContentTokens.into());
         }
-        let prompt = self
-            .inner
-            .encode(prompt, false)
-            .map_err(|error| anyhow::anyhow!("Failed to tokenize window prefix: {error}"))?;
+        let offsets = encoding.get_offsets()[split..]
+            .iter()
+            .map(|&(start, end)| {
+                (
+                    start.saturating_sub(prefix_bytes),
+                    end.saturating_sub(prefix_bytes),
+                )
+            })
+            .collect::<Vec<_>>();
         let (mut prefix, suffix) = self.special_token_envelope()?;
-        prefix.extend_from_slice(prompt.get_ids());
-        let planned = plan_token_windows(
-            content.get_ids(),
-            &prefix,
-            &suffix,
-            config,
-            self.resource_policy,
-        )?;
+        prefix.extend_from_slice(&encoding.get_ids()[..split]);
+        let planned =
+            plan_token_windows(content_ids, &prefix, &suffix, config, self.resource_policy)?;
         let capacity = config.window_tokens() - prefix.len() - suffix.len();
-        let expected = if content.len() <= capacity {
+        let expected = if content_ids.len() <= capacity {
             1
         } else {
-            1 + (content.len() - capacity).div_ceil(capacity - config.overlap_tokens())
+            1 + (content_ids.len() - capacity).div_ceil(capacity - config.overlap_tokens())
         };
         anyhow::ensure!(
             planned.len() == expected,
@@ -380,14 +395,14 @@ impl Tokenizer {
             let byte_start = if index == 0 {
                 0
             } else {
-                content.get_offsets()[window.content_start].0
+                offsets[window.content_start].0
             };
             let byte_end = if index == last {
                 text.len()
             } else {
-                content.get_offsets()[window.content_end - 1]
+                offsets[window.content_end - 1]
                     .1
-                    .max(content.get_offsets()[planned[index + 1].content_start].0)
+                    .max(offsets[planned[index + 1].content_start].0)
             };
             anyhow::ensure!(
                 byte_start < byte_end
@@ -414,7 +429,7 @@ impl Tokenizer {
             windows.push((byte_start, byte_end));
         }
         Ok((
-            content.len(),
+            content_ids.len(),
             planned
                 .into_iter()
                 .zip(windows)
