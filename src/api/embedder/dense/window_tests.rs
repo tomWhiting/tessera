@@ -1,9 +1,10 @@
-use crate::core::tokenizer::tests::cut_tokenizer;
+use crate::core::tokenizer::tests::cut_tokenizer_with_policy;
+use crate::runtime::ResourcePolicy;
 use crate::{ContextWindowConfig, TesseraDense};
 
 #[test]
 fn dense_window_path_keeps_every_content_token_and_source_span() {
-    let tokenizer = cut_tokenizer(5);
+    let tokenizer = cut_tokenizer_with_policy(ResourcePolicy::new(5, 16, 2048, usize::MAX));
     let text = "one two three one";
     let (total, windows) = tokenizer
         .encode_spanned_windows("", text, ContextWindowConfig::new(5, 1))
