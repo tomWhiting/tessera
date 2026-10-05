@@ -127,7 +127,9 @@ fn validate_weight_metadata(model: &ModelMetadata) {
     }
     if let Some(onnx) = weights.onnx.as_deref() {
         assert!(
-            onnx.ends_with(".onnx"),
+            std::path::Path::new(onnx)
+                .extension()
+                .is_some_and(|extension| extension == "onnx"),
             "Model {} has an invalid ONNX artifact path: {onnx}",
             model.id
         );
