@@ -532,3 +532,49 @@ fn invalid_projection_row_names_width_and_preserves_existing_row() {
     assert_eq!(rows.get(17), Some(vec![1.0; 2048].as_slice()));
     assert!(rows.get(18).is_none());
 }
+
+#[test]
+fn experimental_minicoil_admits_its_separate_encoder_assets() {
+    let mut model = crate::models::registry::get_model("minicoil-v1")
+        .expect("registered model")
+        .clone();
+    model.support_tier = crate::models::SupportTier::Experimental;
+    crate::api::builder::ensure_runnable_model(&model)
+        .expect("miniCOIL consumes its pinned encoder and tables, not ONNX");
+}
+
+#[test]
+fn minicoil_admission_preserves_other_onnx_refusals() {
+    let mut model = crate::models::registry::get_model("minicoil-v1")
+        .expect("registered model")
+        .clone();
+    model.id = "another-onnx-entry";
+    model.support_tier = crate::models::SupportTier::Experimental;
+    assert!(matches!(
+        crate::api::builder::ensure_runnable_model(&model),
+        Err(crate::error::TesseraError::UnsupportedWeightsFormat { format: "ONNX", .. })
+    ));
+}
+
+#[test]
+fn minicoil_catalog_refusal_precedes_asset_admission() {
+    let mut model = crate::models::registry::get_model("minicoil-v1")
+        .expect("registered model")
+        .clone();
+    model.support_tier = crate::models::SupportTier::CatalogOnly;
+    model.revision = None;
+    assert!(matches!(
+        crate::api::builder::ensure_runnable_model(&model),
+        Err(crate::error::TesseraError::ConfigError(message))
+            if message.contains("catalog-only")
+    ));
+}
+
+#[test]
+fn minicoil_assets_pin_the_consumed_encoder_configuration() {
+    let assets = super::assets::Assets::registry().expect("asset declarations");
+    let configuration = assets
+        .file("config.json")
+        .expect("configuration is consumed");
+    assert_eq!(configuration.size_bytes, 1175);
+}
