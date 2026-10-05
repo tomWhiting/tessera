@@ -138,10 +138,10 @@ impl CandleDenseEncoder {
             .encode_with_prompt(prompt_for(self.prompts, role), text)
         {
             Ok(_) => Ok(None),
-            Err(error) => match error.downcast_ref::<crate::EmbeddingRefusal>() {
-                Some(refusal) => Ok(Some(*refusal)),
-                None => Err(error),
-            },
+            Err(error) => error
+                .downcast_ref::<crate::EmbeddingRefusal>()
+                .copied()
+                .map_or_else(|| Err(error), |refusal| Ok(Some(refusal))),
         }
     }
 

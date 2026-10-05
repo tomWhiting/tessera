@@ -30,10 +30,10 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
             tokenizer.validate_cut_configuration(),
             |text| match tokenizer.encode_with_prompt("", text) {
                 Ok(_) => Ok(None),
-                Err(error) => match error.downcast_ref::<EmbeddingRefusal>() {
-                    Some(refusal) => Ok(Some(*refusal)),
-                    None => Err(error),
-                },
+                Err(error) => error
+                    .downcast_ref::<EmbeddingRefusal>()
+                    .copied()
+                    .map_or_else(|| Err(error), |refusal| Ok(Some(refusal))),
             },
         ),
         policy,
@@ -151,10 +151,10 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
             tokenizer.validate_cut_configuration(),
             |text| match tokenizer.encode_with_prompt("", text) {
                 Ok(_) => Ok(None),
-                Err(error) => match error.downcast_ref::<EmbeddingRefusal>() {
-                    Some(refusal) => Ok(Some(*refusal)),
-                    None => Err(error),
-                },
+                Err(error) => error
+                    .downcast_ref::<EmbeddingRefusal>()
+                    .copied()
+                    .map_or_else(|| Err(error), |refusal| Ok(Some(refusal))),
             },
         ),
         policy,
