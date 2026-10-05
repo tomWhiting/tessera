@@ -88,7 +88,7 @@ impl Artifact {
             self.path
         );
         let mut digest = Sha256::new();
-        let mut buffer = [0_u8; 65_536];
+        let mut buffer = vec![0_u8; 65_536].into_boxed_slice();
         loop {
             let count = file
                 .read(&mut buffer)
