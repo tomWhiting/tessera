@@ -61,7 +61,7 @@ fn normalized_away_source_never_reaches_dense_or_unpooled_output() -> Result<()>
     use crate::runtime::{ModelDType, ResourcePolicy, TransformerProfile};
     let policy = ResourcePolicy::new(16, 2, 32, usize::MAX);
     let (model, residency) = crate::runtime::preflight_and_reserve_registered_model_with_dtype(
-        "bge-base-en-v1.5",
+        "BAAI/bge-base-en-v1.5",
         16,
         crate::models::registry::ModelType::Dense,
         &Device::Cpu,
