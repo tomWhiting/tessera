@@ -46,7 +46,7 @@ fn query_inserts_artifact_marker_and_augments_with_masks() {
         prepared,
         PreparedInput {
             token_ids: vec![101, 1, 11, 12, 102, 103, 103],
-            attention_mask: vec![1; 7],
+            attention_mask: vec![1, 1, 1, 1, 1, 0, 0],
             output_mask: vec![1; 7],
         }
     );
@@ -63,6 +63,8 @@ fn query_truncation_preserves_role_framing_and_separator() {
     .expect("query preprocessing should succeed");
 
     assert_eq!(prepared.token_ids, [101, 1, 10, 11, 102]);
+    assert_eq!(prepared.attention_mask, [1; 5]);
+    assert_eq!(prepared.output_mask, [1; 5]);
 }
 
 #[test]

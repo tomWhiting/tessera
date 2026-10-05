@@ -152,7 +152,7 @@
           "release_date": "2024",
           "support": {
             "tier": "experimental",
-            "note": "Pinned CPU f32 references are bound for four probes; the 512-token window is not qualified. Remote checkpoint execution remains experimental."
+            "note": "CPU f32 official references passed for four probes (7/20/9/7 tokens): 32 query rows, 19 document rows. Full 512-token window unqualified; experimental."
           },
           "architecture": {
             "type": "bert",
@@ -203,7 +203,7 @@
           "release_date": "2022",
           "support": {
             "tier": "experimental",
-            "note": "CPU f32 reference bound for 7 tokens and 32 query rows. Query attention differs from pinned code. Full 512-token window unqualified; execution experimental."
+            "note": "CPU f32 official reference passed for the 7-token query probe and 32 output rows. Full 512-token window unqualified; execution experimental."
           },
           "architecture": {
             "type": "bert",
