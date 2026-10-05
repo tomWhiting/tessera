@@ -27,6 +27,17 @@ fn config(query: usize, document: usize) -> ColbertConfig {
 }
 
 #[test]
+fn query_augmentation_masks_attention_but_keeps_output_rows() {
+    let prepared =
+        prepare_role_tokens(&[101, 103, 11, 102], InputRole::Query, config(7, 8), &ids())
+            .expect("query preprocessing should succeed");
+
+    assert_eq!(prepared.token_ids, [101, 1, 103, 11, 102, 103, 103]);
+    assert_eq!(prepared.attention_mask, [1, 1, 1, 1, 1, 0, 0]);
+    assert_eq!(prepared.output_mask, [1; 7]);
+}
+
+#[test]
 fn query_inserts_artifact_marker_and_augments_with_masks() {
     let prepared = prepare_role_tokens(&[101, 11, 12, 102], InputRole::Query, config(7, 8), &ids())
         .expect("query preprocessing should succeed");
