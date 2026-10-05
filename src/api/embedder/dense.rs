@@ -85,7 +85,7 @@ impl TesseraDense {
         let config = config.unwrap_or_else(|| self.default_window_config());
         let batch_size = self
             .batch_size
-            .map_or(self.resource_policy.max_batch_items(), NonZeroUsize::get)
+            .map_or_else(|| self.resource_policy.max_batch_items(), NonZeroUsize::get)
             .min(self.resource_policy.max_batch_items());
         encode_windows_batch_with(
             texts,
