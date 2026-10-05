@@ -488,7 +488,7 @@ fn projection_row_insert_refuses_wrong_width_without_panicking() {
 
 #[test]
 fn local_minicoil_construction_refuses_catalog_before_files() {
-    let Err(error) = super::MinicoilEmbedder::from_model_dirs(
+    let Err(error) = super::embedder::MinicoilEmbedder::from_model_dirs(
         Path::new("missing-encoder"),
         Path::new("missing-tables"),
     ) else {
@@ -504,7 +504,7 @@ fn local_minicoil_construction_refuses_catalog_before_files() {
 #[cfg(not(feature = "fetch"))]
 #[test]
 fn direct_minicoil_construction_refuses_catalog_before_files() {
-    let Err(error) = super::MinicoilEmbedder::new("minicoil-v1") else {
+    let Err(error) = super::embedder::MinicoilEmbedder::new("minicoil-v1") else {
         panic!("catalog-only construction must be refused");
     };
     assert!(matches!(
