@@ -1,4 +1,6 @@
-use tessera::{CutEmbeddingOutcome, TesseraDense, TesseraMultiVector};
+use std::path::Path;
+
+use tessera::{EmbeddingOutcome, TesseraDense, TesseraMultiVector};
 
 use super::{
     reference_text, validate_probe_token_count, CertResult, LoadedReference, ReferenceOutput,
@@ -9,17 +11,28 @@ pub(super) fn dense(
     embedder: &TesseraDense,
     official_reference: Option<&LoadedReference>,
     installed: bool,
+    tokenizer_path: Option<&Path>,
 ) -> CertResult<Option<ReferenceOutput>> {
     official_reference
         .map(|reference| {
-            let text = reference_text(reference)?;
+            let source_text = reference_text(reference)?;
             let expected_used = reference.document.probe.cut_at_tokens();
+            let text = match expected_used {
+                Some(used) => constructed_probe(
+                    source_text,
+                    reference.document.probe.token_count(),
+                    used,
+                    tokenizer_path.ok_or("constructed_probe_tokenizer_missing")?,
+                )?,
+                None => source_text.to_owned(),
+            };
             let values = if installed || expected_used.is_some() {
-                let CutEmbeddingOutcome::Embedded(output) = embedder.encode_cut(text, None)? else {
+                let EmbeddingOutcome::Embedded(output) = embedder.encode_outcome(&text, None)?
+                else {
                     return Err(if expected_used.is_some() {
-                        "cut_reference_refused: reference probe was refused before inference"
+                        "cut_reference_refused: constructed probe was refused before inference"
                     } else {
-                        "installed reference probe was refused before inference"
+                        "installed constructed probe was refused before inference"
                     }
                     .into());
                 };
@@ -27,8 +40,6 @@ pub(super) fn dense(
                     reference.document.probe.token_count(),
                     expected_used,
                     output.tokens_total(),
-                    output.tokens_read(),
-                    output.cut(),
                 )?;
                 output
                     .values()
@@ -36,7 +47,7 @@ pub(super) fn dense(
                     .ok_or("installed reference dense output is not contiguous")?
                     .to_vec()
             } else {
-                let output = embedder.encode(text)?;
+                let output = embedder.encode(&text)?;
                 output
                     .values()
                     .as_slice()
@@ -52,22 +63,68 @@ pub(super) fn validate_dense_probe_counts(
     expected_total: usize,
     expected_used: Option<usize>,
     observed_total: usize,
-    observed_used: usize,
-    cut: bool,
 ) -> CertResult<()> {
-    if let Some(expected_used) = expected_used {
-        if !cut || observed_total != expected_total || observed_used != expected_used {
-            return Err(format!(
-                "cut_reference_token_mismatch: expected total={expected_total}, used={expected_used}; observed total={observed_total}, used={observed_used}, cut={cut}"
-            ).into());
-        }
-        return Ok(());
-    }
-    validate_probe_token_count(expected_total, observed_total)?;
-    if cut {
-        return Err("installed reference probe exceeds the admitted token limit".into());
+    let expected = expected_used.unwrap_or(expected_total);
+    if observed_total != expected {
+        return Err(format!(
+            "constructed_probe_token_mismatch: expected={expected}; observed={observed_total}"
+        )
+        .into());
     }
     Ok(())
+}
+
+pub(super) fn constructed_probe(
+    text: &str,
+    expected_total: usize,
+    used: usize,
+    tokenizer_path: &Path,
+) -> CertResult<String> {
+    let mut tokenizer = tokenizers::Tokenizer::from_file(tokenizer_path)
+        .map_err(|error| format!("constructed_probe_tokenizer_invalid: {error}"))?;
+    tokenizer
+        .with_truncation(None)
+        .map_err(|error| format!("constructed_probe_truncation_invalid: {error}"))?;
+    tokenizer.with_padding(None);
+    probe_span(text, expected_total, used, &tokenizer).map(str::to_owned)
+}
+
+fn probe_span<'a>(
+    text: &'a str,
+    expected_total: usize,
+    used: usize,
+    tokenizer: &tokenizers::Tokenizer,
+) -> CertResult<&'a str> {
+    let encoded = tokenizer
+        .encode(text, true)
+        .map_err(|error| format!("constructed_probe_tokenization_failed: {error}"))?;
+    if encoded.len() != expected_total {
+        return Err(format!(
+            "constructed_probe_source_token_mismatch: expected={expected_total}; observed={}",
+            encoded.len()
+        )
+        .into());
+    }
+    let special_tokens = encoded
+        .get_special_tokens_mask()
+        .iter()
+        .filter(|&&mask| mask != 0)
+        .count();
+    let content_tokens = used
+        .checked_sub(special_tokens)
+        .filter(|&count| count > 0)
+        .ok_or("constructed_probe_limit_invalid: special tokens leave no content")?;
+    let (_, end) = encoded
+        .get_offsets()
+        .iter()
+        .zip(encoded.get_special_tokens_mask())
+        .filter(|(_, mask)| **mask == 0)
+        .nth(content_tokens - 1)
+        .map(|(offset, _)| *offset)
+        .ok_or("constructed_probe_content_missing")?;
+    text.get(..end)
+        .filter(|probe| !probe.is_empty())
+        .ok_or_else(|| "constructed_probe_offset_invalid".into())
 }
 
 #[cfg(test)]

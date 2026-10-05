@@ -279,7 +279,7 @@ pub use backends::candle::device::metal_device;
 pub use backends::candle::device::metal_device_at;
 pub use backends::candle::get_device;
 pub use candle_core::Device;
-pub use core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal, Role};
+pub use core::embeddings::{CountedDenseEmbedding, EmbeddingOutcome, EmbeddingRefusal, Role};
 pub use core::tokenizer::{CutConfigurationError, PromptConfigurationError};
 pub use core::{TokenEmbedder, TokenEmbeddings, Tokenizer};
 pub use encoding::minicoil::embedder::MinicoilEmbedder;

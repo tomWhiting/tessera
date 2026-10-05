@@ -117,6 +117,17 @@ fn execute(
     let policy = resource_policy(profile);
     let batch_plan = DenseBatchPlan::for_limits(&profile.resource_policy);
     let loaded = super::spec::load_model(repository, &spec.model.id)?;
+    let tokenizer_path = official_reference
+        .filter(|reference| reference.document.probe.cut_at_tokens().is_some())
+        .map(|_| {
+            let model = tessera::models::registry::get_model(&spec.model.id)
+                .ok_or("constructed_probe_model_missing")?;
+            match model_dir {
+                Some(directory) => Ok(directory.join(model.tokenizer_file)),
+                None => artifacts::cached_artifact_path(repository, &loaded, model.tokenizer_file),
+            }
+        })
+        .transpose()?;
     let (verified, observation, observed_reference, installed_manifest_sha256) =
         if let Some(directory) = model_dir {
             super::install::require_dense(spec.model.representation)?;
@@ -126,8 +137,14 @@ fn execute(
                 .installed_manifest_sha256()
                 .ok_or("installed dense embedder did not retain its manifest digest")?
                 .to_string();
-            let (observation, observed_reference) =
-                dense_smoke(spec, &embedder, official_reference, true, batch_plan)?;
+            let (observation, observed_reference) = dense_smoke(
+                spec,
+                &embedder,
+                official_reference,
+                true,
+                batch_plan,
+                tokenizer_path.as_deref(),
+            )?;
             (verified, observation, observed_reference, Some(digest))
         } else {
             let verified = artifacts::verify_cached(repository, &loaded)?;
@@ -143,6 +160,7 @@ fn execute(
                     official_reference,
                     false,
                     batch_plan,
+                    tokenizer_path.as_deref(),
                 )?,
                 Representation::MultiVector => {
                     multi_vector_smoke(spec, policy, official_reference)?
@@ -238,6 +256,7 @@ fn dense_smoke(
     official_reference: Option<&LoadedReference>,
     installed: bool,
     batch_plan: DenseBatchPlan,
+    tokenizer_path: Option<&Path>,
 ) -> CertResult<(SmokeObservation, Option<ReferenceOutput>)> {
     let fixture = &spec.smoke.fixture;
     let query = embedder.encode(&fixture.query)?;
@@ -322,7 +341,8 @@ fn dense_smoke(
             format!("norm range {:?}", min_max(&norms)),
         ));
     }
-    let observed_reference = child_reference::dense(embedder, official_reference, installed)?;
+    let observed_reference =
+        child_reference::dense(embedder, official_reference, installed, tokenizer_path)?;
     Ok((
         observation(
             "dense",

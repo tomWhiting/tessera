@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use candle_core::Device;
-use tessera::{configure_cpu_threads, CutEmbeddingOutcome, TesseraDense};
+use tessera::{configure_cpu_threads, EmbeddingOutcome, TesseraDense};
 
 use super::{compare_vectors, BatchComparison, ChildMeasurement};
 use crate::certification::{artifacts, child, install, reference, spec};
@@ -69,10 +69,26 @@ pub(crate) fn run(
     if let Some(directory) = model_dir {
         artifacts::verify_directory(directory, &loaded)?;
     }
-    let cut = reference.document.probe.cut_at_tokens().is_some();
+    let probe_text = if let Some(used) = reference.document.probe.cut_at_tokens() {
+        let entry =
+            tessera::models::registry::get_model(model).ok_or("constructed_probe_model_missing")?;
+        let tokenizer_path = match model_dir {
+            Some(directory) => directory.join(entry.tokenizer_file),
+            None => artifacts::cached_artifact_path(repository, &loaded, entry.tokenizer_file)?,
+        };
+        super::child_reference::constructed_probe(
+            text,
+            reference.document.probe.token_count(),
+            used,
+            &tokenizer_path,
+        )?
+    } else {
+        text.to_owned()
+    };
+    let text = probe_text.as_str();
     let vector = encode(&embedder, text, &reference.document.probe)?;
     let comparisons = if batch {
-        batch_comparisons(&embedder, text, &vector, cut)?
+        batch_comparisons(&embedder, text, &vector)?
     } else {
         Vec::new()
     };
@@ -102,15 +118,14 @@ fn encode(
     probe: &reference::ReferenceProbe,
 ) -> CertResult<Vec<f32>> {
     if let Some(used) = probe.cut_at_tokens() {
-        let CutEmbeddingOutcome::Embedded(output) = embedder.encode_cut(text, None)? else {
+        let EmbeddingOutcome::Embedded(output) = embedder.encode_outcome(text, None)? else {
             return Err("measurement_input_refused: cut reference text was refused".into());
         };
-        if !output.cut()
-            || output.tokens_total() != probe.token_count()
-            || output.tokens_read() != used
-        {
-            return Err(format!("measurement_probe_token_mismatch: expected total={}, used={used}; observed total={}, used={}, cut={}", probe.token_count(), output.tokens_total(), output.tokens_read(), output.cut()).into());
-        }
+        super::child_reference::validate_dense_probe_counts(
+            probe.token_count(),
+            Some(used),
+            output.tokens_total(),
+        )?;
         Ok(output.values().iter().copied().collect())
     } else {
         Ok(embedder.encode(text)?.values().iter().copied().collect())
@@ -121,44 +136,23 @@ fn batch_comparisons(
     embedder: &TesseraDense,
     text: &str,
     alone: &[f32],
-    cut: bool,
 ) -> CertResult<Vec<BatchComparison>> {
     [0, 7, 15]
         .into_iter()
         .map(|position| {
             let mut texts = FILLER_TEXTS.to_vec();
             texts.insert(position, text);
-            let observed = if cut {
-                let outputs = embedder.encode_batch_cut(&texts, None)?;
-                if outputs.len() != 16
-                    || outputs
-                        .iter()
-                        .any(|output| matches!(output, CutEmbeddingOutcome::Refused(_)))
-                {
-                    return Err(
-                        "measurement_batch_refused: all sixteen texts must be embedded".into(),
-                    );
-                }
-                let Some(CutEmbeddingOutcome::Embedded(output)) = outputs.get(position) else {
-                    return Err(
-                        "measurement_input_refused: batch reference text was refused or absent"
-                            .into(),
-                    );
-                };
-                output.values().iter().copied().collect::<Vec<_>>()
-            } else {
-                let outputs = embedder.encode_batch(&texts)?;
-                if outputs.len() != 16 {
-                    return Err("measurement_batch_shape: expected sixteen vectors".into());
-                }
-                outputs
-                    .get(position)
-                    .ok_or("measurement_batch_shape: reference position absent")?
-                    .values()
-                    .iter()
-                    .copied()
-                    .collect::<Vec<_>>()
-            };
+            let outputs = embedder.encode_batch(texts.as_slice())?;
+            if outputs.len() != 16 {
+                return Err("measurement_batch_shape: expected sixteen vectors".into());
+            }
+            let observed = outputs
+                .get(position)
+                .ok_or("measurement_batch_shape: reference position absent")?
+                .values()
+                .iter()
+                .copied()
+                .collect::<Vec<_>>();
             Ok(BatchComparison {
                 position,
                 comparison: compare_vectors(alone, &observed)?,

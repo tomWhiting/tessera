@@ -70,11 +70,8 @@ impl CandleDenseEncoder {
         let installed_manifest_sha256 = files.installed_manifest_sha256().map(str::to_owned);
 
         // Load tokenizer
-        let mut tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
+        let tokenizer = Tokenizer::from_model_files_with_policy(&files, resource_policy)
             .with_context(|| format!("Loading tokenizer for {model_name}"))?;
-        tokenizer
-            .prepare_cut()
-            .context("Preparing dense cut tokenizer")?;
 
         // Load config to detect model type
         let config_path = files

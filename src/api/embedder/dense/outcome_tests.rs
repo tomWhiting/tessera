@@ -1,5 +1,5 @@
-use super::encode_cut_batch_with;
-use crate::core::embeddings::{CutDenseEmbedding, CutEmbeddingOutcome, EmbeddingRefusal};
+use super::encode_outcome_batch_with;
+use crate::core::embeddings::{CountedDenseEmbedding, EmbeddingOutcome, EmbeddingRefusal};
 use crate::core::tokenizer::tests::cut_tokenizer_with_policy;
 use crate::runtime::ResourcePolicy;
 use ndarray::array;
@@ -24,9 +24,18 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
         "\u{2003}\u{2003}",
     ];
     let mut embedded = Vec::new();
-    let outcomes = encode_cut_batch_with(
+    let outcomes = encode_outcome_batch_with(
         &texts,
-        tokenizer.validate_cut_configuration(),
+        (
+            tokenizer.validate_cut_configuration(),
+            |text| match tokenizer.encode_with_prompt("", text) {
+                Ok(_) => Ok(None),
+                Err(error) => match error.downcast_ref::<EmbeddingRefusal>() {
+                    Some(refusal) => Ok(Some(*refusal)),
+                    None => Err(error),
+                },
+            },
+        ),
         policy,
         1,
         NonZeroUsize::new(2).unwrap(),
@@ -36,13 +45,8 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
                 .iter()
                 .map(|text| {
                     embedded.push(text.to_string());
-                    let input = tokenizer.encode_cut("", text)?;
-                    CutDenseEmbedding::new(
-                        array![1.0],
-                        input.tokens_read(),
-                        input.tokens_total,
-                        input.cut,
-                    )
+                    let input = tokenizer.encode_with_prompt("", text)?;
+                    CountedDenseEmbedding::new(array![1.0], input.tokens_total)
                 })
                 .collect()
         },
@@ -50,23 +54,27 @@ fn mixed_cut_batch_keeps_order_and_refusals_out_of_resource_totals() {
     .unwrap();
     assert_eq!(embedded, ["one"]);
     assert_eq!(outcomes.len(), texts.len());
-    for (index, read, total, cut) in [(0, 3, 3, false)] {
-        let CutEmbeddingOutcome::Embedded(value) = &outcomes[index] else {
+    for (index, total) in [(0, 3)] {
+        let EmbeddingOutcome::Embedded(value) = &outcomes[index] else {
             panic!("accepted text was refused");
         };
-        assert_eq!(value.tokens_read(), read);
         assert_eq!(value.tokens_total(), total);
-        assert_eq!(value.cut(), cut);
     }
-    assert!(matches!(outcomes[4], CutEmbeddingOutcome::Refused(_)));
+    assert!(matches!(
+        outcomes[4],
+        EmbeddingOutcome::Refused(EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: 6,
+            tokens_limit: 5
+        })
+    ));
     for index in [1, 2, 5, 6] {
-        let CutEmbeddingOutcome::Refused(refusal) = outcomes[index] else {
+        let EmbeddingOutcome::Refused(refusal) = outcomes[index] else {
             panic!("empty text was embedded");
         };
         assert_eq!(refusal, EmbeddingRefusal::Empty);
         assert_eq!(refusal.code(), "embed_input_empty");
     }
-    let CutEmbeddingOutcome::Refused(refusal) = outcomes[3] else {
+    let EmbeddingOutcome::Refused(refusal) = outcomes[3] else {
         panic!("oversized text was embedded");
     };
     assert_eq!(
@@ -85,9 +93,9 @@ fn assert_whole_call_errors(policy: ResourcePolicy) {
         policy.with_max_job_items(1),
         policy.with_max_job_input_bytes(5),
     ] {
-        let error = encode_cut_batch_with(
+        let error = encode_outcome_batch_with(
             &["one", "two"],
-            Ok(()),
+            (Ok(()), |_| Ok(None)),
             policy,
             1,
             NonZeroUsize::MIN,
@@ -102,17 +110,29 @@ fn assert_whole_call_errors(policy: ResourcePolicy) {
             .downcast_ref::<crate::runtime::ResourcePolicyError>()
             .is_some());
     }
-    let error = encode_cut_batch_with(&["one"], Ok(()), policy, 1, NonZeroUsize::MIN, None, |_| {
-        Err(anyhow::anyhow!("made-up forward failed"))
-    })
+    let error = encode_outcome_batch_with(
+        &["one"],
+        (Ok(()), |_| Ok(None)),
+        policy,
+        1,
+        NonZeroUsize::MIN,
+        None,
+        |_| Err(anyhow::anyhow!("made-up forward failed")),
+    )
     .unwrap_err();
     let crate::TesseraError::EncodingError { source, .. } = error else {
         panic!("inference failures must fail the whole call");
     };
     assert_eq!(source.to_string(), "made-up forward failed");
-    let error = encode_cut_batch_with(&["one"], Ok(()), policy, 1, NonZeroUsize::MIN, None, |_| {
-        Ok(Vec::new())
-    })
+    let error = encode_outcome_batch_with(
+        &["one"],
+        (Ok(()), |_| Ok(None)),
+        policy,
+        1,
+        NonZeroUsize::MIN,
+        None,
+        |_| Ok(Vec::new()),
+    )
     .unwrap_err();
     assert!(error.to_string().contains("outcome count mismatch"));
 }
@@ -125,9 +145,18 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
         .with_max_job_input_bytes(0)
         .with_max_output_bytes(0);
     let tokenizer = cut_tokenizer_with_policy(policy);
-    let outcomes = encode_cut_batch_with(
+    let outcomes = encode_outcome_batch_with(
         &["", " \n\t ", "\u{2003}", "too"],
-        tokenizer.validate_cut_configuration(),
+        (
+            tokenizer.validate_cut_configuration(),
+            |text| match tokenizer.encode_with_prompt("", text) {
+                Ok(_) => Ok(None),
+                Err(error) => match error.downcast_ref::<EmbeddingRefusal>() {
+                    Some(refusal) => Ok(Some(*refusal)),
+                    None => Err(error),
+                },
+            },
+        ),
         policy,
         1,
         NonZeroUsize::MIN,
@@ -138,11 +167,11 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
     assert_eq!(outcomes.len(), 4);
     assert!(outcomes
         .iter()
-        .all(|outcome| matches!(outcome, CutEmbeddingOutcome::Refused(_))));
+        .all(|outcome| matches!(outcome, EmbeddingOutcome::Refused(_))));
     let invalid = cut_tokenizer_with_policy(policy.with_max_sequence_tokens(0));
-    let error = encode_cut_batch_with(
+    let error = encode_outcome_batch_with(
         &[""],
-        invalid.validate_cut_configuration(),
+        (invalid.validate_cut_configuration(), |_| Ok(None)),
         policy,
         1,
         NonZeroUsize::MIN,
@@ -163,16 +192,16 @@ fn all_refused_cut_batch_needs_no_job_or_embedding_budget() {
     ));
 }
 
-fn embedding(values: ndarray::Array1<f32>) -> anyhow::Result<CutDenseEmbedding> {
-    CutDenseEmbedding::new(values, 1, 1, false)
+fn embedding(values: ndarray::Array1<f32>) -> anyhow::Result<CountedDenseEmbedding> {
+    CountedDenseEmbedding::new(values, 1)
 }
 
 #[test]
 fn wrong_length_vector_fails_the_call_naming_its_input_position() {
     let policy = ResourcePolicy::new(5, 2, 10, usize::MAX).with_max_input_bytes_per_sequence(20);
-    let error = encode_cut_batch_with(
+    let error = encode_outcome_batch_with(
         &["one", "", "two", "three"],
-        Ok(()),
+        (Ok(()), |_| Ok(None)),
         policy,
         2,
         NonZeroUsize::new(2).unwrap(),
@@ -209,9 +238,9 @@ fn wrong_length_vector_fails_the_call_naming_its_input_position() {
 fn non_finite_vector_in_a_chunk_is_named_by_its_input_position() {
     let policy = ResourcePolicy::new(5, 2, 10, usize::MAX).with_max_input_bytes_per_sequence(20);
     let mut chunks = 0;
-    let error = encode_cut_batch_with(
+    let error = encode_outcome_batch_with(
         &["", "one", "two", " ", "three"],
-        Ok(()),
+        (Ok(()), |_| Ok(None)),
         policy,
         1,
         NonZeroUsize::new(2).unwrap(),
@@ -242,13 +271,16 @@ fn non_finite_vector_in_a_chunk_is_named_by_its_input_position() {
 #[test]
 fn limit_too_small_for_the_prompt_is_a_limits_failure() {
     let policy = ResourcePolicy::new(4, 2, 10, usize::MAX);
-    let error = encode_cut_batch_with(
+    let error = encode_outcome_batch_with(
         &["one"],
-        Err(anyhow::Error::new(crate::PromptConfigurationError {
-            limit: 4,
-            special_tokens: 2,
-            prompt_tokens: 2,
-        })),
+        (
+            Err(anyhow::Error::new(crate::PromptConfigurationError {
+                limit: 4,
+                special_tokens: 2,
+                prompt_tokens: 2,
+            })),
+            |_| Ok(None),
+        ),
         policy,
         1,
         NonZeroUsize::MIN,
@@ -271,9 +303,9 @@ fn limit_too_small_for_the_prompt_is_a_limits_failure() {
 #[test]
 fn empty_text_is_refused_before_any_prompt_is_joined() {
     let policy = ResourcePolicy::new(8, 2, 10, usize::MAX);
-    let outcomes = encode_cut_batch_with(
+    let outcomes = encode_outcome_batch_with(
         &["", " \n"],
-        Ok(()),
+        (Ok(()), |_| Ok(None)),
         policy,
         1,
         NonZeroUsize::MIN,
@@ -281,8 +313,7 @@ fn empty_text_is_refused_before_any_prompt_is_joined() {
         |_| panic!("refused texts must not reach the prompt or the model"),
     )
     .unwrap();
-    assert!(outcomes.iter().all(|outcome| matches!(
-        outcome,
-        CutEmbeddingOutcome::Refused(EmbeddingRefusal::Empty)
-    )));
+    assert!(outcomes
+        .iter()
+        .all(|outcome| matches!(outcome, EmbeddingOutcome::Refused(EmbeddingRefusal::Empty))));
 }

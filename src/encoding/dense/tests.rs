@@ -257,6 +257,6 @@ fn without_a_role_the_limit_needs_only_special_tokens_plus_one() {
             Some(crate::core::embeddings::Role::Document)
         ))
         .is_err());
-    let input = tokenizer.encode_cut(super::inference::prompt_for(prompts, None), "one");
+    let input = tokenizer.encode_outcome(super::inference::prompt_for(prompts, None), "one");
     assert_eq!(input.unwrap().token_ids, [10, 2, 11]);
 }

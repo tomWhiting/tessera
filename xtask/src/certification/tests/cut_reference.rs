@@ -1,32 +1,62 @@
-use super::validate_dense_probe_counts;
+use super::{probe_span, validate_dense_probe_counts};
 
-#[test]
-fn cut_reference_accepts_full_and_used_counts_including_special_tokens() {
-    assert!(validate_dense_probe_counts(3_000, Some(2_048), 3_000, 2_048, true).is_ok());
+fn tokenizer() -> tokenizers::Tokenizer {
+    let vocab = [("[UNK]", 0), ("one", 1), ("two", 2), ("three", 3), ("é", 4)]
+        .into_iter()
+        .map(|(word, id)| (word.to_owned(), id))
+        .collect();
+    let model = tokenizers::models::wordlevel::WordLevel::builder()
+        .vocab(vocab)
+        .unk_token("[UNK]".to_owned())
+        .build()
+        .unwrap();
+    let mut tokenizer = tokenizers::Tokenizer::new(model);
+    tokenizer.with_pre_tokenizer(Some(
+        tokenizers::pre_tokenizers::whitespace::WhitespaceSplit,
+    ));
+    tokenizer.with_post_processor(Some(tokenizers::processors::bert::BertProcessing::new(
+        ("[SEP]".to_owned(), 11),
+        ("[CLS]".to_owned(), 10),
+    )));
+    tokenizer
 }
 
 #[test]
-fn cut_reference_refuses_every_count_or_cut_mismatch_with_both_counts() {
-    for (total, used, cut) in [
-        (2_999, 2_048, true),
-        (3_000, 2_047, true),
-        (3_000, 2_048, false),
-    ] {
-        let error = validate_dense_probe_counts(3_000, Some(2_048), total, used, cut)
-            .unwrap_err()
-            .to_string();
-        assert!(error.contains("cut_reference_token_mismatch"), "{error}");
-        assert!(
-            error.contains(&format!("observed total={total}, used={used}")),
-            "{error}"
-        );
-        assert!(error.contains("expected total=3000, used=2048"), "{error}");
-    }
+fn constructed_probe_includes_special_tokens_in_the_used_count() {
+    let tokenizer = tokenizer();
+    let text = probe_span("one two three one", 6, 4, &tokenizer).unwrap();
+    assert_eq!(text, "one two");
+    let total = tokenizer.encode(text, true).unwrap().len();
+    assert!(validate_dense_probe_counts(6, Some(4), total).is_ok());
 }
 
 #[test]
-fn uncut_reference_keeps_its_existing_admission() {
-    assert!(validate_dense_probe_counts(7, None, 7, 7, false).is_ok());
-    assert!(validate_dense_probe_counts(7, None, 6, 6, false).is_err());
-    assert!(validate_dense_probe_counts(7, None, 7, 5, true).is_err());
+fn constructed_probe_refuses_source_and_reencoded_count_mismatches() {
+    let tokenizer = tokenizer();
+    let error = probe_span("one two three one", 7, 4, &tokenizer)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("constructed_probe_source_token_mismatch"));
+    let error = validate_dense_probe_counts(6, Some(4), 3)
+        .unwrap_err()
+        .to_string();
+    assert!(error.contains("constructed_probe_token_mismatch"));
+    assert!(error.contains("expected=4; observed=3"));
+    assert!(probe_span("one two three one", 6, 2, &tokenizer).is_err());
+    assert!(probe_span("one two three one", 6, 7, &tokenizer).is_err());
+}
+
+#[test]
+fn whole_reference_keeps_its_existing_admission() {
+    assert!(validate_dense_probe_counts(7, None, 7).is_ok());
+    assert!(validate_dense_probe_counts(7, None, 6).is_err());
+}
+
+#[test]
+fn constructed_probe_uses_utf8_byte_offsets() {
+    let tokenizer = tokenizer();
+    assert_eq!(
+        probe_span("é two three one", 6, 4, &tokenizer).unwrap(),
+        "é two"
+    );
 }

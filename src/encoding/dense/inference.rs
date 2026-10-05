@@ -4,8 +4,8 @@ use ndarray::Array1;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 
 use super::{BertVariant, CandleDenseEncoder};
-use crate::core::embeddings::{CutDenseEmbedding, Role};
-use crate::core::tokenizer::CutTokenizedInput;
+use crate::core::embeddings::{CountedDenseEmbedding, Role};
+use crate::core::tokenizer::WholeTokenizedInput;
 use crate::core::{DenseEmbedding, PoolingStrategy};
 use crate::models::registry::Prompts;
 use crate::runtime::ContextWindowConfig;
@@ -128,19 +128,40 @@ impl CandleDenseEncoder {
             .validate_cut_configuration_with(&prompts_to_hold(self.prompts, role))
     }
 
-    pub(crate) fn encode_cut(&self, text: &str, role: Option<Role>) -> Result<CutDenseEmbedding> {
-        let prompt = prompt_for(self.prompts, role);
-        self.encode_cut_input(0, self.tokenizer.encode_cut(prompt, text)?)
+    pub(crate) fn input_refusal(
+        &self,
+        text: &str,
+        role: Option<Role>,
+    ) -> Result<Option<crate::EmbeddingRefusal>> {
+        match self
+            .tokenizer
+            .encode_with_prompt(prompt_for(self.prompts, role), text)
+        {
+            Ok(_) => Ok(None),
+            Err(error) => match error.downcast_ref::<crate::EmbeddingRefusal>() {
+                Some(refusal) => Ok(Some(*refusal)),
+                None => Err(error),
+            },
+        }
     }
 
-    pub(crate) fn encode_batch_cut(
+    pub(crate) fn encode_outcome(
+        &self,
+        text: &str,
+        role: Option<Role>,
+    ) -> Result<CountedDenseEmbedding> {
+        let prompt = prompt_for(self.prompts, role);
+        self.encode_whole_input(0, self.tokenizer.encode_with_prompt(prompt, text)?)
+    }
+
+    pub(crate) fn encode_batch_outcomes(
         &self,
         texts: &[&str],
         role: Option<Role>,
-    ) -> Result<Vec<CutDenseEmbedding>> {
+    ) -> Result<Vec<CountedDenseEmbedding>> {
         let inputs = self
             .tokenizer
-            .encode_batch_cut(prompt_for(self.prompts, role), texts)?;
+            .encode_batch_with_prompt(prompt_for(self.prompts, role), texts)?;
         let Some(longest) = inputs.iter().map(|input| input.token_ids.len()).max() else {
             return Ok(Vec::new());
         };
@@ -161,37 +182,37 @@ impl CandleDenseEncoder {
         let embeddings = inputs
             .into_par_iter()
             .enumerate()
-            .map(|(index, input)| self.encode_cut_input_admitted(index, input))
+            .map(|(index, input)| self.encode_whole_input_admitted(index, input))
             .collect();
         drop(inference_permit);
         embeddings
     }
 
-    /// Embeds one cut input; `index` is its position in the encoded slice.
-    fn encode_cut_input(
+    /// Embeds one complete input; `index` is its position in the encoded slice.
+    fn encode_whole_input(
         &self,
         index: usize,
-        input: CutTokenizedInput,
-    ) -> Result<CutDenseEmbedding> {
+        input: WholeTokenizedInput,
+    ) -> Result<CountedDenseEmbedding> {
         let embedding = self.encode_tokenized(&input.token_ids, &input.attention_mask)?;
-        Self::cut_embedding(index, &input, embedding)
+        Self::counted_embedding(index, &input, embedding)
     }
 
-    /// As [`Self::encode_cut_input`], for a caller that holds the inference permit.
-    fn encode_cut_input_admitted(
+    /// As [`Self::encode_whole_input`], for a caller that holds the inference permit.
+    fn encode_whole_input_admitted(
         &self,
         index: usize,
-        input: CutTokenizedInput,
-    ) -> Result<CutDenseEmbedding> {
+        input: WholeTokenizedInput,
+    ) -> Result<CountedDenseEmbedding> {
         let embedding = self.encode_tokenized_admitted(&input.token_ids, &input.attention_mask)?;
-        Self::cut_embedding(index, &input, embedding)
+        Self::counted_embedding(index, &input, embedding)
     }
 
-    fn cut_embedding(
+    fn counted_embedding(
         index: usize,
-        input: &CutTokenizedInput,
+        input: &WholeTokenizedInput,
         embedding: Array1<f32>,
-    ) -> Result<CutDenseEmbedding> {
+    ) -> Result<CountedDenseEmbedding> {
         if !embedding.iter().all(|value| value.is_finite()) {
             return Err(anyhow::Error::new(
                 crate::api::embedder::EmbedFailure::OutputInvalid {
@@ -200,12 +221,7 @@ impl CandleDenseEncoder {
                 },
             ));
         }
-        CutDenseEmbedding::new(
-            embedding,
-            input.tokens_read(),
-            input.tokens_total,
-            input.cut,
-        )
+        CountedDenseEmbedding::new(embedding, input.tokens_total)
     }
 
     /// Encodes a long input as bounded overlapping windows and returns their

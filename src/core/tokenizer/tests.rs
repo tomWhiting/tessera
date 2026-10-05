@@ -25,7 +25,6 @@ pub fn tokenizer(resource_policy: ResourcePolicy) -> Tokenizer {
 
     Tokenizer {
         inner,
-        truncating: None,
         resource_policy,
         pad_token_id: Some(1),
     }
@@ -80,86 +79,92 @@ pub fn cut_tokenizer_with_policy(policy: ResourcePolicy) -> Tokenizer {
             .build()
             .unwrap(),
     ));
-    tokenizer.prepare_cut().unwrap();
     tokenizer
 }
 
 #[test]
 fn cut_under_limit_preserves_existing_tokens_and_counts() {
     let tokenizer = cut_tokenizer(5);
-    let input = tokenizer.encode_cut("", "one").unwrap();
+    let input = tokenizer.encode_with_prompt("", "one").unwrap();
     assert_eq!(input.token_ids, [10, 2, 11]);
     assert_eq!(input.token_ids, tokenizer.encode("one", true).unwrap().0);
-    assert_eq!(input.tokens_read(), 3);
+    assert_eq!(input.token_ids.len(), 3);
     assert_eq!(input.tokens_total, 3);
-    assert!(!input.cut);
 }
 
 #[test]
 fn cut_exact_limit_preserves_existing_tokens_and_counts() {
     let tokenizer = cut_tokenizer(5);
-    let input = tokenizer.encode_cut("", "one two three").unwrap();
+    let input = tokenizer.encode_with_prompt("", "one two three").unwrap();
     assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
     assert_eq!(
         input.token_ids,
         tokenizer.encode("one two three", true).unwrap().0
     );
-    assert_eq!(input.tokens_read(), 5);
+    assert_eq!(input.token_ids.len(), 5);
     assert_eq!(input.tokens_total, 5);
-    assert!(!input.cut);
 }
 
 #[test]
-fn cut_over_limit_keeps_special_tokens_and_reports_whole_count() {
-    let input = cut_tokenizer(5)
-        .encode_cut("", "one two three one")
-        .unwrap();
-    assert_eq!(input.token_ids, [10, 2, 3, 4, 11]);
-    assert_eq!(input.tokens_read(), 5);
-    assert_eq!(input.tokens_total, 6);
-    assert!(input.cut);
+fn over_limit_refuses_the_complete_count() {
+    let error = cut_tokenizer(5)
+        .encode_with_prompt("", "one two three one")
+        .unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<crate::EmbeddingRefusal>(),
+        Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: 6,
+            tokens_limit: 5
+        })
+    );
 }
 
 #[test]
-fn cut_far_over_limit_keeps_start_and_reports_whole_count() {
+fn far_over_limit_refuses_without_a_partial_sequence() {
     let text = vec!["one"; 50].join(" ");
-    let input = cut_tokenizer(5).encode_cut("", &text).unwrap();
-    assert_eq!(input.token_ids, [10, 2, 2, 2, 11]);
-    assert_eq!(input.tokens_read(), 5);
-    assert_eq!(input.tokens_total, 52);
-    assert!(input.cut);
+    let error = cut_tokenizer(5).encode_with_prompt("", &text).unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<crate::EmbeddingRefusal>(),
+        Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: 52,
+            tokens_limit: 5
+        })
+    );
 }
 
 #[test]
 fn cut_configuration_requires_special_tokens_plus_content() {
     for limit in [0, 1, 2] {
         let tokenizer = cut_tokenizer(limit);
-        let error = tokenizer.encode_cut("", "one").unwrap_err();
+        let error = tokenizer.encode_with_prompt("", "one").unwrap_err();
         let error = error
             .downcast_ref::<super::CutConfigurationError>()
             .unwrap();
         assert_eq!(error.limit, limit);
         assert_eq!(error.special_tokens, 2);
         assert!(error.to_string().starts_with("InvalidCutConfiguration:"));
-        let error = tokenizer.encode_batch_cut("", &["one", "two"]).unwrap_err();
+        let error = tokenizer
+            .encode_batch_with_prompt("", &["one", "two"])
+            .unwrap_err();
         assert!(error
             .downcast_ref::<super::CutConfigurationError>()
             .is_some());
-        assert!(tokenizer.encode_batch_cut("", &[]).is_err());
+        assert!(tokenizer.encode_batch_with_prompt("", &[]).is_err());
     }
 }
 
 #[test]
-fn cut_batch_preserves_order_and_accepts_long_items() {
-    let inputs = cut_tokenizer(5)
-        .encode_batch_cut("", &["two", "one two three one", "three"])
-        .unwrap();
-    assert_eq!(inputs.len(), 3);
-    assert_eq!(inputs[0].token_ids, [10, 3, 11]);
-    assert_eq!(inputs[1].token_ids, [10, 2, 3, 4, 11]);
-    assert_eq!(inputs[1].tokens_total, 6);
-    assert!(inputs[1].cut);
-    assert_eq!(inputs[2].token_ids, [10, 4, 11]);
+fn tokenizer_batch_refuses_an_overlength_item() {
+    let error = cut_tokenizer(5)
+        .encode_batch_with_prompt("", &["two", "one two three one", "three"])
+        .unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<crate::EmbeddingRefusal>(),
+        Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: 6,
+            tokens_limit: 5
+        })
+    );
 }
 
 #[test]
@@ -169,9 +174,9 @@ fn cut_methods_still_refuse_the_byte_limit() {
         .resource_policy
         .with_max_input_bytes_per_sequence(3);
     for error in [
-        tokenizer.encode_cut("", "three").unwrap_err(),
+        tokenizer.encode_with_prompt("", "three").unwrap_err(),
         tokenizer
-            .encode_batch_cut("", &["one", "three"])
+            .encode_batch_with_prompt("", &["one", "three"])
             .unwrap_err(),
     ] {
         assert_eq!(
@@ -182,15 +187,18 @@ fn cut_methods_still_refuse_the_byte_limit() {
 }
 
 #[test]
-fn cut_uses_the_tokenizer_prepared_once_before_calls() {
+fn repeated_overlength_calls_keep_the_complete_count() {
     let tokenizer = cut_tokenizer(5);
-    let prepared = std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap());
-    tokenizer.encode_cut("", "one two three one").unwrap();
-    tokenizer.encode_cut("", "three two one three").unwrap();
-    assert_eq!(
-        prepared,
-        std::ptr::from_ref(tokenizer.truncating.as_ref().unwrap())
-    );
+    for text in ["one two three one", "three two one three"] {
+        let error = tokenizer.encode_with_prompt("", text).unwrap_err();
+        assert_eq!(
+            error.downcast_ref::<crate::EmbeddingRefusal>(),
+            Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+                tokens_total: 6,
+                tokens_limit: 5
+            })
+        );
+    }
 }
 
 #[test]
@@ -319,12 +327,14 @@ fn bounded_truncation_encoding_still_enforces_raw_bytes() {
         tokenizer(ResourcePolicy::new(1, 1, 1, usize::MAX).with_max_input_bytes_per_sequence(32));
 
     let (ids, _) = tokenizer
-        .encode_for_bounded_truncation("one two three", false)
-        .expect("the role-specific caller is responsible for truncating tokens");
+        .encode_for_bounded_transform("one two three", false)
+        .expect(
+            "the role-specific caller is responsible for validating its bounded transformation",
+        );
     assert_eq!(ids, [2, 3, 4]);
 
     let error = tokenizer
-        .encode_for_bounded_truncation("one two three one two three one two", false)
+        .encode_for_bounded_transform("one two three one two three one two", false)
         .expect_err("raw bytes remain bounded before tokenization");
     assert!(error.to_string().contains("Input byte count"));
 }
@@ -354,31 +364,33 @@ fn window_encoding_covers_content_once_by_center_ownership() {
 #[test]
 fn prompt_is_joined_before_the_text_and_counted() {
     let tokenizer = cut_tokenizer(8);
-    let query = tokenizer.encode_cut("three two ", "one").unwrap();
+    let query = tokenizer.encode_with_prompt("three two ", "one").unwrap();
     assert_eq!(query.token_ids, [10, 4, 3, 2, 11]);
-    assert_eq!(query.tokens_read(), 5);
+    assert_eq!(query.token_ids.len(), 5);
     assert_eq!(query.tokens_total, 5);
-    assert!(!query.cut);
-    let document = tokenizer.encode_cut("", "one").unwrap();
+    let document = tokenizer.encode_with_prompt("", "one").unwrap();
     assert_eq!(document.token_ids, [10, 2, 11]);
     assert_eq!(document.tokens_total, 3);
 }
 
 #[test]
-fn cutting_keeps_the_prompt_and_removes_from_the_end() {
-    let input = cut_tokenizer(5)
-        .encode_cut("three ", "one two three one")
-        .unwrap();
-    assert_eq!(input.token_ids, [10, 4, 2, 3, 11]);
-    assert_eq!(input.tokens_read(), 5);
-    assert_eq!(input.tokens_total, 7);
-    assert!(input.cut);
+fn overlength_refusal_counts_the_whole_prompt() {
+    let error = cut_tokenizer(5)
+        .encode_with_prompt("three ", "one two three one")
+        .unwrap_err();
+    assert_eq!(
+        error.downcast_ref::<crate::EmbeddingRefusal>(),
+        Some(&crate::EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: 7,
+            tokens_limit: 5
+        })
+    );
 }
 
 #[test]
 fn batch_joins_the_one_prompt_before_every_text() {
     let inputs = cut_tokenizer(8)
-        .encode_batch_cut("three ", &["one", "two"])
+        .encode_batch_with_prompt("three ", &["one", "two"])
         .unwrap();
     let ids: Vec<_> = inputs.iter().map(|input| input.token_ids.clone()).collect();
     assert_eq!(ids, [vec![10, 4, 2, 11], vec![10, 4, 3, 11]]);
@@ -388,7 +400,7 @@ fn batch_joins_the_one_prompt_before_every_text() {
 fn byte_limit_counts_the_callers_text_alone() {
     let policy = ResourcePolicy::new(8, 16, 2048, usize::MAX).with_max_input_bytes_per_sequence(3);
     let input = cut_tokenizer_with_policy(policy)
-        .encode_cut("three two ", "one")
+        .encode_with_prompt("three two ", "one")
         .unwrap();
     assert_eq!(input.tokens_total, 5);
 }
@@ -482,15 +494,13 @@ mod metaspace_whitespace {
     fn rule_reaches_plain_and_cut_encoding() {
         let mut inner = unigram(metaspace());
         split_whitespace_before_metaspace(&mut inner);
-        let mut tokenizer = Tokenizer {
+        let tokenizer = Tokenizer {
             inner,
-            truncating: None,
             resource_policy: ResourcePolicy::new(2, 16, 2048, usize::MAX),
             pad_token_id: None,
         };
-        tokenizer.prepare_cut().unwrap();
         assert_eq!(tokenizer.encode("one  two ", false).unwrap().0, [ONE, TWO]);
-        let cut = tokenizer.encode_cut("", "one  two  one ").unwrap();
+        let cut = tokenizer.encode_with_prompt("", "one  two  one ").unwrap();
         assert_eq!(cut.token_ids, [ONE, TWO]);
         assert_eq!(cut.tokens_total, 3);
     }

@@ -2991,6 +2991,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "tessera-embeddings",
+ "tokenizers",
 ]
 
 [[package]]

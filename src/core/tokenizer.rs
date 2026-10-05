@@ -12,7 +12,7 @@ use tokenizers::models::ModelWrapper;
 use tokenizers::pre_tokenizers::sequence::Sequence;
 use tokenizers::pre_tokenizers::whitespace::WhitespaceSplit;
 use tokenizers::pre_tokenizers::PreTokenizerWrapper;
-use tokenizers::{PostProcessor, Tokenizer as HfTokenizer, TruncationParams};
+use tokenizers::{PostProcessor, Tokenizer as HfTokenizer};
 
 use crate::models::loader::ModelFileResolver;
 use crate::runtime::{plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow};
@@ -65,23 +65,15 @@ pub(crate) fn split_whitespace_before_metaspace(tokenizer: &mut HfTokenizer) {
 }
 
 #[derive(Debug)]
-pub(crate) struct CutTokenizedInput {
+pub(crate) struct WholeTokenizedInput {
     pub(crate) token_ids: Vec<u32>,
     pub(crate) attention_mask: Vec<u32>,
     pub(crate) tokens_total: usize,
-    pub(crate) cut: bool,
-}
-
-impl CutTokenizedInput {
-    pub(crate) fn tokens_read(&self) -> usize {
-        self.token_ids.len()
-    }
 }
 
 /// Wrapper around `HuggingFace` tokenizer for BERT models.
 pub struct Tokenizer {
     inner: HfTokenizer,
-    truncating: Option<HfTokenizer>,
     resource_policy: ResourcePolicy,
     pad_token_id: Option<u32>,
 }
@@ -135,7 +127,6 @@ impl Tokenizer {
 
         Ok(Self {
             inner,
-            truncating: None,
             resource_policy,
             pad_token_id,
         })
@@ -207,65 +198,49 @@ impl Tokenizer {
         Ok(longest)
     }
 
-    pub(crate) fn prepare_cut(&mut self) -> Result<()> {
-        if self.resource_policy.max_sequence_tokens() <= self.cut_special_tokens() {
-            // Cut calls report invalid limits; ordinary encoding retains its behavior.
-            return Ok(());
-        }
-        let mut truncating = self.inner.clone();
-        truncating
-            .with_truncation(Some(TruncationParams {
-                max_length: self.resource_policy.max_sequence_tokens(),
-                ..TruncationParams::default()
-            }))
-            .map_err(|error| anyhow::anyhow!("Failed to configure cut tokenization: {error}"))?;
-        self.truncating = Some(truncating);
-        Ok(())
-    }
-
     pub(crate) fn cut_special_tokens(&self) -> usize {
         self.inner
             .get_post_processor()
             .map_or(0, |processor| processor.added_tokens(false))
     }
 
-    /// Tokenises `prompt` joined directly before `text`, cutting from the end.
-    pub(crate) fn encode_cut(&self, prompt: &str, text: &str) -> Result<CutTokenizedInput> {
+    /// Tokenises `prompt` joined directly before `text`, preserving every token.
+    pub(crate) fn encode_with_prompt(
+        &self,
+        prompt: &str,
+        text: &str,
+    ) -> Result<WholeTokenizedInput> {
         self.validate_cut_configuration_with(&[prompt])?;
         self.resource_policy.validate_input_bytes(text.len())?;
         let joined = [prompt, text].concat();
         let text = joined.as_str();
-        let mut encoding = self
+        let encoding = self
             .inner
             .encode(text, true)
             .map_err(|error| anyhow::anyhow!("Failed to encode text: {error}"))?;
         let tokens_total = encoding.len();
         let limit = self.resource_policy.max_sequence_tokens();
-        let cut = tokens_total > limit;
-        if cut {
-            drop(encoding);
-            encoding = self
-                .truncating
-                .as_ref()
-                .context("Cut tokenizer was not prepared during model loading")?
-                .encode(text, true)
-                .map_err(|error| anyhow::anyhow!("Failed to encode cut text: {error}"))?;
+        if tokens_total > limit {
+            return Err(crate::EmbeddingRefusal::TextLongerThanModel {
+                tokens_total,
+                tokens_limit: limit,
+            }
+            .into());
         }
         self.resource_policy.validate_sequence(encoding.len())?;
         self.resource_policy.validate_batch(1, encoding.len())?;
-        Ok(CutTokenizedInput {
+        Ok(WholeTokenizedInput {
             token_ids: encoding.get_ids().to_vec(),
             attention_mask: encoding.get_attention_mask().to_vec(),
             tokens_total,
-            cut,
         })
     }
 
-    pub(crate) fn encode_batch_cut(
+    pub(crate) fn encode_batch_with_prompt(
         &self,
         prompt: &str,
         texts: &[&str],
-    ) -> Result<Vec<CutTokenizedInput>> {
+    ) -> Result<Vec<WholeTokenizedInput>> {
         self.validate_cut_configuration()?;
         self.resource_policy.validate_batch(texts.len(), 0)?;
         for text in texts {
@@ -273,11 +248,11 @@ impl Tokenizer {
         }
         let inputs = texts
             .iter()
-            .map(|text| self.encode_cut(prompt, text))
+            .map(|text| self.encode_with_prompt(prompt, text))
             .collect::<Result<Vec<_>>>()?;
         let max_len = inputs
             .iter()
-            .map(CutTokenizedInput::tokens_read)
+            .map(|input| input.token_ids.len())
             .max()
             .unwrap_or(0);
         self.resource_policy.validate_batch(texts.len(), max_len)?;
@@ -306,8 +281,8 @@ impl Tokenizer {
     ///
     /// Raw input bytes are still bounded here. This deliberately skips the
     /// generic sequence check so callers can form validated context windows or
-    /// preserve required role-framing tokens while truncating content.
-    pub(crate) fn encode_for_bounded_truncation(
+    /// preserve required role-framing tokens before checking the final sequence.
+    pub(crate) fn encode_for_bounded_transform(
         &self,
         text: &str,
         add_special_tokens: bool,
@@ -328,7 +303,7 @@ impl Tokenizer {
         text: &str,
         config: ContextWindowConfig,
     ) -> Result<Vec<TokenWindow>> {
-        let (content_ids, _) = self.encode_for_bounded_truncation(text, false)?;
+        let (content_ids, _) = self.encode_for_bounded_transform(text, false)?;
         let (special_prefix, special_suffix) = self.special_token_envelope()?;
         let windows = plan_token_windows(
             &content_ids,

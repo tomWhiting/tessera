@@ -302,11 +302,9 @@ impl DenseEmbedding {
 
 /// A dense vector and the token counts for its bounded input, without source text.
 #[derive(Debug, Clone)]
-pub struct CutDenseEmbedding {
+pub struct CountedDenseEmbedding {
     embedding: Array1<f32>,
-    tokens_read: usize,
     tokens_total: usize,
-    cut: bool,
 }
 
 /// Whether a text is a question searched with, or a document stored.
@@ -319,16 +317,26 @@ pub enum Role {
 }
 
 /// A field that cannot be embedded without changing its input contract.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum EmbeddingRefusal {
     /// The text has no non-whitespace character.
+    #[error("embed_input_empty")]
     Empty,
     /// The text exceeds the per-sequence UTF-8 byte limit.
+    #[error("embed_input_too_large: input_bytes={input_bytes}, limit={limit}")]
     TooLarge {
         /// Measured UTF-8 bytes.
         input_bytes: usize,
         /// Maximum permitted UTF-8 bytes.
         limit: usize,
+    },
+    /// The complete token sequence exceeds the model window.
+    #[error("text_longer_than_model: tokens_total={tokens_total}, tokens_limit={tokens_limit}")]
+    TextLongerThanModel {
+        /// Complete count, including role prefix and special tokens.
+        tokens_total: usize,
+        /// Maximum complete sequence length.
+        tokens_limit: usize,
     },
 }
 
@@ -352,26 +360,22 @@ impl EmbeddingRefusal {
         match self {
             Self::Empty => "embed_input_empty",
             Self::TooLarge { .. } => "embed_input_too_large",
+            Self::TextLongerThanModel { .. } => "text_longer_than_model",
         }
     }
 }
 
 /// One input's vector and counts, or its named refusal.
 #[derive(Debug, Clone)]
-pub enum CutEmbeddingOutcome {
-    /// The input was embedded, possibly after cutting content from its end.
-    Embedded(CutDenseEmbedding),
-    /// The input was refused before tokenization or inference.
+pub enum EmbeddingOutcome {
+    /// The input was embedded, with its complete text.
+    Embedded(CountedDenseEmbedding),
+    /// The input was refused before inference.
     Refused(EmbeddingRefusal),
 }
 
-impl CutDenseEmbedding {
-    pub(crate) fn new(
-        embedding: Array1<f32>,
-        tokens_read: usize,
-        tokens_total: usize,
-        cut: bool,
-    ) -> Result<Self> {
+impl CountedDenseEmbedding {
+    pub(crate) fn new(embedding: Array1<f32>, tokens_total: usize) -> Result<Self> {
         anyhow::ensure!(
             !embedding.is_empty(),
             "Dense embedding dimension must be greater than zero"
@@ -380,19 +384,10 @@ impl CutDenseEmbedding {
             embedding.iter().all(|value| value.is_finite()),
             "Dense embedding contains NaN or Inf values"
         );
-        anyhow::ensure!(
-            tokens_read <= tokens_total,
-            "Embedded token count exceeds whole-text token count"
-        );
-        anyhow::ensure!(
-            cut == (tokens_read < tokens_total),
-            "Cut flag disagrees with token counts"
-        );
+        anyhow::ensure!(tokens_total > 0, "Embedded token count must be positive");
         Ok(Self {
             embedding,
-            tokens_read,
             tokens_total,
-            cut,
         })
     }
 
@@ -414,22 +409,10 @@ impl CutDenseEmbedding {
         self.embedding
     }
 
-    /// Returns the number of tokens embedded, including special tokens.
-    #[must_use]
-    pub const fn tokens_read(&self) -> usize {
-        self.tokens_read
-    }
-
     /// Returns the whole-text token count, including special tokens.
     #[must_use]
     pub const fn tokens_total(&self) -> usize {
         self.tokens_total
-    }
-
-    /// Reports whether content was removed from the end.
-    #[must_use]
-    pub const fn cut(&self) -> bool {
-        self.cut
     }
 }
 

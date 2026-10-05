@@ -5,7 +5,7 @@ use haem_frames::embedding::{
     FailedCode, ItemCode, Kind, Message, Model, Outcome, Ready, Start, Vectors,
 };
 use tessera::{
-    CutEmbeddingOutcome, Device, EmbeddingRefusal, InstalledModel, ModelConfig, Role, TesseraDense,
+    Device, EmbeddingOutcome, EmbeddingRefusal, InstalledModel, ModelConfig, Role, TesseraDense,
     TesseraDenseBuilder,
 };
 
@@ -63,7 +63,7 @@ impl Engine {
             .build()
             .map_err(|error| Failure::model_load(&error, directory))?;
         model
-            .encode_batch_cut(&[], Some(Role::Query))
+            .encode_batch_outcomes(&[], Some(Role::Query))
             .map_err(|error| Failure::model_load(&error, directory))?;
         let identity = model.identity();
         let manifest_sha256 = identity.manifest_sha256.as_ref().ok_or_else(|| {
@@ -125,7 +125,7 @@ impl Engine {
             .collect();
         let outcomes = self
             .model
-            .encode_batch_cut(&texts, Some(role))
+            .encode_batch_outcomes(&texts, Some(role))
             .map_err(|error| Failure::inference(&error))?;
         if outcomes.len() != request.items.len() {
             return Err(Failure::new(
@@ -137,7 +137,7 @@ impl Engine {
         for (input, outcome) in request.items.iter().zip(outcomes) {
             let expected = input_refusal(&input.text, start.limits.input_bytes);
             items.push(match outcome {
-                CutEmbeddingOutcome::Embedded(embedding) => {
+                EmbeddingOutcome::Embedded(embedding) => {
                     if expected.is_some() {
                         return Err(Failure::new(
                             FailedCode::EmbedOutputInvalid,
@@ -153,11 +153,11 @@ impl Engine {
                     Outcome::Vector {
                         id: input.id.clone(),
                         vector: encode_vector(values)?,
-                        tokens_read: wire_number(embedding.tokens_read(), "tokens_read")?,
+                        tokens_read: wire_number(embedding.tokens_total(), "tokens_read")?,
                         tokens_total: wire_number(embedding.tokens_total(), "tokens_total")?,
                     }
                 }
-                CutEmbeddingOutcome::Refused(refusal) => {
+                EmbeddingOutcome::Refused(refusal) => {
                     let code = match refusal {
                         EmbeddingRefusal::Empty => ItemCode::EmbedInputEmpty,
                         EmbeddingRefusal::TooLarge { .. } => ItemCode::EmbedInputTooLarge,

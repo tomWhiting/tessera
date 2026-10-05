@@ -180,7 +180,7 @@ impl ColbertPreprocessor {
                 })
             }
             InputRole::Query | InputRole::Document => {
-                let (token_ids, _) = tokenizer.encode_for_bounded_truncation(text, true)?;
+                let (token_ids, _) = tokenizer.encode_for_bounded_transform(text, true)?;
                 let prepared = prepare_role_tokens(&token_ids, role, self.config, &self.ids)?;
                 let policy = tokenizer.resource_policy();
                 policy
@@ -231,7 +231,7 @@ fn punctuation_ids(tokenizer: &Tokenizer, unknown: u32) -> Result<HashSet<u32>> 
         .chars()
         .map(|symbol| {
             let text = symbol.to_string();
-            let (ids, _) = tokenizer.encode_for_bounded_truncation(&text, false)?;
+            let (ids, _) = tokenizer.encode_for_bounded_transform(&text, false)?;
             anyhow::ensure!(
                 ids.len() == 1 && ids[0] != unknown,
                 "Tokenizer artifact cannot represent ColBERT punctuation {symbol:?} as one known token"
@@ -260,10 +260,17 @@ fn prepare_role_tokens(
         InputRole::Generic => anyhow::bail!("generic input has no ColBERT role marker"),
     };
     let content_capacity = max_length - MIN_ROLE_LENGTH;
-    let content = token_ids[1..token_ids.len() - 1]
-        .iter()
-        .take(content_capacity)
-        .copied();
+    let content_tokens = token_ids.len() - 2;
+    if content_tokens > content_capacity {
+        return Err(crate::EmbeddingRefusal::TextLongerThanModel {
+            tokens_total: content_tokens
+                .checked_add(MIN_ROLE_LENGTH)
+                .ok_or_else(|| anyhow::anyhow!("ColBERT token count overflow"))?,
+            tokens_limit: max_length,
+        }
+        .into());
+    }
+    let content = token_ids[1..token_ids.len() - 1].iter().copied();
     let mut role_ids = Vec::with_capacity(max_length);
     role_ids.extend([ids.cls, marker]);
     role_ids.extend(content);

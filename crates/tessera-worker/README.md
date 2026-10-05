@@ -30,8 +30,10 @@ tokens for specials, the longest role prefix and one content token, and enough
 frame bytes for the largest valid vector batch.
 
 Unicode whitespace inputs and inputs above the UTF-8 byte limit receive the
-shared item refusal. Other overlength inputs are cut at the token limit with
-the role prefix preserved, and both counts are returned. Each output batch is
+shared item refusal. Inputs whose complete token sequence exceeds the window receive
+`text_longer_than_model`, with `tokens_total` and `tokens_limit`; no vector is
+returned for that item. Role prefixes and special tokens count toward the
+window. Embedded items report equal `tokens_read` and `tokens_total`. Each output batch is
 checked with the shared validator before it is written. All failures end the
 worker; no partial batch is sent. Clean EOF before a frame exits zero. Failure
 frames exit one; a failed frame write exits two.
