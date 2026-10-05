@@ -133,20 +133,8 @@ impl Engine {
                 "embedding outcome count does not match request",
             ));
         }
-        let overlength: Vec<_> = request
-            .items
-            .iter()
-            .zip(&outcomes)
-            .filter_map(|(input, outcome)| match outcome {
-                EmbeddingOutcome::Refused(EmbeddingRefusal::TextLongerThanModel {
-                    tokens_total,
-                    tokens_limit,
-                }) => Some((input.id.as_str(), *tokens_total, *tokens_limit)),
-                _ => None,
-            })
-            .collect();
-        if !overlength.is_empty() {
-            return Err(Failure::overlength(&overlength));
+        if let Some(failure) = overlength_failure(request, &outcomes) {
+            return Err(failure);
         }
         let mut items = Vec::with_capacity(outcomes.len());
         for (input, outcome) in request.items.iter().zip(outcomes) {
@@ -215,5 +203,25 @@ impl Engine {
         };
         check_vectors(&vectors, request, ready, &start.limits)?;
         Ok(vectors)
+    }
+}
+
+fn overlength_failure(request: &Embed, outcomes: &[EmbeddingOutcome]) -> Option<Failure> {
+    let overlength: Vec<_> = request
+        .items
+        .iter()
+        .zip(outcomes)
+        .filter_map(|(input, outcome)| match outcome {
+            EmbeddingOutcome::Refused(EmbeddingRefusal::TextLongerThanModel {
+                tokens_total,
+                tokens_limit,
+            }) => Some((input.id.as_str(), *tokens_total, *tokens_limit)),
+            _ => None,
+        })
+        .collect();
+    if overlength.is_empty() {
+        None
+    } else {
+        Some(Failure::overlength(&overlength))
     }
 }

@@ -33,7 +33,12 @@ fn an_overlength_item_refuses_the_whole_embed_and_exits() {
 fn long_ids_leave_whole_ordered_items_and_an_omitted_count() {
     let model = fixture::installed();
     let ids: Vec<String> = (0..8)
-        .map(|index| format!("{index}{}\"\\\n", "é".repeat(180)))
+        .map(|index| {
+            format!(
+                "{index}{}\"\\\n\r\t\u{0001}\u{0008}\u{000c}\u{001f}",
+                "é".repeat(180)
+            )
+        })
         .collect();
     let mut policy = limits();
     policy.batch_items = 8;

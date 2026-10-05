@@ -48,7 +48,9 @@ impl Failure {
             characters += added;
             included += 1;
         }
-        message.push_str(&format!("],\"omitted\":{}}}", items.len() - included));
+        message.push_str("],\"omitted\":");
+        message.push_str(&(items.len() - included).to_string());
+        message.push('}');
         Self::limits(message)
     }
 
