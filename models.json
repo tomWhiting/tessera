@@ -1050,7 +1050,7 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "pytorch": "pytorch_model.bin"
             }
           },
           "capabilities": {
@@ -1202,8 +1202,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "safetensors": "model.safetensors"
             }
           },
           "capabilities": {
@@ -1275,8 +1274,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "safetensors": "model.safetensors"
             }
           },
           "capabilities": {
@@ -1594,7 +1592,7 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "pytorch": "pytorch_model.bin"
             }
           },
           "capabilities": {
@@ -1656,7 +1654,7 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "pytorch": "pytorch_model.bin"
             }
           },
           "capabilities": {
@@ -1718,7 +1716,7 @@
             "config": "config.json",
             "weights": {
               "safetensors": "model.safetensors",
-              "pytorch": "model.safetensors"
+              "pytorch": "pytorch_model.bin"
             }
           },
           "capabilities": {
@@ -1780,8 +1778,7 @@
             "tokenizer": "tokenizer.json",
             "config": "config.json",
             "weights": {
-              "safetensors": "model.safetensors",
-              "pytorch": "pytorch_model.bin"
+              "onnx": "onnx/model.onnx"
             }
           },
           "capabilities": {
