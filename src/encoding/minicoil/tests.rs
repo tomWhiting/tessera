@@ -476,3 +476,40 @@ fn token_output_glue_names_wrong_vector_count() {
         }
     ));
 }
+
+#[test]
+fn projection_row_insert_refuses_wrong_width_without_panicking() {
+    let result = std::panic::catch_unwind(|| ProjectionRows::default().insert(17, vec![0.0; 2047]));
+    assert!(
+        result.is_ok(),
+        "an invalid projection row must return an error"
+    );
+}
+
+#[test]
+fn local_minicoil_construction_refuses_catalog_before_files() {
+    let Err(error) = super::MinicoilEmbedder::from_model_dirs(
+        Path::new("missing-encoder"),
+        Path::new("missing-tables"),
+    ) else {
+        panic!("catalog-only construction must be refused");
+    };
+    assert!(matches!(
+        error.downcast_ref::<crate::error::TesseraError>(),
+        Some(crate::error::TesseraError::ConfigError(message))
+            if message.contains("minicoil-v1") && message.contains("catalog-only")
+    ));
+}
+
+#[cfg(not(feature = "fetch"))]
+#[test]
+fn direct_minicoil_construction_refuses_catalog_before_files() {
+    let Err(error) = super::MinicoilEmbedder::new("minicoil-v1") else {
+        panic!("catalog-only construction must be refused");
+    };
+    assert!(matches!(
+        error.downcast_ref::<crate::error::TesseraError>(),
+        Some(crate::error::TesseraError::ConfigError(message))
+            if message.contains("minicoil-v1") && message.contains("catalog-only")
+    ));
+}
