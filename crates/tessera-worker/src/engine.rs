@@ -133,6 +133,21 @@ impl Engine {
                 "embedding outcome count does not match request",
             ));
         }
+        let overlength: Vec<_> = request
+            .items
+            .iter()
+            .zip(&outcomes)
+            .filter_map(|(input, outcome)| match outcome {
+                EmbeddingOutcome::Refused(EmbeddingRefusal::TextLongerThanModel {
+                    tokens_total,
+                    tokens_limit,
+                }) => Some((input.id.as_str(), *tokens_total, *tokens_limit)),
+                _ => None,
+            })
+            .collect();
+        if !overlength.is_empty() {
+            return Err(Failure::overlength(&overlength));
+        }
         let mut items = Vec::with_capacity(outcomes.len());
         for (input, outcome) in request.items.iter().zip(outcomes) {
             let expected = input_refusal(&input.text, start.limits.input_bytes);
@@ -161,6 +176,22 @@ impl Engine {
                     let code = match refusal {
                         EmbeddingRefusal::Empty => ItemCode::EmbedInputEmpty,
                         EmbeddingRefusal::TooLarge { .. } => ItemCode::EmbedInputTooLarge,
+                        EmbeddingRefusal::NoContentTokens => {
+                            return Err(Failure::limits(format!(
+                                "embed_input_no_content_tokens item {:?}",
+                                input.id
+                            )));
+                        }
+                        EmbeddingRefusal::TextLongerThanModel {
+                            tokens_total,
+                            tokens_limit,
+                        } => {
+                            return Err(Failure::overlength(&[(
+                                input.id.as_str(),
+                                tokens_total,
+                                tokens_limit,
+                            )]));
+                        }
                     };
                     if expected != Some(code) {
                         return Err(Failure::new(

@@ -30,13 +30,21 @@ tokens for specials, the longest role prefix and one content token, and enough
 frame bytes for the largest valid vector batch.
 
 Unicode whitespace inputs and inputs above the UTF-8 byte limit receive the
-shared item refusal. Inputs whose complete token sequence exceeds the window receive
-`text_longer_than_model`, with `tokens_total` and `tokens_limit`; no vector is
-returned for that item. Role prefixes and special tokens count toward the
-window. Embedded items report equal `tokens_read` and `tokens_total`. Each output batch is
-checked with the shared validator before it is written. All failures end the
-worker; no partial batch is sent. Clean EOF before a frame exits zero. Failure
-frames exit one; a failed frame write exits two.
+shared item refusal. The worker never cuts a text. If any complete token sequence
+exceeds the window, the entire Embed receives Failed with code `embed_limits`,
+no Vectors frame is sent, and the worker exits one. The message is
+`text_longer_than_model {"items":[{"id":"...","tokens_total":N,"tokens_limit":M},...],"omitted":K}`.
+It includes whole overlength items in request order within the shared character
+bound and counts the omitted items. Role prefixes and special tokens count
+toward the window.
+
+A nonempty text yielding no content tokens also fails the whole Embed with
+`embed_limits` and a message naming `embed_input_no_content_tokens` and its id.
+Protocol 1 has no item code for this refusal, so it cannot be represented as an
+empty-input refusal or silently dropped. Embedded items report equal
+`tokens_read` and `tokens_total`. Each successful output batch is checked with
+the shared validator before it is written. Clean EOF before a frame exits zero.
+Failure frames exit one; a failed frame write exits two.
 
 The worker is its own workspace, excluded from the library's, and is not
 published: its two shared crates come from the private haematite repository,

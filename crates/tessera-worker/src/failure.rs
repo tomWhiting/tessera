@@ -20,6 +20,38 @@ impl Failure {
         Self::new(FailedCode::EmbedLimits, message)
     }
 
+    /// Builds `text_longer_than_model {"items":[{"id":"...","tokens_total":N,"tokens_limit":M},...],"omitted":K}`.
+    ///
+    /// Whole items form a request-order prefix; omitted counts the remaining
+    /// overlength items. The complete message fits the shared character bound.
+    pub fn overlength(items: &[(&str, usize, usize)]) -> Self {
+        let mut message = String::from("text_longer_than_model {\"items\":[");
+        let mut characters = message.chars().count();
+        let mut included = 0;
+        for &(id, tokens_total, tokens_limit) in items {
+            let item = format!(
+                "{{\"id\":{},\"tokens_total\":{tokens_total},\"tokens_limit\":{tokens_limit}}}",
+                json_string(id)
+            );
+            let separator = usize::from(included != 0);
+            let suffix = format!("],\"omitted\":{}}}", items.len() - included - 1);
+            let added = item.chars().count() + separator;
+            if characters + added + suffix.chars().count()
+                > haem_frames::embedding::FAILED_MESSAGE_CHARS
+            {
+                break;
+            }
+            if included != 0 {
+                message.push(',');
+            }
+            message.push_str(&item);
+            characters += added;
+            included += 1;
+        }
+        message.push_str(&format!("],\"omitted\":{}}}", items.len() - included));
+        Self::limits(message)
+    }
+
     pub fn installed(error: &InstalledModelError, directory: &Path) -> Self {
         match error {
             InstalledModelError::ArtifactIo { filename, source } => Self::new(
@@ -108,4 +140,30 @@ impl From<haem_frames::embedding::Error> for Failure {
     fn from(error: haem_frames::embedding::Error) -> Self {
         Self::new(error.code, error.message)
     }
+}
+
+fn json_string(value: &str) -> String {
+    const HEX: [char; 16] = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f',
+    ];
+    let mut quoted = String::from("\"");
+    for character in value.chars() {
+        match character {
+            '"' => quoted.push_str("\\\""),
+            '\\' => quoted.push_str("\\\\"),
+            '\n' => quoted.push_str("\\n"),
+            '\r' => quoted.push_str("\\r"),
+            '\t' => quoted.push_str("\\t"),
+            character if character < ' ' => {
+                let mut encoded = [0; 4];
+                let code = usize::from(character.encode_utf8(&mut encoded).as_bytes()[0]);
+                quoted.push_str("\\u00");
+                quoted.push(HEX[code / 16]);
+                quoted.push(HEX[code % 16]);
+            }
+            character => quoted.push(character),
+        }
+    }
+    quoted.push('"');
+    quoted
 }
