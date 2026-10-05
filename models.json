@@ -203,7 +203,7 @@
           "release_date": "2022",
           "support": {
             "tier": "experimental",
-            "note": "Pinned CPU f32 smoke reference is bound for a 32-row query probe. Query attention differs from the pinned recipe; the 512-token window is not qualified. Remote checkpoint execution remains experimental."
+            "note": "CPU f32 reference bound for 7 tokens and 32 query rows. Query attention differs from pinned code. Full 512-token window unqualified; execution experimental."
           },
           "architecture": {
             "type": "bert",
