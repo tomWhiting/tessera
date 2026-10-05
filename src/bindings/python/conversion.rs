@@ -1,56 +1,46 @@
-#![allow(
-    clippy::cast_possible_truncation,
-    clippy::cast_possible_wrap,
-    clippy::collection_is_never_read,
-    clippy::type_complexity,
-    clippy::unnecessary_wraps
-)]
-
 use crate::core::{DenseEmbedding, SparseEmbedding, TokenEmbeddings, VisionEmbedding};
 use crate::error::TesseraError;
 use numpy::{IntoPyArray, PyArray1, PyArray2};
 use pyo3::exceptions::{PyIOError, PyRuntimeError, PyValueError};
 use pyo3::prelude::{Py, PyErr, PyResult, Python};
 
-pub(super) fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
+#[cfg(test)]
+#[path = "conversion/tests.rs"]
+mod tests;
+
+#[derive(Debug, PartialEq, Eq)]
+enum ExceptionKind {
+    Runtime,
+    Value,
+    Io,
+}
+
+fn exception_kind(err: &TesseraError) -> ExceptionKind {
     match err {
-        TesseraError::ModelNotFound { model_id } => {
-            PyRuntimeError::new_err(format!("Model '{model_id}' not found in registry"))
-        }
-        TesseraError::ModelLoadError { model_id, source } => {
-            PyRuntimeError::new_err(format!("Failed to load model '{model_id}': {source}"))
-        }
-        TesseraError::EncodingError { context, source } => {
-            PyRuntimeError::new_err(format!("Encoding failed: {context} - {source}"))
-        }
-        TesseraError::UnsupportedDimension {
-            model_id,
-            requested,
-            supported,
-        } => PyValueError::new_err(format!(
-            "Unsupported dimension {requested} for model '{model_id}'. Supported: {supported:?}"
-        )),
-        TesseraError::DeviceError(msg) => PyRuntimeError::new_err(format!("Device error: {msg}")),
-        TesseraError::QuantizationError(msg) => {
-            PyValueError::new_err(format!("Quantization error: {msg}"))
-        }
-        TesseraError::DimensionMismatch { expected, actual } => PyValueError::new_err(format!(
-            "Dimension mismatch: expected {expected}, got {actual}"
-        )),
-        TesseraError::TokenizationError(err) => {
-            PyRuntimeError::new_err(format!("Tokenization error: {err}"))
-        }
-        TesseraError::ConfigError(msg) => {
-            PyValueError::new_err(format!("Configuration error: {msg}"))
-        }
-        TesseraError::MatryoshkaError(msg) => {
-            PyValueError::new_err(format!("Matryoshka truncation error: {msg}"))
-        }
-        TesseraError::IoError(err) => PyIOError::new_err(format!("IO error: {err}")),
-        TesseraError::TensorError(err) => {
-            PyRuntimeError::new_err(format!("Tensor operation error: {err}"))
-        }
-        TesseraError::Other(err) => PyRuntimeError::new_err(format!("Error: {err}")),
+        TesseraError::UnsupportedWeightsFormat { .. }
+        | TesseraError::UnsupportedDimension { .. }
+        | TesseraError::QuantizationError(_)
+        | TesseraError::DimensionMismatch { .. }
+        | TesseraError::ConfigError(_)
+        | TesseraError::MatryoshkaError(_) => ExceptionKind::Value,
+        TesseraError::IoError(_) => ExceptionKind::Io,
+        TesseraError::FetchingNotBuiltIn { .. }
+        | TesseraError::ModelNotFound { .. }
+        | TesseraError::ModelLoadError { .. }
+        | TesseraError::EncodingError { .. }
+        | TesseraError::DeviceError(_)
+        | TesseraError::TokenizationError(_)
+        | TesseraError::TensorError(_)
+        | TesseraError::Other(_) => ExceptionKind::Runtime,
+    }
+}
+
+pub(super) fn tessera_error_to_pyerr(err: TesseraError) -> PyErr {
+    let message = err.to_string();
+    match exception_kind(&err) {
+        ExceptionKind::Runtime => PyRuntimeError::new_err(message),
+        ExceptionKind::Value => PyValueError::new_err(message),
+        ExceptionKind::Io => PyIOError::new_err(message),
     }
 }
 
