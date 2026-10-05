@@ -549,3 +549,34 @@ mod metaspace_whitespace {
         assert_eq!(ids(&tokenizer, "one <x> two"), [ONE, x, TWO]);
     }
 }
+
+#[test]
+fn byte_level_tokens_can_share_one_utf8_span() {
+    let mut alphabet = tokenizers::pre_tokenizers::byte_level::ByteLevel::alphabet()
+        .into_iter()
+        .collect::<Vec<_>>();
+    alphabet.sort_unstable();
+    let vocab: tokenizers::models::bpe::Vocab = alphabet
+        .into_iter()
+        .enumerate()
+        .map(|(id, token)| (token.to_string(), u32::try_from(id).unwrap()))
+        .collect();
+    let model = tokenizers::models::bpe::BPE::builder()
+        .vocab_and_merges(vocab, Vec::new())
+        .build()
+        .unwrap();
+    let mut tokenizer = HfTokenizer::new(model);
+    tokenizer.with_pre_tokenizer(Some(
+        tokenizers::pre_tokenizers::byte_level::ByteLevel::new(false, true, false),
+    ));
+    let text = "😀";
+    let encoding = tokenizer.encode(text, false).unwrap();
+    assert_eq!(encoding.len(), 4);
+    assert_eq!(encoding.get_offsets(), &[(0, 4); 4]);
+    assert_eq!(
+        text.char_indices()
+            .map(|(index, _)| index)
+            .collect::<Vec<_>>(),
+        [0]
+    );
+}
