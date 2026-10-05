@@ -8,11 +8,12 @@ fn normalized_away_source_never_reaches_sparse_output() -> Result<()> {
     use crate::runtime::{ModelDType, ResourcePolicy, TransformerProfile};
     use candle_nn::{VarBuilder, VarMap};
     let policy = ResourcePolicy::new(16, 2, 32, usize::MAX);
-    let (_, residency) = crate::runtime::preflight_and_reserve_registered_model(
+    let (_, residency) = crate::runtime::preflight_and_reserve_registered_model_with_dtype(
         "splade-pp-en-v1",
         16,
         crate::models::registry::ModelType::Sparse,
         &Device::Cpu,
+        ModelDType::F32,
         &policy,
     )?;
     let config = candle_transformers::models::bert::Config {
