@@ -656,6 +656,26 @@ fn single_window_matches_ordinary_unigram_metaspace() {
     );
 }
 
+#[test]
+fn straddling_prefix_token_is_content_without_losing_its_ids() {
+    let tokenizer = cut_tokenizer(5);
+    let prefix = "on";
+    let text = "e two";
+    let ordinary = tokenizer.encode_with_prompt(prefix, text).unwrap();
+    let (total, windows) = tokenizer
+        .encode_spanned_windows(prefix, text, ContextWindowConfig::new(5, 1))
+        .unwrap();
+    assert_eq!(total, 2);
+    assert_eq!(windows.len(), 1);
+    assert_eq!(windows[0].window.token_ids, [10, 2, 3, 11]);
+    assert_eq!(windows[0].window.token_ids, ordinary.token_ids);
+    assert_eq!(windows[0].window.attention_mask, ordinary.attention_mask);
+    assert_eq!(
+        (windows[0].byte_start, windows[0].byte_end),
+        (0, text.len())
+    );
+}
+
 pub fn drop_controls_tokenizer(policy: ResourcePolicy) -> Tokenizer {
     let mut tokenizer = cut_tokenizer_with_policy(policy);
     tokenizer
