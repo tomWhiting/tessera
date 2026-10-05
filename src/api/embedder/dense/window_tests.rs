@@ -94,7 +94,7 @@ fn no_overlap_windows_include_the_whitespace_between_tokens() {
 
 #[test]
 fn batch_windows_preserve_vectors_spans_and_refusals_in_order() {
-    let policy = ResourcePolicy::new(4, 2, 64, usize::MAX);
+    let policy = ResourcePolicy::new(4, 2, 64, usize::MAX).with_max_input_bytes_per_sequence(64);
     let tokenizer = cut_tokenizer_with_policy(policy);
     let mut groups = Vec::new();
     let outcomes = encode_windows_batch_with(
