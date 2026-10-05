@@ -158,7 +158,7 @@ fn support_contract_matches_the_audited_catalog() {
         ("jina-embeddings-v2-base-en", SupportTier::Experimental),
         ("jina-embeddings-v2-small-en", SupportTier::Experimental),
         ("jina-embeddings-v3", SupportTier::CatalogOnly),
-        ("minicoil-v1", SupportTier::CatalogOnly),
+        ("minicoil-v1", SupportTier::Experimental),
         ("multilingual-e5-base", SupportTier::Experimental),
         ("multilingual-e5-large", SupportTier::Experimental),
         ("multilingual-e5-small", SupportTier::Experimental),
@@ -217,6 +217,7 @@ fn runnable_models_excludes_catalog_only_entries() {
         "colbert-small",
         "colbert-v2",
         "colpali-v1.2",
+        "minicoil-v1",
         "splade-pp-en-v1",
         "splade-pp-en-v2",
     ];

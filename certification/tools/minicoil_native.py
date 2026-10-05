@@ -13,7 +13,7 @@ import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
-ASSETS = ROOT / ".tessera/minicoil-native-assets"
+ASSETS = ROOT / ".tessera/cert-evidence/minicoil-L/assets"
 FIXTURES = tuple(f"{text}-{role}" for text in ("machine-learning", "bear", "cafe", "tessera") for role in ("document", "question"))
 RSS_LIMIT = 2 * 1024**3
 

@@ -1757,8 +1757,8 @@
           "organization": "Qdrant",
           "release_date": "2024",
           "support": {
-            "tier": "catalog_only",
-            "note": "The repository ships ONNX and NumPy artifacts, not weights the Candle sparse adapter can load."
+            "tier": "experimental",
+            "note": "8 FastEmbed fixtures x2 fresh; tokens: machine-learning=7,bear/cafe=15,tessera=16 (both roles); indices exact, abs<=1e-5; CPU f32; no full-window claim."
           },
           "architecture": {
             "type": "bert",
@@ -1826,6 +1826,11 @@
                 "path": "tokenizer.json",
                 "size_bytes": 711573,
                 "sha256": "e9f999ac74497843ed9f4303246a8f43d9f100ee8aab8e133667903f447ceb48"
+              },
+              {
+                "path": "config.json",
+                "size_bytes": 1175,
+                "sha256": "940582c6d428408d92d628b94541092e7ca9cbee6c3f147de54e9d4ddfe30ace"
               }
             ]
           }

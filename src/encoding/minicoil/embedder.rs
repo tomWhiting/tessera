@@ -13,7 +13,7 @@ use super::vector::{sparse_vector, MinicoilConstants, MinicoilSparse, Role};
 use super::{MinicoilError, MinicoilTables, ProjectionRows};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::models::loader::ModelFileResolver;
-use crate::models::{registry, ModelConfig};
+use crate::models::{registry, ModelConfig, ModelInfo};
 use crate::runtime::{ModelDType, ResourcePolicy};
 
 /// Text encoder returning signed sparse values and unsigned term indices.
@@ -66,6 +66,9 @@ impl MinicoilEmbedder {
         assets
             .file("tokenizer.json")?
             .verify(&encoder_files.get("tokenizer.json")?)?;
+        assets
+            .file("config.json")?
+            .verify(&encoder_files.get("config.json")?)?;
         let table_files = if directories.is_none() {
             Some(ModelFileResolver::new(model)?)
         } else {
@@ -149,6 +152,37 @@ impl MinicoilEmbedder {
         };
         sparse_from_tokens(&tokens, &vectors, role, &self.tables, &rows).map_err(Into::into)
     }
+}
+
+/// Checks immutable asset declarations before artifact resolution.
+///
+/// # Errors
+/// Refuses mismatched repository revisions or missing consumed artifacts.
+pub fn validate_registry_assets(model: &ModelInfo) -> Result<()> {
+    anyhow::ensure!(
+        model.huggingface_id == "Qdrant/minicoil-v1"
+            && model.revision == Some("4a7b05822a7a246d25778508593fff58fe574dfe"),
+        "miniCOIL table repository or revision differs from the admitted pin"
+    );
+    let assets = Assets::registry()?;
+    let encoder =
+        registry::get_model(&assets.encoder_model).context("Unknown miniCOIL encoder model")?;
+    anyhow::ensure!(
+        encoder.huggingface_id == assets.encoder_repository
+            && encoder.revision == Some(assets.encoder_revision.as_str())
+            && encoder.safetensors_file == Some(assets.encoder_weights.path.as_str()),
+        "miniCOIL encoder registry pin differs from its declared assets"
+    );
+    for name in [
+        "config.json",
+        "tokenizer.json",
+        "minicoil.triplet.model.npy",
+        "minicoil.triplet.model.vocab",
+        "stopwords.txt",
+    ] {
+        assets.file(name)?;
+    }
+    Ok(())
 }
 
 pub(super) fn sparse_from_tokens(

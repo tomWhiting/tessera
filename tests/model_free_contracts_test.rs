@@ -159,8 +159,8 @@ fn typed_builders_reject_catalog_only_entries() {
             "gte-modern-colbert",
         ),
         (
-            error_message(TesseraSparseBuilder::new().model("minicoil-v1").build()),
-            "minicoil-v1",
+            error_message(TesseraSparseBuilder::new().model("splade-v3").build()),
+            "splade-v3",
         ),
         (
             error_message(TesseraVisionBuilder::new().model("colpali-v1.3-hf").build()),

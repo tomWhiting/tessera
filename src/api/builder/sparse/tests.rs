@@ -22,7 +22,7 @@ fn resource_policy_cannot_exceed_sparse_model_context() {
 
 #[test]
 fn catalog_only_sparse_model_is_rejected_before_loading() {
-    let result = TesseraSparseBuilder::new().model("minicoil-v1").build();
+    let result = TesseraSparseBuilder::new().model("splade-v3").build();
 
     let Err(error) = result else {
         panic!("a catalog-only sparse model must be rejected");
@@ -30,8 +30,20 @@ fn catalog_only_sparse_model_is_rejected_before_loading() {
     assert!(matches!(
         error,
         TesseraError::ConfigError(message)
-            if message.contains("minicoil-v1")
+            if message.contains("splade-v3")
                 && message.contains("catalog-only")
-                && message.contains("ONNX")
+    ));
+}
+
+#[test]
+fn minicoil_signed_indices_require_its_dedicated_embedder() {
+    let Err(error) = TesseraSparseBuilder::new().model("minicoil-v1").build() else {
+        panic!("miniCOIL must not enter the vocabulary-index sparse facade");
+    };
+    assert!(matches!(
+        error,
+        TesseraError::ConfigError(message)
+            if message.contains("signed u32 term indices")
+                && message.contains("MinicoilEmbedder")
     ));
 }

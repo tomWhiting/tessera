@@ -45,6 +45,11 @@ crate-type = ["cdylib", "rlib"]  # cdylib for Python, rlib for Rust
 name = "tessera"
 path = "src/main.rs"
 
+[[bin]]
+name = "tessera-minicoil-qualify"
+path = "certification/tools/minicoil_native.rs"
+required-features = ["fetch"]
+
 [features]
 default = ["fetch"]
 fetch = ["dep:hf-hub"]

@@ -489,13 +489,24 @@ fn projection_row_insert_refuses_wrong_width_without_panicking() {
 }
 
 #[test]
-fn local_minicoil_construction_refuses_catalog_before_files() {
+fn local_minicoil_construction_refuses_catalog_or_missing_files() {
     let Err(error) = super::embedder::MinicoilEmbedder::from_model_dirs(
         Path::new("missing-encoder"),
         Path::new("missing-tables"),
     ) else {
         panic!("catalog-only construction must be refused");
     };
+    if crate::models::registry::get_model("minicoil-v1")
+        .expect("registered model")
+        .is_runnable()
+    {
+        assert!(matches!(
+            error.downcast_ref::<crate::models::loader::InstalledModelError>(),
+            Some(crate::models::loader::InstalledModelError::ArtifactIo { filename, .. })
+                if filename == "manifest.json"
+        ));
+        return;
+    }
     assert!(matches!(
         error.downcast_ref::<crate::error::TesseraError>(),
         Some(crate::error::TesseraError::ConfigError(message))
@@ -505,10 +516,20 @@ fn local_minicoil_construction_refuses_catalog_before_files() {
 
 #[cfg(not(feature = "fetch"))]
 #[test]
-fn direct_minicoil_construction_refuses_catalog_before_files() {
+fn direct_minicoil_construction_refuses_catalog_or_unbuilt_fetch() {
     let Err(error) = super::embedder::MinicoilEmbedder::new("minicoil-v1") else {
         panic!("catalog-only construction must be refused");
     };
+    if crate::models::registry::get_model("minicoil-v1")
+        .expect("registered model")
+        .is_runnable()
+    {
+        assert!(matches!(
+            error.downcast_ref::<crate::error::TesseraError>(),
+            Some(crate::error::TesseraError::FetchingNotBuiltIn { .. })
+        ));
+        return;
+    }
     assert!(matches!(
         error.downcast_ref::<crate::error::TesseraError>(),
         Some(crate::error::TesseraError::ConfigError(message))

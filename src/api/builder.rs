@@ -37,6 +37,11 @@ use crate::models::ModelInfo;
 /// Rejects catalog metadata that does not have a runtime adapter.
 pub(crate) fn ensure_runnable_model(model: &ModelInfo) -> Result<()> {
     if model.is_runnable() {
+        if model.id == "minicoil-v1" {
+            return crate::encoding::minicoil::embedder::validate_registry_assets(model).map_err(
+                |error| TesseraError::ConfigError(format!("miniCOIL asset admission: {error:#}")),
+            );
+        }
         crate::models::loader::supported_weight_filename(model)?;
         return Ok(());
     }
