@@ -40,6 +40,8 @@ impl ContextWindowConfig {
 
 /// One validated model input and its ownership range in the original tokens.
 pub struct TokenWindow {
+    pub(crate) content_start: usize,
+    pub(crate) content_end: usize,
     pub(crate) token_ids: Vec<u32>,
     pub(crate) attention_mask: Vec<u32>,
     pub(crate) owned_start: usize,
@@ -152,6 +154,8 @@ fn make_window(
     token_ids.extend_from_slice(suffix);
     let attention_mask = vec![1; token_ids.len()];
     TokenWindow {
+        content_start: start,
+        content_end: end,
         token_ids,
         attention_mask,
         owned_start,

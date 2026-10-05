@@ -5,12 +5,60 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterato
 
 use super::{BertVariant, CandleDenseEncoder};
 use crate::core::embeddings::{CountedDenseEmbedding, Role};
-use crate::core::tokenizer::WholeTokenizedInput;
+use crate::core::tokenizer::{SpannedTokenWindow, WholeTokenizedInput};
 use crate::core::{DenseEmbedding, PoolingStrategy};
 use crate::models::registry::Prompts;
 use crate::runtime::ContextWindowConfig;
 
 impl CandleDenseEncoder {
+    pub(crate) fn plan_spanned_windows(
+        &self,
+        text: &str,
+        role: Option<Role>,
+        config: ContextWindowConfig,
+    ) -> Result<(usize, Vec<SpannedTokenWindow>)> {
+        self.tokenizer
+            .encode_spanned_windows(prompt_for(self.prompts, role), text, config)
+    }
+
+    pub(crate) fn encode_spanned_window_batch(
+        &self,
+        windows: &[&SpannedTokenWindow],
+    ) -> Result<Vec<CountedDenseEmbedding>> {
+        let Some(longest) = windows
+            .iter()
+            .map(|input| input.window.token_ids.len())
+            .max()
+        else {
+            return Ok(Vec::new());
+        };
+        self.resource_policy
+            .validate_batch(windows.len(), longest)?;
+        self.resource_policy.validate_transformer_activations(
+            self.transformer_profile,
+            windows.len(),
+            longest,
+            self.dtype,
+        )?;
+        let permit = crate::runtime::acquire_inference_permit().map_err(|error| {
+            anyhow::anyhow!("Failed to acquire window inference admission: {error}")
+        })?;
+        let embeddings = windows
+            .into_par_iter()
+            .enumerate()
+            .map(|(index, input)| {
+                let values = self.encode_tokenized_admitted(
+                    &input.window.token_ids,
+                    &input.window.attention_mask,
+                )?;
+                CountedDenseEmbedding::new(values, input.window.token_ids.len())
+                    .with_context(|| format!("Invalid dense output for window {index}"))
+            })
+            .collect();
+        drop(permit);
+        embeddings
+    }
+
     /// Converts token IDs to a Candle tensor.
     fn tokens_to_tensor(&self, token_ids: &[u32], batch_size: usize) -> Result<Tensor> {
         let token_ids_i64: Vec<i64> = token_ids.iter().map(|&x| i64::from(x)).collect();

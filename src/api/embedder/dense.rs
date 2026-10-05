@@ -1,6 +1,10 @@
 use crate::api::embedder::{EmbedFailure, ModelIdentity};
 use crate::api::TesseraDenseBuilder;
 use crate::core::embeddings::{CountedDenseEmbedding, EmbeddingOutcome, EmbeddingRefusal, Role};
+use crate::core::embeddings::{
+    DenseWindowEmbedding, WindowEmbeddingOutcome, WindowedDenseEmbedding,
+};
+use crate::core::tokenizer::SpannedTokenWindow;
 use crate::core::{DenseEmbedding, DenseEncoder, Encoder};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
@@ -34,6 +38,65 @@ pub struct TesseraDense {
 }
 
 impl TesseraDense {
+    /// Default per-window input length and content overlap for this model.
+    #[must_use]
+    pub const fn default_window_config(&self) -> ContextWindowConfig {
+        ContextWindowConfig::new(self.identity.max_tokens, 64)
+    }
+
+    /// Returns one vector and original byte span per window, in source order.
+    ///
+    /// Original content is tokenized once. Prefix and special tokens are added
+    /// to each slice and count toward its input limit. `None` uses the model's
+    /// default configuration. Empty and byte-oversized texts are refused.
+    ///
+    /// # Errors
+    /// Returns an error for invalid configuration, offsets, job budgets or inference.
+    pub fn encode_windows(
+        &self,
+        text: &str,
+        role: Option<Role>,
+        config: Option<ContextWindowConfig>,
+    ) -> Result<WindowEmbeddingOutcome> {
+        self.encode_batch_windows(&[text], role, config)?
+            .into_iter()
+            .next()
+            .ok_or_else(|| {
+                window_error(
+                    "Single windowed input produced no outcome",
+                    anyhow::anyhow!("Missing input outcome"),
+                )
+            })
+    }
+
+    /// Returns one ordered window result or named refusal per text.
+    ///
+    /// All input plans and collected-output limits are checked before inference.
+    /// Forward groups obey both the configured batch size and the resource policy.
+    ///
+    /// # Errors
+    /// Returns an error for invalid configuration, offsets, job budgets or inference.
+    pub fn encode_batch_windows(
+        &self,
+        texts: &[&str],
+        role: Option<Role>,
+        config: Option<ContextWindowConfig>,
+    ) -> Result<Vec<WindowEmbeddingOutcome>> {
+        let config = config.unwrap_or_else(|| self.default_window_config());
+        let batch_size = self
+            .batch_size
+            .map_or(self.resource_policy.max_batch_items(), NonZeroUsize::get)
+            .min(self.resource_policy.max_batch_items());
+        encode_windows_batch_with(
+            texts,
+            self.resource_policy,
+            self.identity.dimensions,
+            batch_size,
+            |text| self.encoder.plan_spanned_windows(text, role, config),
+            |windows| self.encoder.encode_spanned_window_batch(windows),
+        )
+    }
+
     /// Create a new dense embedder with default configuration.
     ///
     /// This is the simplest way to create a dense embedder - it automatically:
@@ -610,6 +673,126 @@ fn resource_error(context: &str, error: crate::runtime::ResourcePolicyError) -> 
     TesseraError::EncodingError {
         context: context.to_string(),
         source: anyhow::Error::new(error),
+    }
+}
+
+enum PreparedWindowInput {
+    Refused(EmbeddingRefusal),
+    Accepted(usize, Vec<SpannedTokenWindow>),
+}
+
+fn encode_windows_batch_with<P, F>(
+    texts: &[&str],
+    policy: ResourcePolicy,
+    dimensions: usize,
+    batch_size: usize,
+    plan: P,
+    mut encode: F,
+) -> Result<Vec<WindowEmbeddingOutcome>>
+where
+    P: Fn(&str) -> anyhow::Result<(usize, Vec<SpannedTokenWindow>)>,
+    F: FnMut(&[&SpannedTokenWindow]) -> anyhow::Result<Vec<CountedDenseEmbedding>>,
+{
+    let batch_size = NonZeroUsize::new(batch_size).ok_or_else(|| {
+        window_error(
+            "Window batch limit must be positive",
+            anyhow::anyhow!("Zero batch size"),
+        )
+    })?;
+    let mut tracker = JobTracker::new(policy);
+    let mut inputs = Vec::with_capacity(texts.len());
+    let mut input_bytes = 0_usize;
+    let mut window_count = 0_usize;
+    for &text in texts {
+        if let Some(refusal) =
+            EmbeddingRefusal::for_text(text, policy.max_input_bytes_per_sequence())
+        {
+            inputs.push(PreparedWindowInput::Refused(refusal));
+            continue;
+        }
+        tracker
+            .admit_input(text.len())
+            .map_err(|error| resource_error("Window input exceeds job limits", error))?;
+        let (total, windows) =
+            plan(text).map_err(|source| window_error("Failed to plan dense windows", source))?;
+        if total == 0 || windows.is_empty() {
+            return Err(window_error(
+                "Window planner produced no content",
+                anyhow::anyhow!("Empty content plan"),
+            ));
+        }
+        input_bytes = input_bytes.saturating_add(text.len());
+        window_count = window_count.saturating_add(windows.len());
+        policy
+            .validate_job(window_count, input_bytes)
+            .map_err(|error| resource_error("Windows exceed job limits", error))?;
+        for _ in &windows {
+            tracker
+                .retain_output(f32_output_bytes(dimensions))
+                .map_err(|error| resource_error("Window outputs exceed collection limit", error))?;
+        }
+        inputs.push(PreparedWindowInput::Accepted(total, windows));
+    }
+    let windows = inputs
+        .iter()
+        .flat_map(|input| match input {
+            PreparedWindowInput::Accepted(_, windows) => windows.as_slice(),
+            PreparedWindowInput::Refused(_) => &[],
+        })
+        .collect::<Vec<_>>();
+    let mut embeddings = Vec::with_capacity(windows.len());
+    for chunk in windows.chunks(batch_size.get()) {
+        let values = encode(chunk)
+            .map_err(|source| window_error("Dense window inference failed", source))?;
+        if values.len() != chunk.len()
+            || values.iter().zip(chunk).any(|(value, input)| {
+                value.dim() != dimensions || value.tokens_total() != input.window.token_ids.len()
+            })
+        {
+            return Err(window_error(
+                "Dense window output shape or count mismatch",
+                anyhow::anyhow!("Invalid per-window output"),
+            ));
+        }
+        embeddings.extend(values);
+    }
+    let mut embeddings = embeddings.into_iter();
+    inputs
+        .into_iter()
+        .map(|input| match input {
+            PreparedWindowInput::Refused(refusal) => Ok(WindowEmbeddingOutcome::Refused(refusal)),
+            PreparedWindowInput::Accepted(tokens_total, windows) => {
+                let windows = windows
+                    .into_iter()
+                    .map(|input| {
+                        embeddings
+                            .next()
+                            .map(|embedding| DenseWindowEmbedding {
+                                embedding,
+                                byte_start: input.byte_start,
+                                byte_end: input.byte_end,
+                            })
+                            .ok_or_else(|| {
+                                window_error(
+                                    "Window vector is missing",
+                                    anyhow::anyhow!("Missing per-window output"),
+                                )
+                            })
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(WindowEmbeddingOutcome::Embedded(WindowedDenseEmbedding {
+                    tokens_total,
+                    windows,
+                }))
+            }
+        })
+        .collect()
+}
+
+fn window_error(context: &str, source: anyhow::Error) -> TesseraError {
+    TesseraError::EncodingError {
+        context: context.to_string(),
+        source,
     }
 }
 

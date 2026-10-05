@@ -374,6 +374,76 @@ pub enum EmbeddingOutcome {
     Refused(EmbeddingRefusal),
 }
 
+/// One independently embedded window and its span in the original UTF-8 text.
+#[derive(Debug, Clone)]
+pub struct DenseWindowEmbedding {
+    pub(crate) embedding: CountedDenseEmbedding,
+    pub(crate) byte_start: usize,
+    pub(crate) byte_end: usize,
+}
+
+impl DenseWindowEmbedding {
+    /// Borrows the window's vector.
+    #[must_use]
+    pub const fn values(&self) -> &Array1<f32> {
+        self.embedding.values()
+    }
+
+    /// Start byte in the original text, including any leading whitespace.
+    #[must_use]
+    pub const fn byte_start(&self) -> usize {
+        self.byte_start
+    }
+
+    /// Exclusive end byte in the original text.
+    #[must_use]
+    pub const fn byte_end(&self) -> usize {
+        self.byte_end
+    }
+
+    /// Model input tokens, including role prefix and special tokens.
+    #[must_use]
+    pub const fn tokens(&self) -> usize {
+        self.embedding.tokens_total()
+    }
+}
+
+/// Ordered vectors covering one text, without aggregating their values.
+#[derive(Debug, Clone)]
+pub struct WindowedDenseEmbedding {
+    pub(crate) tokens_total: usize,
+    pub(crate) windows: Vec<DenseWindowEmbedding>,
+}
+
+impl WindowedDenseEmbedding {
+    /// Original content tokens, excluding role prefix and special tokens.
+    #[must_use]
+    pub const fn tokens_total(&self) -> usize {
+        self.tokens_total
+    }
+
+    /// Borrows the windows in source order.
+    #[must_use]
+    pub fn windows(&self) -> &[DenseWindowEmbedding] {
+        &self.windows
+    }
+
+    /// Consumes the result and returns its ordered windows.
+    #[must_use]
+    pub fn into_windows(self) -> Vec<DenseWindowEmbedding> {
+        self.windows
+    }
+}
+
+/// One text's window vectors, or its named refusal before tokenization.
+#[derive(Debug, Clone)]
+pub enum WindowEmbeddingOutcome {
+    /// Every original content token was embedded in at least one window.
+    Embedded(WindowedDenseEmbedding),
+    /// Empty or oversized source text was refused before planning.
+    Refused(EmbeddingRefusal),
+}
+
 impl CountedDenseEmbedding {
     pub(crate) fn new(embedding: Array1<f32>, tokens_total: usize) -> Result<Self> {
         anyhow::ensure!(

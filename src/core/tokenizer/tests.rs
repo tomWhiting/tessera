@@ -579,4 +579,48 @@ fn byte_level_tokens_can_share_one_utf8_span() {
             .collect::<Vec<_>>(),
         [0]
     );
+    let tokenizer = Tokenizer {
+        inner: tokenizer,
+        resource_policy: ResourcePolicy::new(2, 16, 2048, usize::MAX),
+        pad_token_id: None,
+    };
+    let (total, windows) = tokenizer
+        .encode_spanned_windows("", text, ContextWindowConfig::new(2, 1))
+        .unwrap();
+    assert_eq!(total, 4);
+    assert_eq!(windows.len(), 3);
+    assert!(windows
+        .iter()
+        .all(|window| (window.byte_start, window.byte_end) == (0, 4)));
+}
+
+#[test]
+fn unclaimed_normalized_bytes_belong_to_the_earlier_window() {
+    let mut tokenizer = cut_tokenizer(3);
+    tokenizer
+        .inner
+        .with_normalizer(Some(tokenizers::normalizers::bert::BertNormalizer::new(
+            true,
+            false,
+            Some(false),
+            false,
+        )));
+    let text = "one \u{0}two";
+    assert_eq!(
+        tokenizer.inner.encode(text, false).unwrap().get_offsets(),
+        [(0, 3), (5, 8)]
+    );
+    let (total, windows) = tokenizer
+        .encode_spanned_windows("", text, ContextWindowConfig::new(3, 0))
+        .unwrap();
+    assert_eq!(total, 2);
+    assert_eq!(
+        windows
+            .iter()
+            .map(|window| (window.byte_start, window.byte_end))
+            .collect::<Vec<_>>(),
+        [(0, 5), (5, 8)]
+    );
+    assert_eq!(windows[0].window.token_ids, [10, 2, 11]);
+    assert_eq!(windows[1].window.token_ids, [10, 3, 11]);
 }

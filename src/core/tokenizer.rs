@@ -71,6 +71,12 @@ pub(crate) struct WholeTokenizedInput {
     pub(crate) tokens_total: usize,
 }
 
+pub(crate) struct SpannedTokenWindow {
+    pub(crate) window: TokenWindow,
+    pub(crate) byte_start: usize,
+    pub(crate) byte_end: usize,
+}
+
 /// Wrapper around `HuggingFace` tokenizer for BERT models.
 pub struct Tokenizer {
     inner: HfTokenizer,
@@ -323,6 +329,103 @@ impl Tokenizer {
                 .map_err(anyhow::Error::new)?;
         }
         Ok(windows)
+    }
+
+    pub(crate) fn encode_spanned_windows(
+        &self,
+        prompt: &str,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<(usize, Vec<SpannedTokenWindow>)> {
+        if let Some(refusal) = crate::EmbeddingRefusal::for_text(
+            text,
+            self.resource_policy.max_input_bytes_per_sequence(),
+        ) {
+            return Err(refusal.into());
+        }
+        let content = self
+            .inner
+            .encode(text, false)
+            .map_err(|error| anyhow::anyhow!("Failed to tokenize window content: {error}"))?;
+        anyhow::ensure!(
+            !content.is_empty(),
+            "Window content tokenization produced no tokens"
+        );
+        let prompt = self
+            .inner
+            .encode(prompt, false)
+            .map_err(|error| anyhow::anyhow!("Failed to tokenize window prefix: {error}"))?;
+        let (mut prefix, suffix) = self.special_token_envelope()?;
+        prefix.extend_from_slice(prompt.get_ids());
+        let planned = plan_token_windows(
+            content.get_ids(),
+            &prefix,
+            &suffix,
+            config,
+            self.resource_policy,
+        )?;
+        let capacity = config.window_tokens() - prefix.len() - suffix.len();
+        let expected = if content.len() <= capacity {
+            1
+        } else {
+            1 + (content.len() - capacity).div_ceil(capacity - config.overlap_tokens())
+        };
+        anyhow::ensure!(
+            planned.len() == expected,
+            "Window count does not match the content-token formula"
+        );
+        let last = planned.len() - 1;
+        let mut previous = (0, 0);
+        let mut windows = Vec::with_capacity(planned.len());
+        for (index, window) in planned.iter().enumerate() {
+            let byte_start = if index == 0 {
+                0
+            } else {
+                content.get_offsets()[window.content_start].0
+            };
+            let byte_end = if index == last {
+                text.len()
+            } else {
+                content.get_offsets()[window.content_end - 1]
+                    .1
+                    .max(content.get_offsets()[planned[index + 1].content_start].0)
+            };
+            anyhow::ensure!(
+                byte_start < byte_end
+                    && text.is_char_boundary(byte_start)
+                    && text.is_char_boundary(byte_end),
+                "Window {index} has invalid UTF-8 span {byte_start}..{byte_end}"
+            );
+            anyhow::ensure!(
+                index == 0
+                    || (byte_start >= previous.0
+                        && byte_end >= previous.1
+                        && byte_start <= previous.1),
+                "Window {index} span order or coverage is invalid"
+            );
+            self.resource_policy
+                .validate_sequence(window.token_ids.len())?;
+            self.resource_policy
+                .validate_batch(1, window.token_ids.len())?;
+            anyhow::ensure!(
+                window.token_ids.len() <= config.window_tokens(),
+                "Window token limit exceeded"
+            );
+            previous = (byte_start, byte_end);
+            windows.push((byte_start, byte_end));
+        }
+        Ok((
+            content.len(),
+            planned
+                .into_iter()
+                .zip(windows)
+                .map(|(window, (byte_start, byte_end))| SpannedTokenWindow {
+                    window,
+                    byte_start,
+                    byte_end,
+                })
+                .collect(),
+        ))
     }
 
     fn special_token_envelope(&self) -> Result<(Vec<u32>, Vec<u32>)> {
