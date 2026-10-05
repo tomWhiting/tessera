@@ -49,7 +49,6 @@ pub fn preflight_registered_model_with_dtype(
             "Model '{model_name}' is not registered and cannot be safely resource-preflighted"
         )
     })?;
-    crate::models::loader::supported_weight_filename(model_info)?;
     if !model_info.is_runnable() {
         bail!(
             "Model '{}' is catalog-only and cannot be loaded: {}",
@@ -57,6 +56,7 @@ pub fn preflight_registered_model_with_dtype(
             model_info.support_note
         );
     }
+    crate::models::loader::supported_weight_filename(model_info)?;
     if model_info.model_type != expected_model_type {
         bail!(
             "Model '{}' has registry type '{:?}', but this encoder requires '{:?}'",

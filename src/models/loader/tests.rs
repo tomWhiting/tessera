@@ -11,6 +11,7 @@ fn onnx_only_weights_are_refused_before_model_loading() {
     model.safetensors_file = None;
     model.pytorch_file = None;
     model.onnx_file = Some("onnx/model.onnx");
+    assert!(model.is_runnable());
     let error = crate::api::builder::ensure_runnable_model(&model)
         .expect_err("ONNX metadata must not enable a loader");
     assert!(matches!(
