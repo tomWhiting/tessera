@@ -219,11 +219,19 @@ impl Tokenizer {
         self.validate_cut_configuration_with(&[prompt])?;
         self.resource_policy.validate_input_bytes(text.len())?;
         let joined = [prompt, text].concat();
-        let text = joined.as_str();
         let encoding = self
             .inner
-            .encode(text, true)
+            .encode(joined.as_str(), true)
             .map_err(|error| anyhow::anyhow!("Failed to encode text: {error}"))?;
+        if !text.chars().all(char::is_whitespace)
+            && !encoding
+                .get_special_tokens_mask()
+                .iter()
+                .zip(encoding.get_offsets())
+                .any(|(&special, &(_, end))| special == 0 && end > prompt.len())
+        {
+            return Err(crate::EmbeddingRefusal::NoContentTokens.into());
+        }
         let tokens_total = encoding.len();
         let limit = self.resource_policy.max_sequence_tokens();
         if tokens_total > limit {
@@ -275,6 +283,12 @@ impl Tokenizer {
             .encode(text, add_special_tokens)
             .map_err(|e| anyhow::anyhow!("Failed to encode text: {e}"))
             .context("Encoding text with tokenizer")?;
+
+        if !text.chars().all(char::is_whitespace)
+            && !encoding.get_special_tokens_mask().contains(&0)
+        {
+            return Err(crate::EmbeddingRefusal::NoContentTokens.into());
+        }
 
         let token_ids = encoding.get_ids().to_vec();
         let attention_mask = encoding.get_attention_mask().to_vec();

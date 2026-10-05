@@ -261,6 +261,9 @@ fn prepare_role_tokens(
     };
     let content_capacity = max_length - MIN_ROLE_LENGTH;
     let content_tokens = token_ids.len() - 2;
+    if content_tokens == 0 {
+        return Err(crate::EmbeddingRefusal::NoContentTokens.into());
+    }
     if content_tokens > content_capacity {
         return Err(crate::EmbeddingRefusal::TextLongerThanModel {
             tokens_total: content_tokens
