@@ -151,9 +151,9 @@ impl Failure {
         )
         .and_then(|()| log.flush());
         let place = if logged.is_ok() {
-            "full text in the worker's log"
+            "full text on the worker's stderr"
         } else {
-            "the worker's log could not be written"
+            "the worker's stderr could not be written"
         };
         // The note's length depends on its count, so shrink until both fit.
         let mut kept = cap;

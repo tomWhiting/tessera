@@ -55,7 +55,7 @@ fn an_over_cap_message_is_logged_whole_and_names_its_cut() {
     assert_eq!(
         named,
         format!(
-            " {} more characters (full text in the worker's log)",
+            " {} more characters (full text on the worker's stderr)",
             2048 - left
         )
     );
