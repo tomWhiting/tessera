@@ -38,6 +38,32 @@ impl ContextWindowConfig {
     }
 }
 
+/// A text's content tokens and one window's content room, measured without inference.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WindowExtent {
+    /// Tokens reaching the original text, excluding wholly prefix tokens and specials.
+    pub tokens_total: usize,
+    /// Content tokens one window holds after its special and prefix tokens.
+    pub content_capacity: usize,
+}
+
+impl WindowExtent {
+    /// Windows the planner forms to cover the text with `overlap_tokens` shared
+    /// between neighbours: `1 + ceil((n - c) / (c - overlap))` for a text longer
+    /// than one window. `None` when a window cannot hold more than the overlap.
+    #[must_use]
+    pub const fn windows(self, overlap_tokens: usize) -> Option<usize> {
+        if self.tokens_total <= self.content_capacity {
+            return Some(1);
+        }
+        if overlap_tokens >= self.content_capacity {
+            return None;
+        }
+        let stride = self.content_capacity - overlap_tokens;
+        Some(1 + (self.tokens_total - self.content_capacity).div_ceil(stride))
+    }
+}
+
 /// One validated model input and its ownership range in the original tokens.
 pub struct TokenWindow {
     pub(crate) content_start: usize,

@@ -30,4 +30,4 @@ pub(crate) use residency::{
 };
 pub use threading::{configure_cpu_threads, CpuThreadConfig, CpuThreadConfigError};
 pub(crate) use window::{plan_token_windows, TokenWindow};
-pub use window::{ContextWindowConfig, ContextWindowError};
+pub use window::{ContextWindowConfig, ContextWindowError, WindowExtent};

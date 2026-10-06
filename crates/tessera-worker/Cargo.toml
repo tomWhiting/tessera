@@ -12,8 +12,10 @@ accelerate = ["tessera-embeddings/accelerate"]
 
 [dependencies]
 tessera-embeddings = { path = "../..", default-features = false }
-haem-frames = { git = "https://github.com/ablative-io/haematite", branch = "main" }
-haem-worker = { git = "https://github.com/ablative-io/haematite", branch = "main" }
+# Temporary: pinned to haematite landing 2 (EMB-E2 protocol 2), not yet on main.
+# Move both back to `branch = "main"` once landing 2 lands there.
+haem-frames = { git = "https://github.com/ablative-io/haematite", rev = "44592ab273946a9d0d764545439bc3a2515bf36d" }
+haem-worker = { git = "https://github.com/ablative-io/haematite", rev = "44592ab273946a9d0d764545439bc3a2515bf36d" }
 
 [dev-dependencies]
 serde_json = "1.0.145"

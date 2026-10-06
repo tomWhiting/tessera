@@ -56,6 +56,7 @@ impl Session {
                 .ok_or("probe_model_path_not_utf8")?
                 .to_string(),
             limits: limits(),
+            windows: None,
         };
         let mut child = Command::new(binary)
             .env_clear()
@@ -73,6 +74,7 @@ impl Session {
                     protocol: start.protocol,
                     model_dir: start.model_dir.clone(),
                     limits: limits(),
+                    windows: None,
                 }),
                 limit,
             )?;

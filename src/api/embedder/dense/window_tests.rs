@@ -199,3 +199,25 @@ fn zero_token_middle_item_is_refused_without_losing_its_neighbors() {
     assert_eq!(refusal.code(), "embed_input_no_content_tokens");
     assert!(matches!(outcomes[2], WindowEmbeddingOutcome::Embedded(_)));
 }
+
+#[test]
+fn a_measured_extent_counts_the_windows_the_planner_forms() {
+    let tokenizer = cut_tokenizer_with_policy(ResourcePolicy::new(64, 16, 2048, usize::MAX));
+    let text = "one two three one two three one two three one  ";
+    for (prompt, window_tokens, overlap) in [("", 5, 1), ("", 6, 2), ("two ", 6, 1), ("", 64, 0)] {
+        let extent = tokenizer
+            .spanned_window_extent(prompt, text, window_tokens)
+            .unwrap();
+        let (total, windows) = tokenizer
+            .encode_spanned_windows(
+                prompt,
+                text,
+                ContextWindowConfig::new(window_tokens, overlap),
+            )
+            .unwrap();
+        assert_eq!(extent.tokens_total, total);
+        assert_eq!(extent.windows(overlap), Some(windows.len()));
+        let last = windows.last().unwrap();
+        assert_eq!(last.byte_end, text.len());
+    }
+}

@@ -9,7 +9,7 @@ use crate::core::{DenseEmbedding, DenseEncoder, Encoder};
 use crate::encoding::dense::CandleDenseEncoder;
 use crate::error::{Result, TesseraError};
 use crate::runtime::{
-    f32_output_bytes, ContextWindowConfig, JobTracker, ModelDType, ResourcePolicy,
+    f32_output_bytes, ContextWindowConfig, JobTracker, ModelDType, ResourcePolicy, WindowExtent,
 };
 use std::num::NonZeroUsize;
 
@@ -96,6 +96,24 @@ impl TesseraDense {
             |text| self.encoder.plan_spanned_windows(text, role, config),
             |windows| self.encoder.encode_spanned_window_batch(windows),
         )
+    }
+
+    /// Measures a text for windows of `window_tokens` model inputs without
+    /// planning or inference: its content tokens and one window's content room,
+    /// as [`Self::encode_batch_windows`] would plan them.
+    ///
+    /// # Errors
+    /// Returns an error wrapping the [`EmbeddingRefusal`] for empty, byte-oversized
+    /// or content-free text, or a tokenizer error.
+    pub fn window_extent(
+        &self,
+        text: &str,
+        role: Option<Role>,
+        window_tokens: usize,
+    ) -> Result<WindowExtent> {
+        self.encoder
+            .measure_spanned_windows(text, role, window_tokens)
+            .map_err(|source| window_error("Failed to measure dense windows", source))
     }
 
     /// Create a new dense embedder with default configuration.
@@ -780,6 +798,8 @@ where
                                 embedding,
                                 byte_start: input.byte_start,
                                 byte_end: input.byte_end,
+                                content_tokens: input.window.content_end
+                                    - input.window.content_start,
                             })
                             .ok_or_else(|| {
                                 window_error(
