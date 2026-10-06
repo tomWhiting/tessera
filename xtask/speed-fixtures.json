@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "model": "bge-base-en-v1.5",
+  "revision": "a5beb1e3e68b9ab74eb54cfd186867f64f240e1a",
+  "tokenizer_sha256": "d241a60d5e8f04cc1b2b3e9ef7a4921b27bf526d9f6050ab90f9267a1f9e5c66",
+  "query_prefix": "Represent this sentence for searching relevant passages: ",
+  "query_tokens": 16,
+  "fixtures": [
+    {
+      "name": "short",
+      "repetitions": 30,
+      "raw_bytes": 119,
+      "content_tokens": 30,
+      "complete_tokens": 32,
+      "sha256": "622346a0acb83057aa6f14da0a5b6fda9136e07e07def4ad6c04ae623c28a6d2"
+    },
+    {
+      "name": "medium",
+      "repetitions": 126,
+      "raw_bytes": 503,
+      "content_tokens": 126,
+      "complete_tokens": 128,
+      "sha256": "ce1aba15845dc8ae3812749a79c083a58f2926ad5d32903713ea5bb390258e69"
+    },
+    {
+      "name": "full",
+      "repetitions": 510,
+      "raw_bytes": 2039,
+      "content_tokens": 510,
+      "complete_tokens": 512,
+      "sha256": "319d50cfecdc1a778c6fa60fec145a61d1fe4623b33c6e084c0be0037fad8d6c"
+    },
+    {
+      "name": "long",
+      "repetitions": 4096,
+      "raw_bytes": 16383,
+      "content_tokens": 4096,
+      "complete_tokens": 4098,
+      "sha256": "1076e1dca65873d2f120b5c5d5bb5d50ced9c96b768d51e64304ecca3f8d87f2"
+    },
+    {
+      "name": "query",
+      "repetitions": 0,
+      "raw_bytes": 22,
+      "content_tokens": 6,
+      "complete_tokens": 8,
+      "sha256": "b075c1f1182b399d108e5391b4dd7a9d39595e5d831ddf29e443d70fa517e00f"
+    }
+  ]
+}

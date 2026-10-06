@@ -15,6 +15,9 @@ mod validation;
 #[cfg(feature = "certification")]
 mod certification;
 mod policy;
+#[cfg(feature = "certification")]
+#[warn(clippy::pedantic, clippy::nursery)]
+mod speed;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let repository = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -33,13 +36,19 @@ fn main() -> Result<(), Box<dyn Error>> {
         Some("registry") => check_registry(&repository)?,
         #[cfg(feature = "certification")]
         Some("cert") => certification::run(&repository, arguments)?,
+        #[cfg(feature = "certification")]
+        Some("speed") => speed::run(&repository, arguments)?,
         #[cfg(not(feature = "certification"))]
         Some("cert") => {
             return Err("certification commands require `--features certification`".into());
         }
+        #[cfg(not(feature = "certification"))]
+        Some("speed") => {
+            return Err("speed commands require `--features certification`".into());
+        }
         _ => {
             return Err(
-                "usage: cargo run -p tessera-xtask -- <all|file-size|registry|cert>".into(),
+                "usage: cargo run -p tessera-xtask -- <all|file-size|registry|cert|speed>".into(),
             );
         }
     }
