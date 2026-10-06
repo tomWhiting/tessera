@@ -26,7 +26,7 @@ struct Session {
     start: Start,
 }
 
-fn limits() -> Limits {
+const fn limits() -> Limits {
     Limits {
         memory_bytes: 2_147_483_648,
         threads: 2,
@@ -67,7 +67,15 @@ impl Session {
             let mut input = child.stdin.take().ok_or("probe_missing_stdin")?;
             let mut output = child.stdout.take().ok_or("probe_missing_stdout")?;
             let limit = NonZeroU32::new(FRAME).ok_or("probe_zero_frame_limit")?;
-            write_message(&mut input, &Message::Start(start.clone()), limit)?;
+            write_message(
+                &mut input,
+                &Message::Start(Start {
+                    protocol: start.protocol,
+                    model_dir: start.model_dir.clone(),
+                    limits: limits(),
+                }),
+                limit,
+            )?;
             let Some(Message::Ready(ready)) = read_message(&mut output, limit)? else {
                 return Err("probe_missing_ready".into());
             };
@@ -99,7 +107,7 @@ impl Session {
         let limit = NonZeroU32::new(FRAME).ok_or("probe_zero_frame_limit")?;
         write_message(
             self.input.as_mut().ok_or("probe_input_closed")?,
-            &Message::Embed(request.clone()),
+            &Message::Embed(self::request()),
             limit,
         )?;
         let Some(Message::Vectors(vectors)) = read_message(&mut self.output, limit)? else {
