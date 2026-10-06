@@ -63,7 +63,7 @@ pub(super) struct Options {
     pub threads: usize,
 }
 
-pub(crate) fn run(repository: &Path, arguments: impl Iterator<Item = String>) -> SpeedResult<()> {
+pub fn run(repository: &Path, arguments: impl Iterator<Item = String>) -> SpeedResult<()> {
     let cli = Cli::try_parse_from(std::iter::once("speed".to_string()).chain(arguments))?;
     match cli.command {
         Command::Validate { model_dir } => {

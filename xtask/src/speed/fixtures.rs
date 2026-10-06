@@ -90,7 +90,7 @@ pub(super) fn load(repository: &Path, model_dir: &Path) -> SpeedResult<Fixtures>
         || manifest.revision != REVISION
         || registry.revision != Some(REVISION)
         || manifest.query_prefix != prompts.query
-        || prompts.document != ""
+        || !prompts.document.is_empty()
         || manifest.query_tokens != 16
         || manifest.fixtures.len() != 5
     {

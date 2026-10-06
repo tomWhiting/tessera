@@ -11,7 +11,7 @@ use super::cli::{Dataset, Journey, Options, Route, SpeedResult};
 use super::fixtures::{self, Fixtures, MODEL};
 use super::record::{self, Counts, Recorder};
 
-fn policy() -> ResourcePolicy {
+const fn policy() -> ResourcePolicy {
     ResourcePolicy::new(512, 4, 2048, 2_147_483_648)
         .with_max_input_bytes_per_sequence(65_536)
         .with_max_attention_cells(1_048_576)

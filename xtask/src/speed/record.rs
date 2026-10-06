@@ -137,7 +137,7 @@ struct Observation<'a> {
     journey: &'a str,
     route: &'a str,
     dataset: &'a str,
-    observation: usize,
+    index: usize,
     elapsed_ns: u128,
     elapsed_seconds: f64,
     counts: &'a Counts,
@@ -170,7 +170,7 @@ impl Recorder {
         .checked_mul(1024)
         .ok_or("speed_rss_overflow")?;
         let observation = Observation { schema_version: 1, context: &self.context,
-            journey: identity.0, route: identity.1, dataset: identity.2, observation: identity.3,
+            journey: identity.0, route: identity.1, dataset: identity.2, index: identity.3,
             elapsed_ns: elapsed.as_nanos(), elapsed_seconds: elapsed.as_secs_f64(), counts,
             output_sha256: hash, sampled_rss_bytes_after: rss, status: "passed",
             timing_boundary: "public call through dimension/count/finiteness checks and output hash sink; excludes JSONL/RSS sampling" };

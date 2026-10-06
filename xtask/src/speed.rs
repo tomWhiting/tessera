@@ -6,4 +6,4 @@ mod record;
 #[cfg(test)]
 mod tests;
 
-pub(crate) use cli::run;
+pub use cli::run;
