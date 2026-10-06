@@ -166,9 +166,9 @@ Each entry gives the source read, what it gains, on what hardware, and its cost 
   The cause was a hard-coded tile of (32,32,16,2,2). The fix adds shape-chosen tiles.
 - **Gain.**
   - No Candle Metal against Candle CPU figure for BERT embedding was found.
-  - **NOT CONFIRMED** whether Candle 0.11 (ours) contains PR #3313.
+  - Candle 0.11 (ours) contains PR #3313 (§5a).
 - **Cost to correctness.** In f32 on the GPU, results differ from Accelerate at the rounding level, so
-  they need a tolerance, not equal hashes.
+  they must stay inside each reference's tolerance (§3).
 - **For Tessera.** Medium. The feature exists and the models are already Candle. Work needed:
   - device plumbing;
   - copying back from GPU to CPU;
@@ -232,8 +232,10 @@ Each entry gives the source read, what it gains, on what hardware, and its cost 
 - **Gain.** No figure on its own. The saving equals the share of padding removed, which is large when a
   batch mixes 10 and 500 tokens.
 - **Cost to correctness.** None in exact arithmetic, because padding is masked. In floating point,
-  batch shape can change the last bits through BLAS blocking. **NOT CONFIRMED** for Accelerate. This
-  matters only if references are compared by hash.
+  batch shape can change the last bits. Tessera's own test
+  `mixed_length_bert_batch_matches_sequential_forward` (`src/encoding/dense/tests.rs:246`) already
+  allows 1e-5 between a padded batch item and the same text alone. That is far inside the reference
+  tolerance (§3).
 
 ### 2.7 Padding-free (variable-length) attention
 
@@ -347,16 +349,30 @@ Each entry gives the source read, what it gains, on what hardware, and its cost 
 ## 3. Ranked for Tessera on Apple Silicon
 
 Ranking is by expected gain for our journeys, weighed against size and risk to the certified
-references. The risk column assumes references compare vectors by hash (`observed_output_sha256`).
-If they compare within a tolerance, every "rounding" risk drops to low.
+references. Certification compares within a tolerance, not by hash (Daisy's ruling, checked in code):
+
+- `xtask/src/certification/reference_compare.rs:21-32` checks each value against
+  `absolute + relative × |expected|` and a minimum cosine, both read from the reference document
+  (`:91-106`).
+- `xtask/src/certification/reference.rs:263-266` compares the hash of the *expected* output only.
+  For the *observed* output it checks only that the hash is valid hex. No observed hash is ever
+  compared.
+- All 68 tolerance blocks under `certification/references/` have `absolute` 0.001 and
+  `minimum_cosine` 0.999. `relative` is 0.01 in 64 of them, and 0.001 in the 4 contract references
+  (`certification/references/contract/{dense,sparse,multi-vector,vision}.json`).
+- **No reference requires an exact hash.**
+
+So rounding-level changes (batch shape, Metal f32, fused attention) are low risk while they stay
+inside those bounds. f16, int8, ANE and MLX quantisation change vectors by more than rounding and
+must be measured against the bounds before anyone calls them low.
 
 | # | Technique | Expected gain on M-series (source of figure) | Size | Risk to certified references | Journeys helped |
 |---|---|---|---|---|---|
 | 1 | Content-hash cache (SHA-256 of text + `ModelIdentity` + role/prompt + limits) | Unbounded on repeats, 0 on new text. No figure found (workload-dependent). | Small | None if the key is complete | Backfill throughput (re-runs), one-query latency (repeat queries) |
-| 2 | Sort by length within a call, then token-budget batches (restore order) | Removes the padding share. No M-series figure found; ST GPU unpadding up to 3.87x total with fp16 (RTX 3090) | Small | Low: last-bit changes possible from batch shape (NOT CONFIRMED for Accelerate) | Backfill throughput, long text (memory bound per batch) |
+| 2 | Sort by length within a call, then token-budget batches (restore order) | Removes the padding share. No M-series figure found; ST GPU unpadding up to 3.87x total with fp16 (RTX 3090) | Small | Low: batch-shape rounding, already bounded at 1e-5 by an existing test, against a tolerance of 1e-3 | Backfill throughput, long text (memory bound per batch) |
 | 3 | Overlap tokenisation with the forward pass (bounded channel, worker pool) | At most the tokeniser's share of wall time. No figure found; size it from Trixie's map | Small to medium | None | Backfill throughput |
 | 4 | Packed `[T,H]` linears with per-sequence attention (padding-free without a kernel) | Same saving as #2 but within mixed batches. No figure found | Medium | Low (same as #2) | Backfill throughput, long text |
-| 5 | Candle Metal, f32 | No BERT figure found. GEMM was 2-11x behind MPS/MLX before PR #3313 (candle #3302); fix in 0.11 NOT CONFIRMED | Medium | Medium: GPU rounding needs a tolerance or separate references per device | Backfill throughput, long text |
+| 5 | Candle Metal, f32 | No BERT figure found. GEMM was 2-11x behind MPS/MLX before PR #3313 (candle #3302); 0.11 contains the fix (§5a) | Medium | Low: f32 GPU rounding, inside tolerance (to be measured) | Backfill throughput, long text |
 | 6 | Fused SDPA on Metal (with #5) | No figure found. Attention ≈ 8% of FLOPs at 512 (§0 estimate) | Small once #5 exists | Low beyond #5 | Long text |
 | 7 | f16 on Metal (with #5) | No M-series figure found. RTX 3090 2.92x; CPU f16 0.25x (ST) | Small once #5 exists | High: new vectors, re-certify | Backfill throughput, long text |
 | 8 | Static embedding model (model2vec / static-retrieval-mrl) as a new registry entry | 397x CPU against mpnet at 87.4% NanoBEIR (HF blog, i7-13700K); no M-series figure | Small to medium | None to existing models (new certified model) | One-query latency, backfill (as a fast tier) |
@@ -377,13 +393,12 @@ already have. It needs a decision on how certification treats a second device.
 
 ## 4. Not confirmed, and where I looked
 
-- **§0 ceiling.** The Accelerate f32 peak on M-series is not from a primary source. Searched only
-  general results; no Apple figure found.
-- **Candle 0.11 and PR #3313.** Not checked against Candle's changelog or tags.
+- **§0 ceiling.** Partly answered in §5b. There is no published M1 Max figure; M1 and M1 Pro figures
+  are given there.
 - **Whether Tessera sorts by length.** A grep of `src/` at `1d600f4` found no length sort (the only
   sort is `src/encoding/minicoil/vector.rs:288`, by index). The call path was not traced; that is
   Trixie's hot-path map.
-- **Batch shape and last bits under Accelerate.** Not tested (testing is not in the box).
+- **Batch shape under Accelerate.** Bounded by the existing 1e-5 test only. Not run here.
 - **ST sorts by length in `encode`.** Known behaviour, not re-read at the commit.
 - **Candle #4021 head dimensions.** From the search-result summary; the issue page was not opened.
 - **Candle #1780** (Metal to CPU copies slow) and **#3052** (Candle against PyTorch). Seen only in
@@ -394,3 +409,209 @@ already have. It needs a decision on how certification treats a second device.
 - **Candle #2877** (8.5x slower than PyTorch on CPU). Windows i9-13900HX with MKL, Candle 0.8.4. Not
   Apple; open with no maintainer answer. Noted, not used.
 - **Paywalls and credentials.** No source needed them. Nothing was skipped for payment.
+
+## 5. Follow-up R2 (Daisy, 2026-10-06 06:34Z)
+
+Read-only. Nothing was built or run.
+
+### 5a. Does our Candle 0.11 contain PR #3313? **Yes.**
+
+- **What we build against.** `Cargo.lock` pins `candle-core` 0.11.0 (`:330`) and
+  `candle-metal-kernels` 0.11.0 (`:372`) from crates.io. The vendored crate's `.cargo_vcs_info.json`
+  names git sha `31f35b147389700ed2a178ee66a91c3cc25cc80d`. That is the commit the GitHub tag API lists
+  for tag `0.11.0`.
+- **The PR.** huggingface/candle #3313, "Metal GEMM Dynamic Tile Selection and Batch Collapse
+  Optimization", merged 2026-01-21 as `06cb7134370e1e7790960b061c98d0be7616bf96`. It touches:
+  - `candle-metal-kernels/src/kernels/mlx_gemm.rs`
+  - `candle-metal-kernels/src/metal_src/mlx_gemm.metal`
+  - `candle-metal-kernels/src/metal/device.rs`
+  - a matmul bench
+- **Ancestry.** GitHub's compare of `06cb713...31f35b1` reports `ahead`, ahead by 101 and behind by 0.
+  The PR's merge commit is therefore an ancestor of the 0.11.0 release.
+- **The PR's code in the vendored source**
+  (`~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/candle-metal-kernels-0.11.0/src/kernels/mlx_gemm.rs`):
+
+  | What the PR adds | Line |
+  |---|---|
+  | `struct TileConfig` | `:23` |
+  | `TILE_64_64_16_2_2` | `:42` |
+  | `fn select_tile_config` | `:59` |
+  | `fn check_batch_collapse` | `:194` |
+  | `fn should_use_split_k` | `:248` |
+  | call site `check_batch_collapse(b, m, k, a_trans, lhs_stride, rhs_stride)` | `:540` |
+  | call site `let tile = select_tile_config(dtype, m, n, k, b, a_trans, b_trans, device_type);` | `:549` |
+
+  The names and call sites are the PR diff's added lines.
+- **Caveat.** Tessera's `metal` feature (`Cargo.toml:56`) is not in the default build we certify, so
+  none of this runs today.
+
+### 5b. Accelerate (AMX) f32 GEMM peak on M1 Max: **NOT CONFIRMED.** No published M1 Max figure was found.
+
+Closest published figures:
+
+- **danieldk/gemm-benchmark README** at `b4f6ed3fcb09bf3c88ca6f3ceda7ddcc050fdd97` (2024-05-18).
+  Accelerate sgemm, matrix size 768, 1000 iterations, in GFLOPS:
+
+  | Chip | 1 thread | 2 threads | 4 threads | Best |
+  |---|---|---|---|---|
+  | M1 | 1340 | — | — | 1340 at 1 thread |
+  | M1 Pro | 2061 | 2583 | 2685 | 2685 at 4 threads |
+  | M1 Ultra | — | — | — | 4376 at 16 threads |
+  | M2 | — | — | — | 1730 at 4 threads |
+
+  There is no M1 Max row.
+- **Bhan (Georgia Tech), arXiv 2606.25426v1** (2026-06-24): plain M1, macOS 26.5.1.
+  - One AMX block per cluster (P and E).
+  - About 1,525 GFLOPS f32 load-free on one thread.
+  - 610 to 680 GFLOPS with operand loads interleaved.
+  - About 1,480 GFLOPS aggregate at eight threads.
+- **jott.live "1.5 TFLOPs on a single M1 core"** (via HN item 34259213): M1. An HN comment says M1 Pro
+  and M1 Max have two P-clusters, each with an AMX unit.
+- **Not M1.** scalable.uni-jena.de/opt/sme/gemm.html measures the M4 with SME: Accelerate at 1825.1
+  GFLOPS for M=N=K=512.
+
+**Inference, NOT CONFIRMED.** The M1 Max has the same two P-clusters as the M1 Pro, so roughly
+2.0 to 2.7 TFLOP/s f32 in Accelerate at 768-square matrices.
+
+**Effect on §0.** bge-base at 3.4 texts/s × ~123 GFLOP ≈ 0.42 TFLOP/s is about 15 to 20% of that, at
+our real (thinner, smaller-M) shapes. The 512-token path has headroom of perhaps 2 to 4x before the
+f32 CPU ceiling, not the "small factor" §0 guessed. Where the loss sits (GEMM shapes, non-GEMM ops,
+threading) is for Trixie's hot-path measurement.
+
+### 5c. Length sort plus token budget, for both batch paths
+
+Two invariants hold for both paths:
+
+- The caller's order of outputs never changes.
+- Every index reported to the caller (`EmbedFailure::OutputInvalid { index }`, the worker's per-item
+  outcomes) names the caller's position, never the sorted position.
+
+Never-cut still holds: an item that alone exceeds the budget runs as a group of one, or is refused by
+the existing preflight. It is never truncated.
+
+#### Path A: worker per-item outcomes
+
+The path is `crates/tessera-worker/src/engine.rs:126-142` → `encode_batch_outcomes`
+(`src/encoding/dense/inference.rs:205-240`).
+
+**How it works today.**
+
+1. Tokenise once (`:212`).
+2. Preflight activations at `inputs.len() × longest` (`:219`).
+3. Run one forward **per text at batch 1** on the bounded Rayon pool
+   (`into_par_iter().enumerate()`, `:231`).
+
+There is no padding, so sorting saves no padded FLOPs. It does two other things:
+
+- **Load balance.** Rayon splits an indexed iterator by index ranges. A cluster of long texts in one
+  range leaves a long tail.
+- **Grouping.** Batch-1 forwards on short texts give thin GEMMs (M = token count, perhaps 10 to 30
+  rows), which use AMX poorly. This is the likely cause of the 50 short texts/s; it is a
+  **hypothesis for Trixie's measurement**.
+
+**Design.**
+
+1. **Sort.** Straight after `encode_batch_with_prompt` (`:212`), build
+   `order: Vec<usize> = (0..n)` sorted *stably* by `token_ids.len()`, descending. A stable sort keeps
+   ties in the caller's order, so the run is deterministic.
+2. **Group.** Walk `order` and cut groups so that `group_len × group_max_tokens` stays within the
+   activation budget. Each group is checked with the existing
+   `resource_policy.validate_transformer_activations(profile, group_len, group_max, dtype)`. This uses
+   no new knob. It replaces the one call at `:219`, which charges every item at the longest length.
+   Charging per group is TEI's padded-model rule (`core/src/queue.rs:150`).
+3. **Run.**
+   - A group of one keeps today's batch-1 forward.
+   - A group of more than one runs one padded forward through the shared helper of Path B below.
+   - Groups go on the Rayon pool longest-first, with `with_max_len(1)`, under the same single
+     inference permit (`:228`).
+4. **Restore.** Every forward carries its original index.
+   - `counted_embedding(original_index, …)` (`:259`) is called with the *original* index, so
+     `OutputInvalid` names the caller's item.
+   - Results are written into `let mut out: Vec<Option<_>> = vec![None; n]` at `out[original_index]`.
+   - Then `out.into_iter().map(Option::unwrap)`. Every slot is filled by construction; a debug
+     assertion checks it.
+   - `engine.rs:130` (the count check) and `:140` (the zip with `request.items`) stay as they are.
+
+#### Path B: `encode_batch`, the padded tensor path
+
+The path is `src/encoding/dense/inference.rs:469-560`.
+
+**How it works today.**
+
+- `tokenizer.encode_batch(texts, true)` pads every text to the longest in the call.
+- One activation preflight runs at `batch × max` (`:497`).
+- One forward runs on `[batch, max]`.
+- The JinaBERT branch (`supports_padded_batch == false`, `:489`) already runs text by text. It is
+  left as it is.
+
+**Design.**
+
+1. **Sort.** Tokenise once *without* padding: `encode_batch(texts, false)`, at `src/core/tokenizer.rs:540`.
+   Then build the same stable `order` by length. For Path B, sort ascending or descending; only the
+   grouping matters here.
+2. **Group.** Use the same rule as Path A: the largest runs whose `len × group_max` pass
+   `validate_transformer_activations`.
+3. **Pad per group.** Pad each group to its own max with the pad id and mask 0 that
+   `encode_batch(…, true)` uses today. **NOT CONFIRMED** where the tokenizer exposes the pad id. If it
+   does not, call `encode_batch(group_texts, true)` per group instead. That tokenises twice, which is
+   cheap next to the forward.
+4. **Run.** Build tensors and run the forward and pooling as now, then mask-normalise each group. The
+   DistilBERT mask inversion (`:530`) applies per group unchanged.
+5. **Restore.** Write each pooled row to `out[order[k]]`.
+6. **Keep these unchanged.** The one-text fast path (`:475`) stays. The whole function stays under one
+   inference permit (`:553`).
+
+This turns Path B into the shared helper "padded forward of one group", which Path A reuses in its
+step 3.
+
+#### Tests that prove order and vectors are unchanged
+
+Write each test first and see it red, per our rule.
+
+**Pure-function tests** (new module beside `inference.rs`; no model needed):
+
+1. **Permutation restores the caller's order.** `length_order` plus `restore` returns the input
+   unchanged for:
+   - all lengths equal;
+   - strictly increasing;
+   - strictly decreasing;
+   - ties mixed with distinct lengths;
+   - n = 0 and n = 1;
+   - a deterministic sweep of 1,000 shuffled cases (fixed seed, no new dependency).
+2. **Ties keep the caller's order.** For equal lengths `[5, 5, 5]`, the order is `[0, 1, 2]`.
+3. **Groups respect the budget.** Each group passes `validate_transformer_activations`.
+4. **Groups cover every item exactly once.** Their concatenation is a permutation of `0..n`.
+5. **An item over the budget alone is a group of one.** The existing preflight then refuses it with
+   the same error as today. Nothing is cut.
+6. **The error index is the caller's.** A forced `OutputInvalid` from sorted position k reports
+   `index == order[k]`.
+
+**Model-level tests** (in `src/encoding/dense/tests.rs`, beside
+`mixed_length_bert_batch_matches_sequential_forward` at `:246`, with the same tiny BERT fixture):
+
+7. **Sorted batch matches each text alone.** `encode_batch` of
+   `[long, short, mid, short2, long2]` equals `encode(text)` for each text, in caller order, within
+   1e-5. That is the same bound the existing test uses, and well inside the references' 1e-3.
+8. **A uniform batch is bit-identical.** When every text has the same token count and the budget holds
+   them in one group, the output is **bit-identical** to the unsorted path. There is one group, the
+   same shape and the same forward, so this asserts `==`, not a tolerance. Keep the old function under
+   `#[cfg(test)]` as the oracle for that one test.
+9. **Same for Path A.** `encode_batch_outcomes` gives the same order and parity for the
+   mixed-length list in test 7, including each outcome's `tokens_total`.
+
+**Worker protocol tests** (`crates/tessera-worker/tests/`):
+
+10. These existing tests stay green unchanged:
+    - `installed_worker_reports_identity_roles_and_ordered_refusals` (`protocol.rs:203`);
+    - `long_ids_leave_whole_ordered_items_and_an_omitted_count` (`protocol/never_cut.rs:33`).
+11. **New: ids stay in request order.** A request with distinct ids and mixed lengths returns items in
+    request id order. Each vector equals the single-item request for that text within 1e-5.
+
+**Certification** (on Tom's Mac, at a later cargo turn):
+
+12. Run `cert run` for each dense profile before and after. Every comparison passes, and the report
+    shows `max_absolute_error` before and after.
+
+**Expected counts.** The handback states expected and observed counts as usual: +6 pure-function,
++3 model-level and +1 protocol, so 10 new tests. The 2 existing protocol tests and the existing parity
+test stay green.
