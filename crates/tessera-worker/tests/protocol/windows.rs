@@ -9,6 +9,8 @@ use haem_frames::embedding::{
     Message, Outcome, Ready, Start, Vectors, Windows, PROTOCOL_WINDOWS,
 };
 
+use serde_json::json;
+
 use super::{execute, fixture, frames, limits, messages, mixed_documents, start};
 
 const WINDOW_CONTENT: u64 = 30;
@@ -222,21 +224,61 @@ fn over_the_cap_is_refused_and_not_embedded() {
     assert_eq!((*tokens_total, *tokens_limit), (Some(60), Some(32)));
 }
 
-/// Start's tokens (16) are below the model's 32, so a window the model reads
-/// whole cannot be fed: the long item is refused by name and gets no vector,
-/// while the page still answers its short item.
+/// Start's tokens (16) are below the model's 32: a window the model reads
+/// whole could never be fed uncut, so windows are refused at load by name
+/// rather than silently off for every text.
 #[test]
-fn a_window_the_model_would_cut_is_refused_by_name() {
+fn a_windows_start_below_the_model_tokens_fails_limits() {
     let model = fixture::installed();
     let mut policy = windowed_limits();
     policy.tokens = 16;
-    let long = words(40, &["one", "two", "three"]);
-    let items = [("short", "one two"), ("long", long.as_str())];
+    let output = execute(&frames(&[Message::Start(windowed(
+        model.path(),
+        policy,
+        5,
+        7,
+    ))]));
+    assert_eq!(output.status.code(), Some(1), "{:?}", output.stderr);
+    let decoded = messages(&output);
+    let [Message::Failed(failed)] = decoded.as_slice() else {
+        panic!("expected Failed only, got {decoded:?}");
+    };
+    assert_eq!(failed.code, FailedCode::EmbedLimits);
+    assert!(failed.message.contains("tokens 16"), "{}", failed.message);
+    assert!(
+        failed.message.contains("max_tokens 32"),
+        "{}",
+        failed.message
+    );
+    let plain = execute(&frames(&[Message::Start(start(model.path(), {
+        let mut plain = limits();
+        plain.tokens = 16;
+        plain
+    }))]));
+    assert!(plain.status.success(), "{:?}", plain.stderr);
+}
+
+/// The fixture's normalizer expands one "x" into 40 tokens that all start at
+/// byte 0, so the second window would start where the first does. haem needs
+/// each window to start strictly later: the item is refused by name, the page
+/// still answers.
+#[test]
+fn windows_sharing_a_start_are_refused_by_name() {
+    let expanded = format!(" {} ", words(40, &["one"]));
+    let model = fixture::installed_with_normalizer(
+        1.0,
+        Some(json!({"type": "Replace", "pattern": {"String": "x"}, "content": expanded})),
+    );
+    let tied = format!("x {}", words(10, &["two"]));
+    let items = [("short", "one two"), ("tied", tied.as_str())];
     let asked = Windows {
         overlap_tokens: 5,
         max_windows: 7,
     };
-    let (ready, vectors) = answer(windowed(model.path(), policy, 5, 7), documents(&items));
+    let (ready, vectors) = answer(
+        windowed(model.path(), windowed_limits(), 5, 7),
+        documents(&items),
+    );
     assert!(matches!(vectors.items[0], Outcome::Vector { .. }));
     let Outcome::Refused {
         code,
@@ -251,9 +293,15 @@ fn a_window_the_model_would_cut_is_refused_by_name() {
         );
     };
     assert_eq!(*code, ItemCode::TextLongerThanModel);
-    assert_eq!((*tokens_total, *tokens_limit), (Some(40), Some(32)));
-    assert!(*tokens_total > Some(READY_CONTENT));
-    check_vectors_windowed(&vectors, &documents(&items), &ready, &policy, Some(asked)).unwrap();
+    assert_eq!((*tokens_total, *tokens_limit), (Some(50), Some(32)));
+    check_vectors_windowed(
+        &vectors,
+        &documents(&items),
+        &ready,
+        &windowed_limits(),
+        Some(asked),
+    )
+    .unwrap();
 }
 
 #[test]

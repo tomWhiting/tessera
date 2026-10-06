@@ -126,14 +126,50 @@ impl Failure {
         )
     }
 
+    /// The Failed frame, its message written whole to stderr first when over the cap.
     pub fn into_message(self) -> Failed {
+        self.into_message_logged(&mut std::io::stderr())
+    }
+
+    /// The Failed frame. A message over the frame's character cap is first written
+    /// whole to `log`; the frame keeps whole characters and names how many it left
+    /// out. Nothing is dropped silently.
+    pub fn into_message_logged(self, log: &mut impl std::io::Write) -> Failed {
+        let cap = haem_frames::embedding::FAILED_MESSAGE_CHARS;
+        let total = self.message.chars().count();
+        if total <= cap {
+            return Failed {
+                code: self.code,
+                message: self.message,
+            };
+        }
+        let logged = writeln!(
+            log,
+            "worker failure {}: {}",
+            self.code.as_str(),
+            self.message
+        )
+        .and_then(|()| log.flush());
+        let place = if logged.is_ok() {
+            "full text in the worker's log"
+        } else {
+            "the worker's log could not be written"
+        };
+        // The note's length depends on its count, so shrink until both fit.
+        let mut kept = cap;
+        let note = loop {
+            let note = format!("… {} more characters ({place})", total - kept);
+            let room = cap.saturating_sub(note.chars().count());
+            if room >= kept {
+                break note;
+            }
+            kept = room;
+        };
+        let mut message: String = self.message.chars().take(kept).collect();
+        message.push_str(&note);
         Failed {
             code: self.code,
-            message: self
-                .message
-                .chars()
-                .take(haem_frames::embedding::FAILED_MESSAGE_CHARS)
-                .collect(),
+            message,
         }
     }
 }

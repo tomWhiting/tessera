@@ -38,11 +38,37 @@ fn a_folder_contents_refusal_is_model_mismatch() {
     assert!(failed.message.contains("model.safetensors"));
 }
 
+/// A message over the frame's character cap is written whole to the worker's
+/// log first; the frame keeps whole characters and names how many it left out.
 #[test]
-fn failures_bound_unicode_characters_without_breaking_the_message() {
-    let failed = failure::Failure::new(FailedCode::EmbedProtocol, "é".repeat(2048)).into_message();
-    assert_eq!(failed.message.chars().count(), 1024);
-    assert!(failed.message.chars().all(|character| character == 'é'));
+fn an_over_cap_message_is_logged_whole_and_names_its_cut() {
+    let whole = "é".repeat(2048);
+    let mut log = Vec::new();
+    let failed = failure::Failure::new(FailedCode::EmbedProtocol, whole.clone())
+        .into_message_logged(&mut log);
+    assert!(String::from_utf8(log).unwrap().contains(&whole));
+    let count = failed.message.chars().count();
+    assert!(count <= haem_frames::embedding::FAILED_MESSAGE_CHARS);
+    let (kept, named) = failed.message.split_once('…').unwrap();
+    assert!(kept.chars().all(|character| character == 'é'));
+    let left = kept.chars().count();
+    assert_eq!(
+        named,
+        format!(
+            " {} more characters (full text in the worker's log)",
+            2048 - left
+        )
+    );
+}
+
+#[test]
+fn a_message_within_the_cap_is_sent_whole_and_not_logged() {
+    let mut log = Vec::new();
+    let whole = "é".repeat(haem_frames::embedding::FAILED_MESSAGE_CHARS);
+    let failed = failure::Failure::new(FailedCode::EmbedProtocol, whole.clone())
+        .into_message_logged(&mut log);
+    assert_eq!(failed.message, whole);
+    assert!(log.is_empty());
 }
 
 #[test]

@@ -118,6 +118,13 @@ impl Engine {
         };
         check_ready(&ready)?;
         check_model_limits_windowed(&start.limits, &ready.model, start.windows)?;
+        // Never cut: windows are the model's size, so they must be fed whole.
+        if start.windows.is_some() && start.limits.tokens < ready.model.max_tokens {
+            return Err(Failure::limits(format!(
+                "windows need tokens {} to equal the model's max_tokens {}",
+                start.limits.tokens, ready.model.max_tokens
+            )));
+        }
         Ok(Self {
             model,
             max_tokens,

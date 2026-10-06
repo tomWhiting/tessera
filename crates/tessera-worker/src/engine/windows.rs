@@ -65,7 +65,7 @@ impl Engine {
         let plans = request
             .items
             .iter()
-            .map(|input| self.plan(input, limits.input_bytes, overlap, cap, fed))
+            .map(|input| self.plan(input, limits.input_bytes, overlap, cap))
             .collect::<Result<Vec<_>, _>>()?;
         let texts = |wanted: fn(&Plan) -> bool| -> Vec<&str> {
             request
@@ -122,7 +122,6 @@ impl Engine {
         input_bytes: u64,
         overlap: usize,
         cap: usize,
-        fed: usize,
     ) -> Result<Plan, Failure> {
         if input_refusal(&input.text, input_bytes).is_some() {
             return Ok(Plan::Whole(None));
@@ -138,9 +137,9 @@ impl Engine {
             Some(count) if count > cap => {
                 Plan::Refused(ItemCode::WindowsOverCap, extent.tokens_total)
             }
-            // Never cut: a window the model reads whole must also fit the tokens it is fed.
-            Some(count) if self.max_tokens <= fed => Plan::Windows(count),
-            _ => Plan::Refused(ItemCode::TextLongerThanModel, extent.tokens_total),
+            Some(count) => Plan::Windows(count),
+            // A window that cannot hold more than the overlap never moves forward.
+            None => Plan::Refused(ItemCode::TextLongerThanModel, extent.tokens_total),
         })
     }
 
@@ -157,12 +156,19 @@ impl Engine {
         if embedded.windows().len() != count {
             return Err(invalid("window count does not match its plan"));
         }
-        // A window over what the model is fed would have been cut: it answers no vector.
-        if embedded
+        // Unreachable while load refuses windows fed fewer tokens than the model's
+        // and the planner builds windows of the model's size. It stays so a planner
+        // or model-limit disagreement answers no vector rather than a cut one.
+        let over = embedded
             .windows()
             .iter()
-            .any(|window| window.tokens() > fed.min(self.max_tokens))
-        {
+            .any(|window| window.tokens() > fed.min(self.max_tokens));
+        // haem needs each window to start and end strictly after the one before; a
+        // tokenizer that gives two windows one offset is refused by name instead.
+        let tied = embedded.windows().windows(2).any(|pair| {
+            pair[1].byte_start() <= pair[0].byte_start() || pair[1].byte_end() <= pair[0].byte_end()
+        });
+        if over || tied {
             return self.refused(
                 input,
                 ItemCode::TextLongerThanModel,
