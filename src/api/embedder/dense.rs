@@ -15,6 +15,8 @@ use std::num::NonZeroUsize;
 
 #[cfg(test)]
 mod outcome_tests;
+#[cfg(test)]
+mod prepared_outcome_tests;
 
 /// Dense single-vector embedder for traditional sentence embeddings.
 ///
