@@ -970,7 +970,7 @@ dependencies = [
 [[package]]
 name = "haem-frames"
 version = "0.1.0"
-source = "git+https://github.com/ablative-io/haematite?rev=44592ab273946a9d0d764545439bc3a2515bf36d#44592ab273946a9d0d764545439bc3a2515bf36d"
+source = "git+https://github.com/ablative-io/haematite?branch=main#6f049352e3a7ff67102d1d4f98fe80e54de4ade9"
 dependencies = [
  "serde",
  "serde_json",
@@ -979,7 +979,7 @@ dependencies = [
 [[package]]
 name = "haem-worker"
 version = "0.1.0"
-source = "git+https://github.com/ablative-io/haematite?rev=44592ab273946a9d0d764545439bc3a2515bf36d#44592ab273946a9d0d764545439bc3a2515bf36d"
+source = "git+https://github.com/ablative-io/haematite?branch=main#6f049352e3a7ff67102d1d4f98fe80e54de4ade9"
 dependencies = [
  "libc",
 ]
