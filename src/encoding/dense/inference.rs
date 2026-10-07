@@ -8,7 +8,7 @@ use crate::core::embeddings::{CountedDenseEmbedding, Role};
 use crate::core::tokenizer::{SpannedTokenWindow, WholeTokenizedInput};
 use crate::core::{DenseEmbedding, PoolingStrategy};
 use crate::models::registry::Prompts;
-use crate::runtime::ContextWindowConfig;
+use crate::runtime::{ContextWindowConfig, WindowExtent};
 
 impl CandleDenseEncoder {
     pub(crate) fn plan_spanned_windows(
@@ -19,6 +19,16 @@ impl CandleDenseEncoder {
     ) -> Result<(usize, Vec<SpannedTokenWindow>)> {
         self.tokenizer
             .encode_spanned_windows(prompt_for(self.prompts, role), text, config)
+    }
+
+    pub(crate) fn measure_spanned_windows(
+        &self,
+        text: &str,
+        role: Option<Role>,
+        window_tokens: usize,
+    ) -> Result<WindowExtent> {
+        self.tokenizer
+            .spanned_window_extent(prompt_for(self.prompts, role), text, window_tokens)
     }
 
     pub(crate) fn encode_spanned_window_batch(

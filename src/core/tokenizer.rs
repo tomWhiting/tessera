@@ -15,7 +15,9 @@ use tokenizers::pre_tokenizers::PreTokenizerWrapper;
 use tokenizers::{PostProcessor, Tokenizer as HfTokenizer};
 
 use crate::models::loader::ModelFileResolver;
-use crate::runtime::{plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow};
+use crate::runtime::{
+    plan_token_windows, ContextWindowConfig, ResourcePolicy, TokenWindow, WindowExtent,
+};
 
 #[cfg(test)]
 pub(crate) mod tests;
@@ -345,12 +347,10 @@ impl Tokenizer {
         Ok(windows)
     }
 
-    pub(crate) fn encode_spanned_windows(
-        &self,
-        prompt: &str,
-        text: &str,
-        config: ContextWindowConfig,
-    ) -> Result<(usize, Vec<SpannedTokenWindow>)> {
+    /// Tokenizes `prompt` and `text` together once and returns the encoding with
+    /// the index of the first token reaching the text; tokens before it are
+    /// wholly prompt.
+    fn joined_encoding(&self, prompt: &str, text: &str) -> Result<(tokenizers::Encoding, usize)> {
         if let Some(refusal) = crate::EmbeddingRefusal::for_text(
             text,
             self.resource_policy.max_input_bytes_per_sequence(),
@@ -375,10 +375,39 @@ impl Tokenizer {
                     .all(|offset| offset.1 > prefix_bytes),
             "Tokenizer prefix/content offsets are not contiguous"
         );
-        let content_ids = &encoding.get_ids()[split..];
-        if content_ids.is_empty() {
+        if split == encoding.get_ids().len() {
             return Err(crate::EmbeddingRefusal::NoContentTokens.into());
         }
+        Ok((encoding, split))
+    }
+
+    /// The text's content tokens and how many of them one window of
+    /// `window_tokens` holds after its special and prompt tokens, measured as
+    /// [`Self::encode_spanned_windows`] plans, without planning or inference.
+    pub(crate) fn spanned_window_extent(
+        &self,
+        prompt: &str,
+        text: &str,
+        window_tokens: usize,
+    ) -> Result<WindowExtent> {
+        let (encoding, split) = self.joined_encoding(prompt, text)?;
+        let (prefix, suffix) = self.special_token_envelope()?;
+        let framing = prefix.len() + split + suffix.len();
+        Ok(WindowExtent {
+            tokens_total: encoding.get_ids().len() - split,
+            content_capacity: window_tokens.saturating_sub(framing),
+        })
+    }
+
+    pub(crate) fn encode_spanned_windows(
+        &self,
+        prompt: &str,
+        text: &str,
+        config: ContextWindowConfig,
+    ) -> Result<(usize, Vec<SpannedTokenWindow>)> {
+        let (encoding, split) = self.joined_encoding(prompt, text)?;
+        let prefix_bytes = prompt.len();
+        let content_ids = &encoding.get_ids()[split..];
         let offsets = encoding.get_offsets()[split..]
             .iter()
             .map(|&(start, end)| {

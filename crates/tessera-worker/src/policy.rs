@@ -1,4 +1,4 @@
-use haem_frames::embedding::Limits;
+use haem_frames::embedding::{Limits, Windows};
 use tessera::ResourcePolicy;
 
 use crate::failure::Failure;
@@ -7,6 +7,7 @@ pub struct Budget {
     pub memory: usize,
     pub threads: usize,
     batch: usize,
+    job_items: usize,
     input: usize,
     tokens: usize,
     job_input: usize,
@@ -24,8 +25,18 @@ fn product(left: usize, right: usize, name: &str) -> Result<usize, Failure> {
 }
 
 impl Budget {
-    pub fn new(limits: &Limits) -> Result<Self, Failure> {
+    /// With windows (protocol 2) a job holds up to `max_windows` window inputs and
+    /// vectors per item, whatever the Start names.
+    pub fn new(limits: &Limits, windows: Option<Windows>) -> Result<Self, Failure> {
         let batch = number(limits.batch_items, "batch_items")?;
+        let job_items = match windows {
+            Some(windows) => product(
+                batch,
+                number(windows.max_windows, "max_windows")?,
+                "window job items",
+            )?,
+            None => batch,
+        };
         let input = number(limits.input_bytes, "input_bytes")?;
         let tokens = number(limits.tokens, "tokens")?;
         let batch_tokens = product(batch, tokens, "padded tokens")?;
@@ -33,6 +44,7 @@ impl Budget {
             memory: number(limits.memory_bytes, "memory_bytes")?,
             threads: number(limits.threads, "threads")?,
             batch,
+            job_items,
             input,
             tokens,
             job_input: product(batch, input, "job input bytes")?,
@@ -43,7 +55,7 @@ impl Budget {
 
     pub fn policy(&self, dimensions: usize, parameters: &str) -> Result<ResourcePolicy, Failure> {
         let output = product(
-            product(self.batch, dimensions, "output dimensions")?,
+            product(self.job_items, dimensions, "output dimensions")?,
             4,
             "output bytes",
         )?;
@@ -59,7 +71,7 @@ impl Budget {
             .ok_or_else(|| Failure::limits("model bytes exceed memory_bytes"))?;
         Ok(policy
             .with_max_input_bytes_per_sequence(self.input)
-            .with_max_job_items(self.batch)
+            .with_max_job_items(self.job_items)
             .with_max_job_input_bytes(self.job_input)
             .with_max_output_bytes(output)
             .with_max_attention_cells(self.attention)

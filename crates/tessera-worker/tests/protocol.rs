@@ -15,6 +15,9 @@ mod fixture;
 #[path = "protocol/never_cut.rs"]
 mod never_cut;
 
+#[path = "protocol/windows.rs"]
+mod windows;
+
 const fn limits() -> Limits {
     Limits {
         memory_bytes: 1 << 30,
@@ -31,6 +34,7 @@ fn start(directory: &std::path::Path, limits: Limits) -> Start {
         protocol: 1,
         model_dir: directory.to_str().unwrap().to_string(),
         limits,
+        windows: None,
     }
 }
 

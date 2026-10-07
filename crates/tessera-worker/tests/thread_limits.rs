@@ -37,6 +37,7 @@ fn observe_threads(limit: u64) -> usize {
                 tokens: 32,
                 frame_bytes: 65_536,
             },
+            windows: None,
         }),
         frame_limit,
     )

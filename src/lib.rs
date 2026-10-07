@@ -295,7 +295,7 @@ pub use runtime::{
     configure_cpu_threads, configure_inference_gate, try_acquire_inference, ContextWindowConfig,
     ContextWindowError, CpuThreadConfig, CpuThreadConfigError, InferenceGateConfig,
     InferenceGateConfigError, InferenceGateError, InferencePermit, ModelDType, ModelDTypeError,
-    ModelPool, PoolError, ResourcePolicy, ResourcePolicyError, SweepReport,
+    ModelPool, PoolError, ResourcePolicy, ResourcePolicyError, SweepReport, WindowExtent,
 };
 pub use utils::similarity::max_sim;
 

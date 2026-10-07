@@ -31,7 +31,7 @@ pub fn run(
     let Some(limit) = NonZeroU32::new(start.limits.frame_bytes) else {
         return failed(output, Failure::limits("frame_bytes is zero"), minimum);
     };
-    let budget = match Budget::new(&start.limits) {
+    let budget = match Budget::new(&start.limits, start.windows) {
         Ok(budget) => budget,
         Err(error) => return failed(output, error, limit),
     };

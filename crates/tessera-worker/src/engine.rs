@@ -1,8 +1,9 @@
 use std::path::Path;
 
 use haem_frames::embedding::{
-    check_model_limits, check_ready, check_vectors, encode_vector, input_refusal, Distance, Embed,
-    FailedCode, ItemCode, Kind, Message, Model, Outcome, Ready, Start, Vectors,
+    check_model_limits_windowed, check_ready, check_vectors_windowed, encode_vector, input_refusal,
+    Distance, Embed, FailedCode, Input, ItemCode, Kind, Message, Model, Outcome, Ready, Start,
+    Vectors,
 };
 use tessera::{
     Device, EmbeddingOutcome, EmbeddingRefusal, InstalledModel, ModelConfig, Role, TesseraDense,
@@ -12,13 +13,26 @@ use tessera::{
 use crate::failure::Failure;
 use crate::policy::Budget;
 
+mod windows;
+
 pub struct Engine {
     model: TesseraDense,
+    max_tokens: usize,
     ready: Message,
 }
 
 fn wire_number(value: usize, name: &str) -> Result<u64, Failure> {
     u64::try_from(value).map_err(|_| Failure::limits(format!("{name} exceeds u64")))
+}
+
+/// A vector's values as one slice, as the codec takes them.
+fn contiguous(values: Option<&[f32]>) -> Result<&[f32], Failure> {
+    values.ok_or_else(|| {
+        Failure::new(
+            FailedCode::EmbedOutputInvalid,
+            "vector storage is not contiguous",
+        )
+    })
 }
 
 impl Engine {
@@ -66,6 +80,7 @@ impl Engine {
             .encode_batch_outcomes(&[], Some(Role::Query))
             .map_err(|error| Failure::model_load(&error, directory))?;
         let identity = model.identity();
+        let max_tokens = identity.max_tokens;
         let manifest_sha256 = identity.manifest_sha256.as_ref().ok_or_else(|| {
             Failure::new(
                 FailedCode::EmbedModelMismatch,
@@ -84,7 +99,7 @@ impl Engine {
             }
         };
         let ready = Ready {
-            protocol: haem_frames::embedding::PROTOCOL,
+            protocol: start.protocol,
             worker: env!("TESSERA_WORKER_BUILD").to_string(),
             core_limit: resources.core_limit,
             descriptors_closed: resources.descriptors_closed,
@@ -102,9 +117,17 @@ impl Engine {
             },
         };
         check_ready(&ready)?;
-        check_model_limits(&start.limits, &ready.model)?;
+        check_model_limits_windowed(&start.limits, &ready.model, start.windows)?;
+        // Never cut: windows are the model's size, so they must be fed whole.
+        if start.windows.is_some() && start.limits.tokens < ready.model.max_tokens {
+            return Err(Failure::limits(format!(
+                "windows need tokens {} to equal the model's max_tokens {}",
+                start.limits.tokens, ready.model.max_tokens
+            )));
+        }
         Ok(Self {
             model,
+            max_tokens,
             ready: Message::Ready(ready),
         })
     }
@@ -113,7 +136,24 @@ impl Engine {
         &self.ready
     }
 
+    /// Answers an Embed; a document Embed under protocol 2 may answer windows.
     pub fn encode(&self, request: &Embed, start: &Start) -> Result<Vectors, Failure> {
+        let items = match start.windows.filter(|_| request.kind == Kind::Document) {
+            Some(asked) => self.encode_windows(request, &start.limits, asked)?,
+            None => self.encode_whole(request, start.limits.input_bytes)?,
+        };
+        let vectors = Vectors { items };
+        let Message::Ready(ready) = &self.ready else {
+            return Err(Failure::new(
+                FailedCode::EmbedOutputInvalid,
+                "worker model identity is unavailable",
+            ));
+        };
+        check_vectors_windowed(&vectors, request, ready, &start.limits, start.windows)?;
+        Ok(vectors)
+    }
+
+    fn encode_whole(&self, request: &Embed, input_bytes: u64) -> Result<Vec<Outcome>, Failure> {
         let role = match request.kind {
             Kind::Document => Role::Document,
             Kind::Query => Role::Query,
@@ -136,73 +176,70 @@ impl Engine {
         if let Some(failure) = overlength_failure(request, &outcomes) {
             return Err(failure);
         }
-        let mut items = Vec::with_capacity(outcomes.len());
-        for (input, outcome) in request.items.iter().zip(outcomes) {
-            let expected = input_refusal(&input.text, start.limits.input_bytes);
-            items.push(match outcome {
-                EmbeddingOutcome::Embedded(embedding) => {
-                    if expected.is_some() {
-                        return Err(Failure::new(
-                            FailedCode::EmbedOutputInvalid,
-                            "refused input produced a vector",
-                        ));
-                    }
-                    let values = embedding.values().as_slice().ok_or_else(|| {
-                        Failure::new(
-                            FailedCode::EmbedOutputInvalid,
-                            "vector storage is not contiguous",
-                        )
-                    })?;
-                    Outcome::Vector {
-                        id: input.id.clone(),
-                        vector: encode_vector(values)?,
-                        tokens_read: wire_number(embedding.tokens_total(), "tokens_read")?,
-                        tokens_total: wire_number(embedding.tokens_total(), "tokens_total")?,
-                    }
+        request
+            .items
+            .iter()
+            .zip(outcomes)
+            .map(|(input, outcome)| Self::outcome(input, outcome, input_bytes))
+            .collect()
+    }
+
+    fn outcome(
+        input: &Input,
+        outcome: EmbeddingOutcome,
+        input_bytes: u64,
+    ) -> Result<Outcome, Failure> {
+        let expected = input_refusal(&input.text, input_bytes);
+        Ok(match outcome {
+            EmbeddingOutcome::Embedded(embedding) => {
+                if expected.is_some() {
+                    return Err(Failure::new(
+                        FailedCode::EmbedOutputInvalid,
+                        "refused input produced a vector",
+                    ));
                 }
-                EmbeddingOutcome::Refused(refusal) => {
-                    let code = match refusal {
-                        EmbeddingRefusal::Empty => ItemCode::EmbedInputEmpty,
-                        EmbeddingRefusal::TooLarge { .. } => ItemCode::EmbedInputTooLarge,
-                        EmbeddingRefusal::NoContentTokens => {
-                            return Err(Failure::limits(format!(
-                                "embed_input_no_content_tokens item {:?}",
-                                input.id
-                            )));
-                        }
-                        EmbeddingRefusal::TextLongerThanModel {
+                Outcome::Vector {
+                    id: input.id.clone(),
+                    vector: encode_vector(contiguous(embedding.values().as_slice())?)?,
+                    tokens_read: wire_number(embedding.tokens_total(), "tokens_read")?,
+                    tokens_total: wire_number(embedding.tokens_total(), "tokens_total")?,
+                }
+            }
+            EmbeddingOutcome::Refused(refusal) => {
+                let code = match refusal {
+                    EmbeddingRefusal::Empty => ItemCode::EmbedInputEmpty,
+                    EmbeddingRefusal::TooLarge { .. } => ItemCode::EmbedInputTooLarge,
+                    EmbeddingRefusal::NoContentTokens => {
+                        return Err(Failure::limits(format!(
+                            "embed_input_no_content_tokens item {:?}",
+                            input.id
+                        )));
+                    }
+                    EmbeddingRefusal::TextLongerThanModel {
+                        tokens_total,
+                        tokens_limit,
+                    } => {
+                        return Err(Failure::overlength(&[(
+                            input.id.as_str(),
                             tokens_total,
                             tokens_limit,
-                        } => {
-                            return Err(Failure::overlength(&[(
-                                input.id.as_str(),
-                                tokens_total,
-                                tokens_limit,
-                            )]));
-                        }
-                    };
-                    if expected != Some(code) {
-                        return Err(Failure::new(
-                            FailedCode::EmbedOutputInvalid,
-                            "input refusal does not match the shared classifier",
-                        ));
+                        )]));
                     }
-                    Outcome::Refused {
-                        id: input.id.clone(),
-                        code,
-                    }
+                };
+                if expected != Some(code) {
+                    return Err(Failure::new(
+                        FailedCode::EmbedOutputInvalid,
+                        "input refusal does not match the shared classifier",
+                    ));
                 }
-            });
-        }
-        let vectors = Vectors { items };
-        let Message::Ready(ready) = &self.ready else {
-            return Err(Failure::new(
-                FailedCode::EmbedOutputInvalid,
-                "worker model identity is unavailable",
-            ));
-        };
-        check_vectors(&vectors, request, ready, &start.limits)?;
-        Ok(vectors)
+                Outcome::Refused {
+                    id: input.id.clone(),
+                    code,
+                    tokens_total: None,
+                    tokens_limit: None,
+                }
+            }
+        })
     }
 }
 

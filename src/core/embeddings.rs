@@ -384,6 +384,7 @@ pub struct DenseWindowEmbedding {
     pub(crate) embedding: CountedDenseEmbedding,
     pub(crate) byte_start: usize,
     pub(crate) byte_end: usize,
+    pub(crate) content_tokens: usize,
 }
 
 impl DenseWindowEmbedding {
@@ -409,6 +410,12 @@ impl DenseWindowEmbedding {
     #[must_use]
     pub const fn tokens(&self) -> usize {
         self.embedding.tokens_total()
+    }
+
+    /// Tokens of the original text in this window, excluding role prefix and special tokens.
+    #[must_use]
+    pub const fn content_tokens(&self) -> usize {
+        self.content_tokens
     }
 }
 
