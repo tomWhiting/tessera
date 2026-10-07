@@ -28,6 +28,8 @@ exclude = [
     "/docs/TESSERA_ARCHITECTURE_PYENTRY.md",
     "/examples/fixtures/**",
     "/tests/*.md",
+    "/.tessera/**",
+    "/.worktrees/**",
 ]
 
 [workspace]
